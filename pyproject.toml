@@ -1,15 +1,29 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
 [project]
 name = "birkenbihl"
 version = "0.1.0"
-description = "Add your description here"
+description = "Birkenbihl Language Learning App"
 readme = "README.md"
 requires-python = ">=3.13"
+authors = [
+    {name = "Birkenbihl Team"},
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Education",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+]
 dependencies = [
     "nicegui>=1.4.0",
     "sqlmodel>=0.0.14",
-    "pydantic-ai>=0.0.12",
-    "langdetect>=1.0.9",
-    "pyttsx3>=2.90",
+    "edge-tts>=6.1.0",
+    "pydantic>=2.0.0",
+    "pywebview>=6.0",
 ]
 
 [project.optional-dependencies]
@@ -18,13 +32,133 @@ dev = [
     "pyright>=1.1.0",
 ]
 
+[project.scripts]
+birkenbihl = "birkenbihl.main:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/birkenbihl"]
+
 [tool.ruff]
 line-length = 120
 target-version = "py313"
+src = ["src"]
 
 [tool.ruff.lint]
-select = ["E", "W", "F", "I", "N", "UP", "ANN", "S", "B", "A", "COM", "C4", "DTZ", "T10", "EM", "EXE", "FA", "ISC", "ICN", "G", "INP", "PIE", "T20", "PYI", "PT", "Q", "RSE", "RET", "SLF", "SLOT", "SIM", "TID", "TCH", "INT", "ARG", "PTH", "TD", "FIX", "ERA", "PD", "PGH", "PL", "TRY", "FLY", "NPY", "AIR", "PERF", "FURB", "LOG", "RUF"]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "N",   # pep8-naming
+    "UP",  # pyupgrade
+    "ANN", # flake8-annotations
+    "B",   # flake8-bugbear
+    "A",   # flake8-builtins
+    "COM", # flake8-commas
+    "C4",  # flake8-comprehensions
+    "DTZ", # flake8-datetimez
+    "EM",  # flake8-errmsg
+    "FA",  # flake8-future-annotations
+    "ISC", # flake8-implicit-str-concat
+    "ICN", # flake8-import-conventions
+    "G",   # flake8-logging-format
+    "INP", # flake8-no-pep420
+    "PIE", # flake8-pie
+    "PT",  # flake8-pytest-style
+    "Q",   # flake8-quotes
+    "RSE", # flake8-raise
+    "RET", # flake8-return
+    "SLF", # flake8-self
+    "SIM", # flake8-simplify
+    "TCH", # flake8-type-checking
+    "ARG", # flake8-unused-arguments
+    "PTH", # flake8-use-pathlib
+    "PD",  # pandas-vet
+    "PGH", # pygrep-hooks
+    "PL",  # pylint
+    "TRY", # tryceratops
+    "PERF", # perflint
+    "FURB", # refurb
+    "RUF", # ruff-specific rules
+]
+ignore = [
+    "COM812", # trailing-comma-missing
+    "ISC001", # single-line-implicit-string-concatenation
+    "PLR2004", # magic-value-used-in-comparison
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = [
+    "S101",    # Use of assert detected
+    "ARG001",  # Unused function argument
+    "ARG002",  # Unused method argument
+    "PLR2004", # Magic value used in comparison
+    "SLF001",  # Private member accessed
+    "PT011",   # pytest-raises-too-broad
+    "PT012",   # pytest-raises-without-match
+]
+"__init__.py" = ["F401"]
+"conftest.py" = [
+    "ARG001",  # Unused function argument (fixtures)
+    "PLR0913", # Too many arguments (fixtures can have many params)
+]
 
 [tool.pyright]
 pythonVersion = "3.13"
-typeCheckingMode = "strict"
+typeCheckingMode = "basic"
+pythonPlatform = "All"
+include = ["src"]
+exclude = [
+    "**/__pycache__",
+    ".venv",
+]
+reportMissingImports = true
+reportMissingTypeStubs = false
+reportIncompatibleMethodOverride = true
+reportIncompatibleVariableOverride = true
+reportUnusedImport = true
+reportUnusedClass = "warning"
+reportUnusedFunction = "warning"
+
+[tool.pytest.ini_options]
+minversion = "8.4"
+addopts = [
+    "-ra",
+    "--strict-markers",
+    "--strict-config",
+    "--cov=src/birkenbihl",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+    "--cov-report=xml",
+    "--cov-fail-under=80",
+]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+    "audio: marks tests that involve audio functionality",
+    "translation: marks tests that involve translation functionality",
+    "birkenbihl: marks tests specific to Birkenbihl method",
+    "db: marks tests that require database",
+    "tts: marks tests that involve text-to-speech",
+]
+filterwarnings = [
+    "error",
+    "ignore::UserWarning",
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
+]
+asyncio_mode = "auto"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.1",
+    "pytest-asyncio>=1.1.0",
+    "pytest-cov>=4.0.0",
+    "pytest-mock>=3.10.0",
+    "pytest-xdist>=3.0.0",
+]

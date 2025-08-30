@@ -1,0 +1,217 @@
+#+TITLE: Spanisch-Deutsche Übersetzung
+#+AUTHOR: Claude
+#+DATE: 2025-08-23
+
+* Version 1: Natürliche deutsche Übersetzung
+
+** Yo te extrañaré
+   Ich werde dich vermissen
+
+** Tenlo por seguro
+   Sei dir dessen sicher
+
+** Fueron tantos bellos y malos momentos
+   Es waren so viele schöne und schwere Momente
+
+** Que vivimos juntos
+   Die wir zusammen erlebt haben
+
+** Los detalles, las pequeñas cosas
+   Die Details, die kleinen Dinge
+
+** Lo que parecía no importante
+   Was unwichtig schien
+
+** Son las que más invaden mi mente
+   Sind die, die meinen Geist am meisten heimsuchen
+
+** Al recordarte
+   Wenn ich an dich denke
+
+** Ojalá pudiera devolver el tiempo
+   Ich wünschte, ich könnte die Zeit zurückdrehen
+
+** Para verte de nuevo
+   Um dich wiederzusehen
+
+** Para darte un abrazo
+   Um dich zu umarmen
+
+** Y nunca soltarte
+   Und dich niemals loszulassen
+
+** Mas comprendo que llegó tu tiempo
+   Aber ich verstehe, dass deine Zeit gekommen war
+
+** Que Dios te ha llamado
+   Dass Gott dich gerufen hat
+
+** Para estar a Su lado
+   Um an seiner Seite zu sein
+
+** Así Él lo quiso
+   So wollte er es
+
+** Pero yo nunca pensé
+   Aber ich hätte nie gedacht
+
+** Que doliera tanto
+   Dass es so sehr wehtun würde
+
+** Ya no llores por mí
+   Weine nicht mehr um mich
+
+** Yo estoy en un lugar lleno de luz
+   Ich bin an einem Ort voller Licht
+
+** Donde existe paz, donde no hay maldad
+   Wo Frieden herrscht, wo es keine Bosheit gibt
+
+** Donde puedo descansar
+   Wo ich ruhen kann
+
+** No llores por mí
+   Weine nicht um mich
+
+** Es tan bello aquí (nunca imaginé)
+   Es ist so schön hier (das hätte ich nie gedacht)
+
+** Quiero que seas feliz, que te vaya bien
+   Ich möchte, dass du glücklich bist, dass es dir gut geht
+
+** Y cuando te toque partir
+   Und wenn deine Zeit kommt zu gehen
+
+** Espero verte aquí
+   Hoffe ich, dich hier zu sehen
+
+** Yo te extrañaré
+   Ich werde dich vermissen
+
+** Tenlo por seguro
+   Sei dir dessen sicher
+
+** ¿Cómo pensar que la vida puede terminar
+   Wie kann man denken, dass das Leben enden kann
+
+** En un segundo?
+   In einer Sekunde?
+
+** La vida es polvo
+   Das Leben ist Staub
+
+** Puede esparcirse en un momento
+   Kann sich in einem Moment zerstreuen
+
+** Nada trajiste, nada te llevarás
+   Nichts hast du mitgebracht, nichts wirst du mitnehmen
+
+** Sólo lo que había dentro
+   Nur das, was in dir war
+
+* Version 2: Wort-für-Wort Übersetzung
+
+** Yo te extrañaré
+   Ich dich vermissen-werde
+
+** Tenlo por seguro
+   Hab-es für sicher
+
+** Fueron tantos bellos y malos momentos
+   Waren so-viele schöne und schlechte momente
+
+** Que vivimos juntos
+   Die lebten-wir zusammen
+
+** Los detalles, las pequeñas cosas
+   Die details, die kleinen sachen
+
+** Lo que parecía no importante
+   Das was schien nicht wichtig
+
+** Son las que más invaden mi mente
+   Sind die die mehr eindringen mein geist
+
+** Al recordarte
+   Beim erinnern-dich
+
+** Ojalá pudiera devolver el tiempo
+   Hoffentlich könnte zurückgeben die zeit
+
+** Para verte de nuevo
+   Für sehen-dich von neu
+
+** Para darte un abrazo
+   Für geben-dir eine umarmung
+
+** Y nunca soltarte
+   Und niemals loslassen-dich
+
+** Mas comprendo que llegó tu tiempo
+   Aber verstehe-ich dass ankam deine zeit
+
+** Que Dios te ha llamado
+   Dass gott dich hat gerufen
+
+** Para estar a Su lado
+   Für sein zu seinem seite
+
+** Así Él lo quiso
+   So er es wollte
+
+** Pero yo nunca pensé
+   Aber ich niemals dachte
+
+** Que doliera tanto
+   Dass schmerzen-würde so-viel
+
+** Ya no llores por mí
+   Schon nicht weine für mich
+
+** Yo estoy en un lugar lleno de luz
+   Ich bin in einem ort voll von licht
+
+** Donde existe paz, donde no hay maldad
+   Wo existiert frieden, wo nicht gibt böses
+
+** Donde puedo descansar
+   Wo kann-ich ausruhen
+
+** No llores por mí
+   Nicht weine für mich
+
+** Es tan bello aquí (nunca imaginé)
+   Ist so schön hier (niemals stellte-vor-mir)
+
+** Quiero que seas feliz, que te vaya bien
+   Will-ich dass seist glücklich, dass dir gehe gut
+
+** Y cuando te toque partir
+   Und wenn dir berühre gehen
+
+** Espero verte aquí
+   Hoffe sehen-dich hier
+
+** Yo te extrañaré
+   Ich dich vermissen-werde
+
+** Tenlo por seguro
+   Hab-es für sicher
+
+** ¿Cómo pensar que la vida puede terminar
+   Wie denken dass das leben kann beenden
+
+** En un segundo?
+   In einer sekunde?
+
+** La vida es polvo
+   Das leben ist staub
+
+** Puede esparcirse en un momento
+   Kann sich-verstreuen in einem moment
+
+** Nada trajiste, nada te llevarás
+   Nichts brachtest, nichts dich nehmen-wirst
+
+** Sólo lo que había dentro
+   Nur das was gab innen

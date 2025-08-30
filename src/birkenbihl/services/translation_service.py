@@ -1,108 +1,89 @@
-"""Translation service implementation."""
+"""Translation service with Birkenbihl method support."""
 
-from typing import Optional
+from datetime import datetime
+from uuid import uuid4
 
-from sqlmodel import Session, create_engine, select
+from sqlmodel import Session
 
-from ..models.translation import Translation, TranslationResult
-from ..protocols.translation import TranslationProvider
+from birkenbihl.models.translation import Translation, Language
+from birkenbihl.protocols.translation import TranslationProvider
 
 
 class TranslationService:
-    """Service for handling translations and storage."""
+    """Service for handling translations with Birkenbihl method."""
     
-    def __init__(self, provider: TranslationProvider, db_url: str = "sqlite:///translations.db") -> None:
-        """Initialize the service.
-        
-        Args:
-            provider: Translation provider to use
-            db_url: Database URL for SQLite
-        """
-        self._provider = provider
-        self._engine = create_engine(db_url)
-        
-        # Create tables
-        from sqlmodel import SQLModel
-        SQLModel.metadata.create_all(self._engine)
+    def __init__(self, provider: TranslationProvider, db_session: Session):
+        self.provider = provider
+        self.db_session = db_session
     
-    def translate_and_save(self, text: str, target_lang: str = "de") -> Translation:
-        """Translate text and save to database.
+    async def translate_natural(self, text: str, source_lang: str, target_lang: str) -> str:
+        """Natural translation for passive understanding."""
+        return await self.provider.translate_natural(text, source_lang, target_lang)
+    
+    async def translate_word_by_word(self, text: str, source_lang: str, target_lang: str) -> str:
+        """Word-by-word translation with Birkenbihl formatting."""
+        word_translation = await self.provider.translate_word_by_word(text, source_lang, target_lang)
+        return self._format_birkenbihl_style(text, word_translation)
+    
+    def _format_birkenbihl_style(self, original: str, translation: str) -> str:
+        """Format text according to Birkenbihl method with proper spacing."""
+        orig_words = original.split()
+        trans_words = translation.split()
         
-        Args:
-            text: Text to translate
-            target_lang: Target language (default: German)
-            
-        Returns:
-            Saved translation entity
-        """
-        # Detect source language
-        source_lang = self._provider.detect_language(text)
+        # Pad lists to same length
+        max_len = max(len(orig_words), len(trans_words))
+        while len(orig_words) < max_len:
+            orig_words.append("")
+        while len(trans_words) < max_len:
+            trans_words.append("")
         
-        # Check if translation already exists
-        with Session(self._engine) as session:
-            existing = session.exec(
-                select(Translation).where(
-                    Translation.original_text == text,
-                    Translation.source_lang == source_lang,
-                    Translation.target_lang == target_lang
-                )
-            ).first()
-            
-            if existing:
-                return existing
+        # Calculate max width for each word pair
+        formatted_orig = []
+        formatted_trans = []
         
-        # Translate
-        result = self._provider.translate(text, source_lang, target_lang)
+        for orig, trans in zip(orig_words, trans_words):
+            max_width = max(len(orig), len(trans))
+            formatted_orig.append(orig.ljust(max_width))
+            formatted_trans.append(trans.ljust(max_width))
         
-        # Save to database
+        # Join with 2 spaces between words as per Birkenbihl method
+        orig_line = "  ".join(formatted_orig)
+        trans_line = "  ".join(formatted_trans)
+        
+        return f"{orig_line}\n{trans_line}"
+    
+    async def save_translation(self, text: str, source_lang: str, target_lang: str, 
+                             natural: str, word_by_word: str) -> Translation:
+        """Save translation to database."""
+        # Get or create languages
+        source = self._get_or_create_language(source_lang)
+        target = self._get_or_create_language(target_lang)
+        
         translation = Translation(
+            id=uuid4(),
             original_text=text,
-            source_lang=source_lang,
-            target_lang=target_lang,
-            natural_translation=result.natural,
-            word_by_word_translation=result.word_by_word
+            source_language_id=source.id,
+            target_language_id=target.id,
+            natural_translation=natural,
+            word_by_word_translation=word_by_word,
+            created_at=datetime.now()
         )
         
-        with Session(self._engine) as session:
-            session.add(translation)
-            session.commit()
-            session.refresh(translation)
-        
+        self.db_session.add(translation)
+        self.db_session.commit()
         return translation
     
-    def get_translation(self, translation_id: int) -> Optional[Translation]:
-        """Get translation by ID.
-        
-        Args:
-            translation_id: ID of the translation
-            
-        Returns:
-            Translation entity or None
-        """
-        with Session(self._engine) as session:
-            return session.get(Translation, translation_id)
-    
-    def get_all_translations(self) -> list[Translation]:
-        """Get all translations from database.
-        
-        Returns:
-            List of all translations
-        """
-        with Session(self._engine) as session:
-            return list(session.exec(select(Translation)).all())
-    
-    def search_translations(self, query: str) -> list[Translation]:
-        """Search translations by original text.
-        
-        Args:
-            query: Search query
-            
-        Returns:
-            List of matching translations
-        """
-        with Session(self._engine) as session:
-            return list(session.exec(
-                select(Translation).where(
-                    Translation.original_text.contains(query)
-                )
-            ).all())
+    def _get_or_create_language(self, code: str) -> Language:
+        """Get existing language or create new one."""
+        lang = self.db_session.query(Language).filter(Language.code == code).first()
+        if not lang:
+            lang_names = {"de": "Deutsch", "es": "Español", "en": "English"}
+            lang = Language(
+                id=uuid4(),
+                code=code,
+                name=lang_names.get(code, code.upper()),
+                created_at=datetime.now()
+            )
+            self.db_session.add(lang)
+            self.db_session.commit()
+        return lang
