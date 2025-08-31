@@ -191,3 +191,7 @@ class UnsupportedFormatError(AudioServiceError):
 class AudioMixingError(AudioServiceError):
     """Raised when audio mixing fails."""
 
+
+class UnsupportedLanguageError(AudioServiceError):
+    """Raised when language is not supported by TTS engine."""
+

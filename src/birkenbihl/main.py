@@ -5,18 +5,22 @@ and connects all services for the Birkenbihl language learning method.
 """
 
 from pathlib import Path
-from typing import Any
 
 import nicegui as ni
 from nicegui import app, ui
 from sqlmodel import Session, SQLModel, create_engine, select
 
 from . import __version__
-from .models.audio import AudioData, AudioFormat, AudioQuality  
+from .config import load_config
 from .models.translation import Language, Translation, TranslationResult, TranslationType
-from .protocols.audio import AudioService
-from .protocols.translation import TranslationProviderProtocol
-# from .services import EdgeTTSAudioService  # Not needed for mock services
+from .providers.pydantic_ai_provider import PydanticAITranslationProvider
+# Conditional import due to Python 3.13 audioop compatibility
+try:
+    from .services.audio_service import EdgeTTSAudioService
+    AUDIO_AVAILABLE = True
+except ImportError:
+    EdgeTTSAudioService = None
+    AUDIO_AVAILABLE = False
 
 
 class DatabaseService:
@@ -75,103 +79,70 @@ class DatabaseService:
             session.commit()
             session.refresh(translation)
             return translation
+    
+    def get_translation_history(self, limit: int = 50) -> list[Translation]:
+        """Get translation history ordered by creation date."""
+        with self.get_session() as session:
+            return session.exec(
+                select(Translation)
+                .order_by(Translation.created_at.desc())
+                .limit(limit)
+            ).all()
+    
+    def search_translations(self, search_text: str, limit: int = 20) -> list[Translation]:
+        """Search translations by source or translated text."""
+        with self.get_session() as session:
+            return session.exec(
+                select(Translation)
+                .where(
+                    (Translation.source_text.contains(search_text)) |
+                    (Translation.translated_text.contains(search_text))
+                )
+                .order_by(Translation.created_at.desc())
+                .limit(limit)
+            ).all()
+    
+    def get_translations_by_language_pair(
+        self, 
+        source_lang_id: int, 
+        target_lang_id: int,
+        limit: int = 20
+    ) -> list[Translation]:
+        """Get translations for specific language pair."""
+        with self.get_session() as session:
+            return session.exec(
+                select(Translation)
+                .where(
+                    (Translation.source_language_id == source_lang_id) &
+                    (Translation.target_language_id == target_lang_id)
+                )
+                .order_by(Translation.created_at.desc())
+                .limit(limit)
+            ).all()
 
 
-class MockTranslationProvider:
-    """Mock translation provider for initial implementation."""
-    
-    def translate(self, text: str, source_lang: str, target_lang: str) -> TranslationResult:
-        """Mock translate implementation."""
-        # Simple word-by-word translation (mock)
-        words = text.split()
-        natural_translation = f"[{target_lang}] {text}"
-        
-        # Create mock word-for-word with proper alignment
-        word_translations = []
-        for word in words:
-            # Mock translation - in real implementation this would use AI
-            mock_translated = f"{word}-{target_lang}"
-            word_translations.append(mock_translated)
-        
-        # Format with alignment (längere Wörter bekommen mehr Whitespace)
-        max_len = max(len(w) for w in words + word_translations)
-        
-        original_line = "  ".join(w.ljust(max_len) for w in words)
-        translated_line = "  ".join(w.ljust(max_len) for w in word_translations)
-        
-        word_by_word_translation = f"{translated_line}"
-        formatted_decoding = f"{original_line}\n{translated_line}"
-        
-        return TranslationResult(
-            natural_translation=natural_translation,
-            word_by_word_translation=word_by_word_translation, 
-            formatted_decoding=formatted_decoding
-        )
-    
-    def detect_language(self, text: str) -> str:
-        """Mock language detection."""
-        # Simple heuristic - in real implementation would use AI
-        if any(word in text.lower() for word in ["the", "and", "or", "is", "are"]):
-            return "en"
-        elif any(word in text.lower() for word in ["el", "la", "y", "o", "es", "son"]):
-            return "es" 
-        return "de"
-
-
-class MockAudioService:
-    """Mock audio service for initial implementation."""
-    
-    def generate_speech(self, text: str, language_code: str, **kwargs: Any) -> AudioData:
-        """Mock speech generation."""
-        # In real implementation, this would use edge-tts
-        audio_data = AudioData(
-            file_path=f"./audio_cache/{hash(text)}.mp3",
-            file_name=f"speech_{language_code}.mp3",
-            file_size=1024 * 50,  # Mock 50KB
-            file_format=AudioFormat.MP3,
-            duration=len(text) * 0.1,  # Mock duration
-            sample_rate=22050,
-            channels=1,
-            quality=AudioQuality.MEDIUM,
-            is_generated=True,
-            tts_engine="edge-tts",
-            speech_rate=1.0
-        )
-        return audio_data
-    
-    def play_audio(self, audio_data: AudioData) -> None:
-        """Mock audio playback."""
-        ui.notify(f"🔊 Playing: {audio_data.file_name}")
-    
-    def get_available_voices(self, language_code: str | None = None) -> list[str]:
-        """Mock voice list."""
-        voices_map = {
-            "de": ["Katja", "Stefan", "Hedda"],
-            "en": ["Aria", "Davis", "Guy"],
-            "es": ["Elvira", "Alvaro", "Dalia"]
-        }
-        if language_code:
-            return voices_map.get(language_code, [])
-        return [voice for voices in voices_map.values() for voice in voices]
 
 
 class BirkenbihApp:
     """Main Birkenbihl Learning App."""
     
-    def __init__(self, use_real_services: bool = True) -> None:
-        """Initialize the app with services.
+    def __init__(self) -> None:
+        """Initialize the app with services."""
+        self.config = load_config()
+        self.db = DatabaseService(self.config.database.database_url)
         
-        Args:
-            use_real_services: Use real AI and TTS services instead of mock services
-        """
-        self.db = DatabaseService()
+        # Initialize real services only
+        model_string = self.config.get_ai_model_string()
+        self.translation_provider = PydanticAITranslationProvider(
+            model=model_string,
+            api_key=self.config.ai_provider.api_key
+        )
         
-        if use_real_services:
-            self.translation_provider = PydanticAITranslationProvider()
+        # Initialize audio service if available
+        if AUDIO_AVAILABLE and EdgeTTSAudioService:
             self.audio_service = EdgeTTSAudioService()
         else:
-            self.translation_provider = MockTranslationProvider()
-            self.audio_service = MockAudioService()
+            self.audio_service = None
             
         self.languages = self.db.get_languages()
         
@@ -253,19 +224,14 @@ class BirkenbihApp:
             # Show loading
             ui.notify("Übersetze...", type="info")
             
-            # Translate - check if using real or mock services
-            if hasattr(self.translation_provider, 'translate_birkenbihl'):
-                # Real PydanticAI provider - async
-                result = await self.translation_provider.translate_birkenbihl(text, source_lang, target_lang)
-                # Convert to old format for compatibility
-                display_result = TranslationResult(
-                    natural_translation=result.natural_translation,
-                    word_by_word_translation=result.word_for_word_translation,
-                    formatted_decoding=self._format_alignment(text, result.word_for_word_translation)
-                )
-            else:
-                # Mock provider - sync
-                display_result = self.translation_provider.translate(text, source_lang, target_lang)
+            # Translate using real PydanticAI provider
+            result = await self.translation_provider.translate_birkenbihl(text, source_lang, target_lang)
+            # Convert to display format
+            display_result = TranslationResult(
+                natural_translation=result.natural_translation,
+                word_by_word_translation=result.word_for_word_translation,
+                formatted_decoding=result.formatted_translation
+            )
             
             self.current_result = display_result
             
@@ -352,24 +318,12 @@ class BirkenbihApp:
         try:
             ui.notify("Generiere Audio...", type="info")
             
-            # Generate and play audio - check if using real or mock services
-            if hasattr(self.audio_service, 'generate_speech') and hasattr(self.audio_service, 'play_audio'):
-                # Real EdgeTTS service - async
-                if hasattr(self.audio_service.generate_speech, '__call__'):
-                    # Check if it's async by trying to await
-                    try:
-                        audio_data = await self.audio_service.generate_speech(text, source_lang)
-                    except TypeError:
-                        # Not async, call normally
-                        audio_data = self.audio_service.generate_speech(text, source_lang)
-                else:
-                    audio_data = self.audio_service.generate_speech(text, source_lang)
-                
+            # Generate and play audio using real EdgeTTS service
+            if self.audio_service:
+                audio_data = await self.audio_service.generate_speech(text, source_lang)
                 self.audio_service.play_audio(audio_data)
             else:
-                # Fallback to mock service
-                audio_data = self.audio_service.generate_speech(text, source_lang)
-                self.audio_service.play_audio(audio_data)
+                ui.notify("⚠️ Audio nicht verfügbar (Python 3.13 Kompatibilitätsproblem)", type="warning")
                 
             ui.notify("Audio wird abgespielt", type="positive")
             
@@ -379,7 +333,7 @@ class BirkenbihApp:
 
 def create_app() -> BirkenbihApp:
     """Create and configure the Birkenbihl app."""
-    app = BirkenbihApp(use_real_services=False)
+    app = BirkenbihApp()
     app.create_ui()
     return app
 

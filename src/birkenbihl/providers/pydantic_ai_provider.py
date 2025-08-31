@@ -4,7 +4,6 @@ import os
 from typing import Any
 
 from pydantic_ai import Agent
-from pydantic_ai.messages import ModelRequest, UserPrompt
 
 from ..models.translation import TranslationResult
 from ..protocols.translation import TranslationProviderProtocol
@@ -197,17 +196,11 @@ class PydanticAITranslationProvider:
                 text, natural_translation, word_for_word_translation
             )
 
-            # Create TranslationResult
+            # Create TranslationResult with correct field names
             result = TranslationResult(
-                original_text=text,
-                source_language=source_language,
-                target_language=target_language,
                 natural_translation=natural_translation,
-                word_for_word_translation=word_for_word_translation,
-                formatted_translation=formatted_translation,
-                provider=self._provider_name,
-                confidence_score=0.9,  # Default confidence
-                context=context,
+                word_by_word_translation=word_for_word_translation,
+                formatted_decoding=formatted_translation,
             )
 
             return result
