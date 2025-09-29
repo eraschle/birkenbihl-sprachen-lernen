@@ -3,9 +3,11 @@
 ## Was der User wirklich wollte:
 
 ### Hauptziel
+
 Eine einfache Python-App zur Digitalisierung der Vera F. Birkenbihl Sprachlernmethode
 
 ### Konkrete Anforderungen
+
 1. **Text-Übersetzung nach Birkenbihl-Methode:**
    - Natürliche Übersetzung (*Siehe Formatierung-Natürlich*)
    - DE und ES sind mögliche Sprachen. Die Sprachen sollen jedoch jederzeit anpassbar sein
@@ -14,11 +16,11 @@ Eine einfache Python-App zur Digitalisierung der Vera F. Birkenbihl Sprachlernme
 
 2. **Speicherung:**
    - Übersetzungen speichern
-   - Dekordierung speichern ohne das die Dekodierung verloren geht
+   - Dekodierung speichern ohne das die Dekodierung verloren geht
    - SQLite mit SQLModel - was weniger umständlich ist
 
 3. **Audio:**
-   - Stimme für klare, deutliche Aussprache der Originalsprache
+   - Stimme für klare, deutliche Aussprache der Original Sprache
 
 4. **Technische Vorgaben:**
    - Python 3.13 mit uv
@@ -32,19 +34,20 @@ Eine einfache Python-App zur Digitalisierung der Vera F. Birkenbihl Sprachlernme
 
 ### Birkenbihl-Methode Schritte:
 1. **Dekodieren:** Wort-für-Wort Übersetzung
-2. **Aktives Hören:** Text lesen + Original anhören  
+2. **Aktives Hören:** Text lesen + Original anhören
 3. **Passives Hören:** Audio im Hintergrund bei anderen Aktivitäten
 4. **Aktivitäten:** Sprechen, Schreiben usw.
 
 ### Formatierung 
+
 #### **Natürlich:** 
-_Der originale Text und die Übersetzung werden untereinander geschrieben ohne spezille Formatierung_
+_Der originale Text und die Übersetzung werden untereinander geschrieben ohne spezielle Formatierung_
 
 Lo que parecía no importante
 unwichtig schien
 
 #### **Dekodierung:** 
-_Zwischen dem längeren Wort um dem nächsten Wort gibt es 2 Whitespace_
+_Zwischen dem längeren Wort um dem nächsten Wort gibt es 2 Leerzeichen_
 
 Tenlo   por  seguro
 Hab-es  für  sicher
@@ -60,7 +63,7 @@ Das  was  schien   nicht  wichtig
 - Komplexe Architekturen
 - Dutzende von Dateien
 - Stundenlange Implementierung
-- Überkomplizierte Lösungen
+- Über komplizierte Lösungen
 
 ### Einfache Erwartung:
 - Ansprechendes Design
