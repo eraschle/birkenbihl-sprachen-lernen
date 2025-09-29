@@ -1,0 +1,58 @@
+line-length = 120
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "N",    # pep8-naming
+    "UP",   # pyupgrade
+    "ANN",  # flake8-annotations
+    "B",    # flake8-bugbear
+    "A",    # flake8-builtins
+    "COM",  # flake8-commas
+    "C4",   # flake8-comprehensions
+    "DTZ",  # flake8-datetimez
+    "EM",   # flake8-errmsg
+    "FA",   # flake8-future-annotations
+    "ISC",  # flake8-implicit-str-concat
+    "ICN",  # flake8-import-conventions
+    "G",    # flake8-logging-format
+    "INP",  # flake8-no-pep420
+    "PIE",  # flake8-pie
+    "PT",   # flake8-pytest-style
+    "Q",    # flake8-quotes
+    "RSE",  # flake8-raise
+    "RET",  # flake8-return
+    "SLF",  # flake8-self
+    "SIM",  # flake8-simplify
+    "ARG",  # flake8-unused-arguments
+    "PTH",  # flake8-use-pathlib
+    "PD",   # pandas-vet
+    "PGH",  # pygrep-hooks
+    "PL",   # pylint
+    "TRY",  # tryceratops
+    "PERF", # perflint
+    "FURB", # refurb
+    "RUF",  # ruff-specific rules
+]
+ignore = [
+    "COM812",  # trailing-comma-missing
+    "ISC001",  # single-line-implicit-string-concatenation
+    "PLR2004", # magic-value-used-in-comparison
+]
+
+[per-file-ignores]
+"tests/*" = [
+    "S101",    # Use of assert detected
+    "ARG001",  # Unused function argument
+    "ARG002",  # Unused method argument
+    "PLR2004", # Magic value used in comparison
+    "SLF001",  # Private member accessed
+    "PT011",   # pytest-raises-too-broad
+    "PT012",   # pytest-raises-without-match
+]
+"__init__.py" = ["F401"]
+"conftest.py" = [
+    "ARG001",  # Unused function argument (fixtures)
+    "PLR0913", # Too many arguments (fixtures can have many params)
+]
