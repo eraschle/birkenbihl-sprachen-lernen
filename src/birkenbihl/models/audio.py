@@ -5,8 +5,8 @@ from enum import Enum
 from pathlib import Path
 from uuid import UUID, uuid4
 
-from sqlmodel import Column, Field, SQLModel
 from sqlalchemy import JSON
+from sqlmodel import Column, Field, SQLModel
 
 
 class AudioFormat(str, Enum):

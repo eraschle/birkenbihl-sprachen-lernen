@@ -1,7 +1,5 @@
 """Audio Service mit edge-tts für Text-to-Speech."""
 
-import asyncio
-import io
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -67,9 +65,7 @@ class EdgeTTSAudioService:
             selected_voice = voice_name if voice_name in voices else voices[0]
 
             # Create TTS instance
-            communicate = edge_tts.Communicate(
-                text, selected_voice, rate=self._format_rate(speech_rate)
-            )
+            communicate = edge_tts.Communicate(text, selected_voice, rate=self._format_rate(speech_rate))
 
             # Generate audio to temporary file
             temp_file = Path(tempfile.mktemp(suffix=".wav"))
@@ -264,9 +260,7 @@ class EdgeTTSAudioService:
             if language_code:
                 # Filter by language code
                 filtered_voices = [
-                    voice["Name"]
-                    for voice in voices
-                    if voice["Locale"].startswith(language_code.lower())
+                    voice["Name"] for voice in voices if voice["Locale"].startswith(language_code.lower())
                 ]
                 return filtered_voices
             else:
@@ -320,7 +314,7 @@ class EdgeTTSAudioService:
                 if len(background_segment) < len(primary_segment):
                     loops_needed = (len(primary_segment) // len(background_segment)) + 1
                     background_segment = background_segment * loops_needed
-                
+
                 # Trim to match primary length
                 background_segment = background_segment[: len(primary_segment)]
 

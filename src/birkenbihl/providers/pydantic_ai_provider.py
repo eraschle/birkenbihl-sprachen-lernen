@@ -1,12 +1,10 @@
 """Pydantic AI Provider für Translation Services."""
 
 import os
-from typing import Any
 
 from pydantic_ai import Agent
 
 from ..models.translation import TranslationResult
-from ..protocols.translation import TranslationProviderProtocol
 
 
 class PydanticAITranslationProvider:
@@ -22,7 +20,7 @@ class PydanticAITranslationProvider:
         self._model = model
         self._api_key = api_key
         self._provider_name = self._extract_provider_name(model)
-        
+
         # Set up API key environment variable if provided
         if api_key:
             if "openai" in model.lower():
@@ -304,9 +302,7 @@ class PydanticAITranslationProvider:
 
         return prompt
 
-    def _create_formatted_alignment(
-        self, original: str, natural: str, word_for_word: str
-    ) -> str:
+    def _create_formatted_alignment(self, original: str, natural: str, word_for_word: str) -> str:
         """Create formatted alignment for Birkenbihl method display."""
         lines = [
             "=== Birkenbihl Method Translation ===",
@@ -327,11 +323,11 @@ class PydanticAITranslationProvider:
 
         # Simple alignment - may not be perfect for all languages
         max_words = max(len(original_words), len(word_for_word_words))
-        
+
         for i in range(max_words):
             orig_word = original_words[i] if i < len(original_words) else ""
             trans_word = word_for_word_words[i] if i < len(word_for_word_words) else ""
-            
+
             # Format with padding for alignment
             max_width = max(len(orig_word), len(trans_word), 10)
             lines.append(f"{orig_word:<{max_width}} | {trans_word}")

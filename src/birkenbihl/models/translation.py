@@ -4,13 +4,13 @@ from datetime import datetime
 from enum import Enum
 from uuid import UUID, uuid4
 
-from sqlmodel import Column, Field, SQLModel
 from sqlalchemy import JSON
+from sqlmodel import Column, Field, SQLModel
 
 
 class TranslationResult(SQLModel):
     """Ergebnis einer Textübersetzung."""
-    
+
     natural_translation: str = Field(description="Natürliche Übersetzung")
     word_by_word_translation: str = Field(description="Wort-für-Wort Übersetzung")
     formatted_decoding: str = Field(description="Formatierte Dekodierung mit Alignment")
