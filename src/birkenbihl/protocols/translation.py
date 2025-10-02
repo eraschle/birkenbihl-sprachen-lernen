@@ -2,7 +2,6 @@
 
 from typing import Protocol
 
-from ..models.translation import TranslationResult
 
 
 class TranslationProvider(Protocol):
