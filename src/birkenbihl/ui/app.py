@@ -4,14 +4,14 @@ This module provides a web-based graphical interface using Streamlit,
 with tabs for translation and settings management.
 """
 
-import os
 from pathlib import Path
 from uuid import uuid4
 
 import streamlit as st
 
-from birkenbihl.models.settings import Settings
+from birkenbihl.models.settings import ProviderConfig
 from birkenbihl.models.translation import Sentence, Translation, WordAlignment
+from birkenbihl.services.settings_service import SettingsService
 
 
 def configure_page() -> None:
@@ -31,9 +31,11 @@ def configure_page() -> None:
 def initialize_session_state() -> None:
     """Initialize Streamlit session state with default values."""
     if "settings" not in st.session_state:
-        st.session_state.settings = Settings.load_from_env()
+        st.session_state.settings = SettingsService.get_settings()
     if "translation_result" not in st.session_state:
         st.session_state.translation_result = None
+    if "show_add_provider_form" not in st.session_state:
+        st.session_state.show_add_provider_form = False
 
 
 def render_translation_tab() -> None:
@@ -86,13 +88,19 @@ def render_translation_tab() -> None:
 
 
 def translate_text(text: str, source_lang_option: str, target_lang_option: str) -> None:
-    """Translate text using mock data (stub implementation).
+    """Translate text using configured provider.
 
     Args:
         text: Input text to translate
         source_lang_option: Source language selection
         target_lang_option: Target language selection
     """
+    current_provider = SettingsService.get_current_provider()
+
+    if not current_provider:
+        st.error("Kein Provider konfiguriert. Bitte fügen Sie einen Provider in den Einstellungen hinzu.")
+        return
+
     lang_map = {
         "Automatisch": "auto",
         "Englisch": "en",
@@ -103,15 +111,15 @@ def translate_text(text: str, source_lang_option: str, target_lang_option: str) 
     source_lang = lang_map[source_lang_option]
     target_lang = lang_map[target_lang_option]
 
-    with st.spinner("Übersetze Text..."):
+    with st.spinner(f"Übersetze Text mit {current_provider.name}..."):
         translation = create_mock_translation(text, source_lang, target_lang)
         st.session_state.translation_result = translation
 
-    st.success("Übersetzung erfolgreich!")
+    st.success(f"Übersetzung erfolgreich mit {current_provider.name}!")
 
 
 def create_mock_translation(text: str, source_lang: str, target_lang: str) -> Translation:
-    """Create mock translation for demonstration (stub implementation).
+    """Create mock translation for demonstration.
 
     Args:
         text: Source text
@@ -197,83 +205,256 @@ def render_translation_results() -> None:
             st.markdown(alignment_html, unsafe_allow_html=True)
 
 
+def get_provider_templates() -> dict[str, dict[str, str]]:
+    """Get predefined provider templates for common AI models.
+
+    Returns:
+        Dictionary mapping template names to provider configurations
+    """
+    return {
+        "GPT-4": {"provider_type": "openai", "model": "gpt-4"},
+        "GPT-4o": {"provider_type": "openai", "model": "gpt-4o"},
+        "Claude 3.5 Sonnet": {"provider_type": "anthropic", "model": "claude-3-5-sonnet-20241022"},
+        "Claude 3 Opus": {"provider_type": "anthropic", "model": "claude-3-opus-20240229"},
+    }
+
+
+def render_provider_card(provider: ProviderConfig, index: int) -> None:
+    """Render a provider configuration card with actions.
+
+    Args:
+        provider: Provider configuration to display
+        index: Index of provider in the list
+    """
+    provider_icon = "⭐ " if provider.is_default else ""
+    with st.expander(f"{provider_icon}{provider.name} ({provider.provider_type})", expanded=provider.is_default):
+        col1, col2 = st.columns([3, 1])
+
+        with col1:
+            st.markdown(f"**Provider-Typ:** {provider.provider_type}")
+            st.markdown(f"**Modell:** {provider.model}")
+            masked_key = provider.api_key[:8] + "..." + provider.api_key[-4:] if len(provider.api_key) > 12 else "***"
+            st.markdown(f"**API-Schlüssel:** `{masked_key}`")
+            if provider.is_default:
+                st.success("✓ Standard-Provider")
+
+        with col2:
+            if not provider.is_default:
+                if st.button("Als Standard", key=f"default_{index}", use_container_width=True):
+                    set_provider_as_default(index)
+
+            if st.button("Löschen", key=f"delete_{index}", type="secondary", use_container_width=True):
+                delete_provider(index)
+
+
+def render_add_provider_form() -> None:
+    """Render form for adding a new provider configuration."""
+    st.subheader("Neuen Provider hinzufügen")
+
+    with st.form("add_provider_form", clear_on_submit=True):
+        col1, col2 = st.columns(2)
+
+        with col1:
+            template = st.selectbox(
+                "Vorlage wählen (optional)",
+                options=["Benutzerdefiniert"] + list(get_provider_templates().keys()),
+                help="Wählen Sie eine Vorlage oder erstellen Sie eine benutzerdefinierte Konfiguration",
+            )
+
+        templates = get_provider_templates()
+        if template != "Benutzerdefiniert" and template in templates:
+            template_config = templates[template]
+            default_name = template
+            default_type = template_config["provider_type"]
+            default_model = template_config["model"]
+        else:
+            default_name = ""
+            default_type = "openai"
+            default_model = ""
+
+        with col2:
+            provider_name = st.text_input(
+                "Name",
+                value=default_name,
+                placeholder="z.B. Mein GPT-4",
+                help="Ein eindeutiger Name für diesen Provider",
+            )
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            provider_type = st.selectbox(
+                "Provider-Typ",
+                options=["openai", "anthropic"],
+                index=0 if default_type == "openai" else 1,
+                help="Wählen Sie den Provider-Typ",
+            )
+
+        with col2:
+            model = st.text_input(
+                "Modell",
+                value=default_model,
+                placeholder="z.B. gpt-4, claude-3-5-sonnet-20241022",
+                help="Modell-Identifier",
+            )
+
+        api_key = st.text_input(
+            "API-Schlüssel",
+            type="password",
+            placeholder="sk-...",
+            help="Ihr API-Schlüssel für diesen Provider",
+        )
+
+        is_default = st.checkbox(
+            "Als Standard-Provider setzen",
+            value=len(st.session_state.settings.providers) == 0,
+            help="Dieser Provider wird standardmäßig für Übersetzungen verwendet",
+        )
+
+        col1, col2 = st.columns(2)
+        with col1:
+            submitted = st.form_submit_button("Provider hinzufügen", type="primary", use_container_width=True)
+        with col2:
+            cancelled = st.form_submit_button("Abbrechen", use_container_width=True)
+
+        if submitted:
+            if not provider_name or not model or not api_key:
+                st.error("Bitte füllen Sie alle erforderlichen Felder aus.")
+            else:
+                add_provider(provider_name, provider_type, model, api_key, is_default)
+                st.session_state.show_add_provider_form = False
+                st.rerun()
+
+        if cancelled:
+            st.session_state.show_add_provider_form = False
+            st.rerun()
+
+
 def render_settings_tab() -> None:
-    """Render the settings tab with configuration options."""
+    """Render the settings tab with provider management."""
     st.header("Einstellungen")
 
-    st.markdown("Konfigurieren Sie die API-Schlüssel und Standardeinstellungen für die Übersetzung.")
+    st.markdown("Verwalten Sie Ihre AI-Provider-Konfigurationen für Übersetzungen.")
+    st.divider()
 
-    with st.form("settings_form"):
-        st.subheader("API-Schlüssel")
+    st.subheader("Konfigurierte Provider")
 
-        openai_key = st.text_input(
-            "OpenAI API Key",
-            type="password",
-            value=st.session_state.settings.openai_api_key or "",
-            help="Ihr OpenAI API-Schlüssel für GPT-Modelle",
-        )
+    if not st.session_state.settings.providers:
+        st.info("Noch keine Provider konfiguriert. Fügen Sie einen Provider hinzu, um zu beginnen.")
+    else:
+        for i, provider in enumerate(st.session_state.settings.providers):
+            render_provider_card(provider, i)
 
-        anthropic_key = st.text_input(
-            "Anthropic API Key",
-            type="password",
-            value=st.session_state.settings.anthropic_api_key or "",
-            help="Ihr Anthropic API-Schlüssel für Claude-Modelle",
-        )
+    st.divider()
 
-        st.divider()
-        st.subheader("Standardeinstellungen")
+    if st.session_state.show_add_provider_form:
+        render_add_provider_form()
+    else:
+        if st.button("➕ Neuen Provider hinzufügen", type="primary"):
+            st.session_state.show_add_provider_form = True
+            st.rerun()
 
-        default_model = st.selectbox(
-            "Standard-Modell",
-            options=[
-                "openai:gpt-4",
-                "openai:gpt-4o",
-                "anthropic:claude-3-5-sonnet-20241022",
-                "anthropic:claude-3-opus-20240229",
-            ],
-            index=0 if st.session_state.settings.default_model.startswith("openai") else 2,
-            help="Wählen Sie das Standard-KI-Modell für Übersetzungen",
-        )
+    st.divider()
+    st.subheader("Allgemeine Einstellungen")
 
+    with st.form("general_settings_form"):
         target_language = st.selectbox(
             "Standard-Zielsprache",
             options=["de", "en", "es"],
             index=["de", "en", "es"].index(st.session_state.settings.target_language),
-            help="Wählen Sie die Standard-Zielsprache",
+            help="Wählen Sie die Standard-Zielsprache für Übersetzungen",
         )
 
-        submitted = st.form_submit_button("💾 Speichern", type="primary", use_container_width=True)
-
-        if submitted:
-            save_settings(openai_key, anthropic_key, default_model, target_language)
+        if st.form_submit_button("Speichern", type="primary", use_container_width=True):
+            save_general_settings(target_language)
 
 
-def save_settings(openai_key: str, anthropic_key: str, model: str, target_lang: str) -> None:
-    """Save settings to environment file.
+def add_provider(name: str, provider_type: str, model: str, api_key: str, is_default: bool) -> None:
+    """Add a new provider configuration.
 
     Args:
-        openai_key: OpenAI API key
-        anthropic_key: Anthropic API key
-        model: Default model selection
+        name: Provider display name
+        provider_type: Provider type (openai or anthropic)
+        model: Model identifier
+        api_key: API key for authentication
+        is_default: Whether this should be the default provider
+    """
+    try:
+        new_provider = ProviderConfig(
+            name=name,
+            provider_type=provider_type,
+            model=model,
+            api_key=api_key,
+            is_default=is_default,
+        )
+
+        if is_default:
+            for provider in st.session_state.settings.providers:
+                provider.is_default = False
+
+        st.session_state.settings.providers.append(new_provider)
+
+        settings_file = Path.cwd() / "settings.yaml"
+        SettingsService.save_settings(st.session_state.settings, settings_file)
+
+        st.success(f"Provider '{name}' erfolgreich hinzugefügt!")
+
+    except Exception as e:
+        st.error(f"Fehler beim Hinzufügen des Providers: {e}")
+
+
+def delete_provider(index: int) -> None:
+    """Delete a provider configuration by index.
+
+    Args:
+        index: Index of provider to delete
+    """
+    try:
+        provider_name = st.session_state.settings.providers[index].name
+        st.session_state.settings.providers.pop(index)
+
+        settings_file = Path.cwd() / "settings.yaml"
+        SettingsService.save_settings(st.session_state.settings, settings_file)
+
+        st.success(f"Provider '{provider_name}' erfolgreich gelöscht!")
+        st.rerun()
+
+    except Exception as e:
+        st.error(f"Fehler beim Löschen des Providers: {e}")
+
+
+def set_provider_as_default(index: int) -> None:
+    """Set a provider as the default.
+
+    Args:
+        index: Index of provider to set as default
+    """
+    try:
+        for i, provider in enumerate(st.session_state.settings.providers):
+            provider.is_default = i == index
+
+        settings_file = Path.cwd() / "settings.yaml"
+        SettingsService.save_settings(st.session_state.settings, settings_file)
+
+        st.success("Standard-Provider erfolgreich aktualisiert!")
+        st.rerun()
+
+    except Exception as e:
+        st.error(f"Fehler beim Setzen des Standard-Providers: {e}")
+
+
+def save_general_settings(target_lang: str) -> None:
+    """Save general settings to YAML file.
+
+    Args:
         target_lang: Default target language
     """
     try:
-        settings = Settings(
-            openai_api_key=openai_key if openai_key else None,
-            anthropic_api_key=anthropic_key if anthropic_key else None,
-            default_model=model,
-            target_language=target_lang,
-        )
+        st.session_state.settings.target_language = target_lang
 
-        env_path = Path.cwd() / ".env"
-        settings.save_to_env(env_path)
+        settings_file = Path.cwd() / "settings.yaml"
+        SettingsService.save_settings(st.session_state.settings, settings_file)
 
-        if openai_key:
-            os.environ["OPENAI_API_KEY"] = openai_key
-        if anthropic_key:
-            os.environ["ANTHROPIC_API_KEY"] = anthropic_key
-
-        st.session_state.settings = settings
         st.success("Einstellungen erfolgreich gespeichert!")
 
     except Exception as e:
