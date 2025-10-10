@@ -1,9 +1,13 @@
 """OpenAI translation provider implementation.
 
 Uses OpenAI's GPT models (GPT-4, GPT-4o, etc.) for Birkenbihl translations.
-Requires OPENAI_API_KEY environment variable.
+API key provided via ProviderConfig.
 """
 
+from pydantic_ai.models.openai import OpenAIChatModel
+from pydantic_ai.providers.openai import OpenAIProvider
+
+from birkenbihl.models.settings import ProviderConfig
 from birkenbihl.models.translation import Translation
 from birkenbihl.providers.base_translator import BaseTranslator
 
@@ -14,21 +18,25 @@ class OpenAITranslator:
     Implements ITranslationProvider protocol using PydanticAI with OpenAI models.
     Uses structured outputs for reliable Birkenbihl method translations.
 
-    Environment Requirements:
-        OPENAI_API_KEY: OpenAI API key
-
     Example:
-        translator = OpenAITranslator()
+        config = ProviderConfig(
+            name="OpenAI GPT-4",
+            provider_type="openai",
+            model="gpt-4o",
+            api_key="sk-..."
+        )
+        translator = OpenAITranslator(config)
         result = translator.translate("Hello world", "en", "de")
     """
 
-    def __init__(self, model: str = "openai:gpt-4o"):
+    def __init__(self, provider_config: ProviderConfig):
         """Initialize OpenAI translator.
 
         Args:
-            model: OpenAI model to use (default: gpt-4o)
-                   Options: gpt-4o, gpt-4o-mini, gpt-4-turbo
+            provider_config: Provider configuration with model and API key
         """
+        provider = OpenAIProvider(api_key=provider_config.api_key)
+        model = OpenAIChatModel(provider_config.model, provider=provider)
         self._translator = BaseTranslator(model)
 
     def translate(self, text: str, source_lang: str, target_lang: str) -> Translation:

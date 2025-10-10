@@ -1,9 +1,13 @@
 """Anthropic translation provider implementation.
 
 Uses Anthropic's Claude models for Birkenbihl translations.
-Requires ANTHROPIC_API_KEY environment variable.
+API key provided via ProviderConfig.
 """
 
+from pydantic_ai.models.anthropic import AnthropicModel
+from pydantic_ai.providers.anthropic import AnthropicProvider
+
+from birkenbihl.models.settings import ProviderConfig
 from birkenbihl.models.translation import Translation
 from birkenbihl.providers.base_translator import BaseTranslator
 
@@ -14,22 +18,25 @@ class AnthropicTranslator:
     Implements ITranslationProvider protocol using PydanticAI with Anthropic models.
     Uses tool-based structured outputs (Anthropic doesn't support native structured outputs).
 
-    Environment Requirements:
-        ANTHROPIC_API_KEY: Anthropic API key
-
     Example:
-        translator = AnthropicTranslator()
+        config = ProviderConfig(
+            name="Claude Sonnet",
+            provider_type="anthropic",
+            model="claude-3-5-sonnet-20241022",
+            api_key="sk-ant-..."
+        )
+        translator = AnthropicTranslator(config)
         result = translator.translate("Hola mundo", "es", "de")
     """
 
-    def __init__(self, model: str = "anthropic:claude-3-5-sonnet-20241022"):
+    def __init__(self, provider_config: ProviderConfig):
         """Initialize Anthropic translator.
 
         Args:
-            model: Anthropic model to use (default: claude-3-5-sonnet-20241022)
-                   Options: claude-3-5-sonnet-20241022, claude-3-opus-20240229,
-                           claude-3-sonnet-20240229, claude-3-haiku-20240307
+            provider_config: Provider configuration with model and API key
         """
+        provider = AnthropicProvider(api_key=provider_config.api_key)
+        model = AnthropicModel(provider_config.model, provider=provider)
         self._translator = BaseTranslator(model)
 
     def translate(self, text: str, source_lang: str, target_lang: str) -> Translation:

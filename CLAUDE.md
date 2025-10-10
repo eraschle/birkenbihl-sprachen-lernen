@@ -13,9 +13,13 @@ Birkenbihl is a Python application that digitizes the Vera F. Birkenbihl languag
 # Install dependencies
 uv sync
 
-# Configure environment
+# Configure providers and API keys
+cp settings.yaml.example settings.yaml
+# Edit settings.yaml: Add API keys directly in provider configs
+
+# Alternative: Use .env for API keys (optional)
 cp .env.example .env
-# Edit .env and add API keys (OPENAI_API_KEY or ANTHROPIC_API_KEY)
+# Edit .env and reference in settings.yaml: api_key: ${OPENAI_API_KEY}
 ```
 
 ### Running

@@ -8,10 +8,11 @@ Eine Python-Anwendung zur Digitalisierung der Vera F. Birkenbihl Sprachlernmetho
 - **Doppelte Übersetzung** nach Birkenbihl-Methode:
   - Natürliche, fließende Übersetzung
   - Wort-für-Wort Übersetzung für Sprachstruktur-Verständnis
-- **Wort-Alignment** in der Benutzeroberfläche
-- **Audio-Wiedergabe** des Originaltexts
-- **Speicherung** aller Übersetzungen in SQLite
-- **Moderne Web-UI** mit NiceGUI
+- **Multi-Provider Support**: OpenAI und Anthropic Claude
+- **Konfigurierbare Provider**: Mehrere AI-Provider in settings.yaml
+- **CLI Interface**: Vollständige Kommandozeilen-Schnittstelle
+- **Streamlit GUI**: Moderne Web-UI mit Provider-Verwaltung
+- **JSON Storage**: Persistente Speicherung von Übersetzungen
 
 ## Installation
 
@@ -23,20 +24,50 @@ Eine Python-Anwendung zur Digitalisierung der Vera F. Birkenbihl Sprachlernmetho
 uv sync
 ```
 
-4. Umgebungsvariablen konfigurieren:
+4. Konfiguration einrichten:
 
 ```bash
+# Provider-Konfiguration erstellen
+cp settings.yaml.example settings.yaml
+# settings.yaml bearbeiten: API Keys und Provider konfigurieren
+```
+
+**Empfohlen**: API Keys direkt in `settings.yaml` speichern (siehe `settings.yaml.example`).
+
+**Alternative**: API Keys in `.env` speichern:
+```bash
 cp .env.example .env
-# .env bearbeiten und API-Schlüssel eintragen
+# .env bearbeiten und in settings.yaml referenzieren: api_key: ${OPENAI_API_KEY}
 ```
 
 ## Verwendung
 
+### CLI
+
 ```bash
-uv run python -m src.birkenbihl_app.main
+# Übersetzung mit Auto-Spracherkennung
+birkenbihl translate "Hello world"
+
+# Übersetzung mit bestimmter Quellsprache
+birkenbihl translate "Yo te extrañaré" -s es -t de
+
+# Mit bestimmtem Provider
+birkenbihl translate "Hello" -p "Claude Sonnet"
+
+# Alle gespeicherten Übersetzungen anzeigen
+birkenbihl list
+
+# Bestimmte Übersetzung anzeigen
+birkenbihl show <id>
 ```
 
-Die App öffnet sich im Browser unter `http://localhost:8080`.
+### GUI (Streamlit)
+
+```bash
+birkenbihl-gui
+```
+
+Die App öffnet sich im Browser unter `http://localhost:8501`.
 
 ## Birkenbihl-Methode
 
@@ -49,9 +80,10 @@ Die App implementiert die 4 Schritte der Birkenbihl-Sprachlernmethode:
 
 ## Technische Details
 
-- **Backend**: Python 3.13, SQLModel, Pydantic-AI
-- **Frontend**: NiceGUI
-- **Datenbank**: SQLite
-- **AI-Provider**: OpenAI (konfigurierbar)
-- **Audio**: pyttsx3 (Text-to-Speech)
+- **Backend**: Python 3.13, Pydantic, Pydantic-AI
+- **Frontend**: Streamlit (GUI), Click + Rich (CLI)
+- **Storage**: JSON (SQLite geplant)
+- **AI-Provider**: OpenAI GPT-4/4o, Anthropic Claude (via Pydantic-AI)
+- **Audio**: Geplant (Phase 2)
 - **Architektur**: SOLID-Prinzipien mit Protocol-basierter Abstraktion
+- **Configuration**: YAML-basierte Multi-Provider Settings

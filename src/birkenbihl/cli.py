@@ -8,8 +8,9 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from birkenbihl.app import DEFAULT_PROVIDER, get_service
+from birkenbihl.app import get_service
 from birkenbihl.models.translation import Translation
+from birkenbihl.services.settings_service import SettingsService
 
 console = Console()
 
@@ -74,14 +75,7 @@ def cli():
 @click.option(
     "--provider",
     "-p",
-    type=click.Choice(["openai", "anthropic"]),
-    default=DEFAULT_PROVIDER,
-    help=f"AI provider to use (default: {DEFAULT_PROVIDER})",
-)
-@click.option(
-    "--model",
-    "-m",
-    help="Model to use (e.g., openai:gpt-4o, anthropic:claude-3-5-sonnet-20241022)",
+    help="Provider name from settings.yaml (uses current/default if not specified)",
 )
 @click.option(
     "--storage",
@@ -93,8 +87,7 @@ def translate(
     source: str | None,
     target: str,
     title: str | None,
-    provider: str,
-    model: str | None,
+    provider: str | None,
     storage: Path | None,
 ):
     """Translate text using the Birkenbihl method.
@@ -102,11 +95,23 @@ def translate(
     Examples:
         birkenbihl translate "Hello world" -s en -t de
         birkenbihl translate "Yo te extrañaré" --title "Missing you"
-        birkenbihl translate "Hello" -p anthropic -m claude-3-5-sonnet-20241022
+        birkenbihl translate "Hello" -p "Claude Sonnet"
     """
     try:
+        # Select provider if specified
+        if provider:
+            settings = SettingsService.get_settings()
+            matching_providers = [p for p in settings.providers if p.name == provider]
+            if not matching_providers:
+                console.print(f"[bold red]Error:[/bold red] Provider '{provider}' not found in settings.yaml")
+                console.print("\nAvailable providers:")
+                for p in settings.providers:
+                    console.print(f"  - {p.name}")
+                raise click.Abort()
+            SettingsService.set_current_provider(matching_providers[0])
+
         with console.status("[bold green]Translating...", spinner="dots"):
-            service = get_service(provider, model, storage)
+            service = get_service(storage)
 
             if source:
                 result = service.translate_and_save(text, source, target, title)
@@ -119,6 +124,10 @@ def translate(
     except Exception as exc:
         console.print(f"[bold red]Error:[/bold red] {exc}")
         raise click.Abort() from exc
+    finally:
+        # Reset provider to default after command
+        if provider:
+            SettingsService.reset_current_provider()
 
 
 @cli.command()

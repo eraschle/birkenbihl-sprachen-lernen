@@ -1,0 +1,67 @@
+# ============================================================================
+# Birkenbihl Multi-Provider Configuration
+# ============================================================================
+#
+# This file configures AI providers for the Birkenbihl language learning app.
+# Copy this file to settings.yaml and add your API keys directly here.
+#
+# IMPORTANT: Add settings.yaml to .gitignore to keep API keys private!
+#
+# ============================================================================
+
+# Provider Configurations
+# Each provider needs:
+#   - name: Display name (used in UI and CLI)
+#   - provider_type: Either "openai" or "anthropic"
+#   - model: Model identifier (without provider prefix)
+#   - api_key: Your actual API key (keep this file private!)
+#   - is_default: Set one provider as default (true/false)
+
+providers:
+  # Example: OpenAI GPT-4
+  - name: OpenAI GPT-4
+    provider_type: openai
+    model: gpt-4o
+    api_key: sk-your-openai-api-key-here
+    is_default: true
+
+  # Example: Anthropic Claude
+  # - name: Claude Sonnet
+  #   provider_type: anthropic
+  #   model: claude-3-5-sonnet-20241022
+  #   api_key: sk-ant-your-anthropic-api-key-here
+  #   is_default: false
+
+  # Example: OpenAI GPT-4o Mini (cheaper/faster)
+  # - name: OpenAI GPT-4o Mini
+  #   provider_type: openai
+  #   model: gpt-4o-mini
+  #   api_key: sk-your-openai-api-key-here
+  #   is_default: false
+
+# General Settings
+target_language: de
+
+# ============================================================================
+# Setup Instructions
+# ============================================================================
+#
+# 1. Copy this file to settings.yaml:
+#    cp settings.yaml.example settings.yaml
+#
+# 2. Replace placeholder API keys with your actual keys:
+#    - Get OpenAI key from: https://platform.openai.com/api-keys
+#    - Get Anthropic key from: https://console.anthropic.com/settings/keys
+#
+# 3. Ensure settings.yaml is in .gitignore (already configured)
+#
+# 4. Uncomment and configure additional providers as needed
+#
+# 5. Set one provider as is_default: true
+#
+# Alternative: Environment Variables (.env file)
+# If you prefer, you can keep API keys in .env and reference them here:
+#   api_key: ${OPENAI_API_KEY}
+# But this requires the keys to be set as environment variables.
+#
+# ============================================================================

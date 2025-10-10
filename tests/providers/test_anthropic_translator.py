@@ -4,26 +4,17 @@ These tests make real API calls and require ANTHROPIC_API_KEY environment variab
 Mark tests with @pytest.mark.integration to run separately from unit tests.
 """
 
-import os
-
 import pytest
 
+from birkenbihl.models.settings import ProviderConfig
 from birkenbihl.models.translation import Translation
 from birkenbihl.providers.anthropic_translator import AnthropicTranslator
 
 
 @pytest.fixture
-def translator():
+def translator(anthropic_provider_config: ProviderConfig):
     """Create Anthropic translator (requires ANTHROPIC_API_KEY)."""
-    if not os.getenv("ANTHROPIC_API_KEY"):
-        pytest.skip("ANTHROPIC_API_KEY not set - skipping integration test")
-    return AnthropicTranslator(model="anthropic:claude-3-5-sonnet-20241022")
-
-
-def skip_if_no_api_key():
-    """Skip test if ANTHROPIC_API_KEY not set."""
-    if not os.getenv("ANTHROPIC_API_KEY"):
-        pytest.skip("ANTHROPIC_API_KEY not set - skipping integration test")
+    return AnthropicTranslator(anthropic_provider_config)
 
 
 @pytest.mark.integration
@@ -33,7 +24,6 @@ class TestAnthropicTranslatorIntegration:
 
     def test_translate_english_to_german_simple(self, translator: AnthropicTranslator):
         """Test simple English to German translation."""
-        skip_if_no_api_key()
         # Act
         result = translator.translate("Hello world", "en", "de")
 
@@ -57,7 +47,6 @@ class TestAnthropicTranslatorIntegration:
 
     def test_translate_spanish_to_german(self, translator: AnthropicTranslator):
         """Test Spanish to German translation with Birkenbihl method."""
-        skip_if_no_api_key()
         # Act: Example from ORIGINAL_REQUIREMENTS.md
         result = translator.translate("Yo te extrañaré", "es", "de")
 
@@ -75,7 +64,6 @@ class TestAnthropicTranslatorIntegration:
 
     def test_translate_multiple_sentences(self, translator: AnthropicTranslator):
         """Test translation of text with multiple sentences."""
-        skip_if_no_api_key()
         # Act
         text = "Hello world. How are you today?"
         result = translator.translate(text, "en", "de")
@@ -91,7 +79,6 @@ class TestAnthropicTranslatorIntegration:
 
     def test_translate_complex_spanish_sentence(self, translator: AnthropicTranslator):
         """Test complex Spanish sentence from requirements."""
-        skip_if_no_api_key()
         # Act: Example from ORIGINAL_REQUIREMENTS.md
         text = "Fueron tantos bellos y malos momentos"
         result = translator.translate(text, "es", "de")
@@ -110,7 +97,6 @@ class TestAnthropicTranslatorIntegration:
 
     def test_detect_language_english(self, translator: AnthropicTranslator):
         """Test language detection for English."""
-        skip_if_no_api_key()
         # Act
         result = translator.detect_language("Hello world, how are you?")
 
@@ -119,7 +105,6 @@ class TestAnthropicTranslatorIntegration:
 
     def test_detect_language_spanish(self, translator: AnthropicTranslator):
         """Test language detection for Spanish."""
-        skip_if_no_api_key()
         # Act
         result = translator.detect_language("Hola mundo, ¿cómo estás?")
 
@@ -128,7 +113,6 @@ class TestAnthropicTranslatorIntegration:
 
     def test_detect_language_german(self, translator: AnthropicTranslator):
         """Test language detection for German."""
-        skip_if_no_api_key()
         # Act
         result = translator.detect_language("Hallo Welt, wie geht es dir?")
 
@@ -143,7 +127,6 @@ class TestAnthropicBirkenbilhMethodCompliance:
 
     def test_natural_translation_exists(self, translator: AnthropicTranslator):
         """Test that natural translation is provided (Phase 1: Übersetzen)."""
-        skip_if_no_api_key()
         # Act
         result = translator.translate("Hello world", "en", "de")
 
@@ -154,7 +137,6 @@ class TestAnthropicBirkenbilhMethodCompliance:
 
     def test_word_by_word_translation_exists(self, translator: AnthropicTranslator):
         """Test that word-by-word translation exists (Phase 1: Dekodieren)."""
-        skip_if_no_api_key()
         # Act
         result = translator.translate("Hello world", "en", "de")
 
@@ -173,7 +155,6 @@ class TestAnthropicBirkenbilhMethodCompliance:
         Critical requirement from ORIGINAL_REQUIREMENTS.md:
         'Alle Wörter aus der natürlichen Übersetzung müssen in der Wort-für-Wort verwendet werden'
         """
-        skip_if_no_api_key()
         # Act: Complex sentence with subordinate clause
         complex_text = (
             "Aunque no tenía mucho dinero en ese momento, "
@@ -211,7 +192,6 @@ class TestAnthropicBirkenbilhMethodCompliance:
         From ORIGINAL_REQUIREMENTS.md:
         'UI soll Wörter einer Zeile auseinanderziehen für vertikale Alignment'
         """
-        skip_if_no_api_key()
         # Act
         result = translator.translate("Hello world", "en", "de")
 
@@ -226,7 +206,6 @@ class TestAnthropicBirkenbilhMethodCompliance:
         From ORIGINAL_REQUIREMENTS.md:
         'Übersetzungen speichern, Dekodierung speichern ohne das die Dekodierung verloren geht'
         """
-        skip_if_no_api_key()
         # Act
         result = translator.translate("Hello world", "en", "de")
 
@@ -247,7 +226,6 @@ class TestAnthropicBirkenbilhMethodCompliance:
 
         Ensures that complex grammatical structures are properly handled across multiple sentences.
         """
-        skip_if_no_api_key()
         # Act: Multiple moderately complex sentences with different tenses
         complex_text = (
             "Visité a mis abuelos el verano pasado en el campo. "
@@ -286,6 +264,4 @@ class TestAnthropicBirkenbilhMethodCompliance:
 
             # Verify positions are sequential
             for j, alignment in enumerate(sentence.word_alignments):
-                assert alignment.position == j, (
-                    f"Sentence {i}, Alignment {j}: Position mismatch"
-                )
+                assert alignment.position == j, f"Sentence {i}, Alignment {j}: Position mismatch"

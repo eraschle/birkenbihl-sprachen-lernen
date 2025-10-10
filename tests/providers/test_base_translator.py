@@ -19,6 +19,12 @@ from birkenbihl.providers.models import (
 
 
 @pytest.fixture
+def mock_model():
+    """Create a mock PydanticAI Model."""
+    return MagicMock()
+
+
+@pytest.fixture
 def mock_agent():
     """Create a mock PydanticAI Agent."""
     with patch("birkenbihl.providers.base_translator.Agent") as mock_agent_class:
@@ -28,18 +34,18 @@ def mock_agent():
 
 
 @pytest.fixture
-def base_translator(mock_agent):
+def base_translator(mock_agent, mock_model):
     """Create BaseTranslator with mocked Agent."""
-    return BaseTranslator(model="test:model")
+    return BaseTranslator(mock_model)
 
 
 @pytest.mark.unit
 class TestBaseTranslator:
     """Test BaseTranslator core functionality."""
 
-    def test_initialization(self, mock_agent):
+    def test_initialization(self, mock_agent, mock_model):
         """Test translator initialization creates Agent correctly."""
-        BaseTranslator(model="openai:gpt-4o")
+        BaseTranslator(mock_model)
 
         # Verify Agent was created with correct parameters
         from birkenbihl.providers.base_translator import Agent
@@ -47,7 +53,7 @@ class TestBaseTranslator:
         from birkenbihl.providers.prompts import BIRKENBIHL_SYSTEM_PROMPT
 
         Agent.assert_called_once_with(  # type: ignore[reportAttributeAccessIssue]
-            model="openai:gpt-4o",
+            model=mock_model,
             output_type=TranslationResponse,
             system_prompt=BIRKENBIHL_SYSTEM_PROMPT,
         )

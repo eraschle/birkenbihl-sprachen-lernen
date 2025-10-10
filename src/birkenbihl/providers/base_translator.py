@@ -7,6 +7,7 @@ import datetime
 
 from langdetect import detector_factory
 from pydantic_ai import Agent
+from pydantic_ai.models import Model
 
 from birkenbihl.models.translation import Sentence, Translation, WordAlignment
 from birkenbihl.providers.models import SentenceResponse, TranslationResponse
@@ -21,13 +22,16 @@ class BaseTranslator:
     - Language detection with langdetect
     - Structured translation using PydanticAI Agent
     - Response model → Domain model conversion
+
+    Follows Dependency Inversion Principle: depends on PydanticAI Model abstraction,
+    not concrete provider implementations.
     """
 
-    def __init__(self, model: str):
-        """Initialize translator with specific model.
+    def __init__(self, model: Model):
+        """Initialize translator with PydanticAI model.
 
         Args:
-            model: PydanticAI model string (e.g., 'openai:gpt-4o', 'anthropic:claude-3-5-sonnet-20241022')
+            model: PydanticAI Model instance (OpenAIModel, AnthropicModel, etc.)
         """
         self._agent = Agent(
             model=model,
