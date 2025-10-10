@@ -154,19 +154,29 @@ class TestProviderRegistry:
         assert len(metadata.default_models) == len(expected_models)
         assert set(metadata.default_models) == set(expected_models)
 
-    def test_openai_compatible_share_models(self):
-        """Test that all OpenAI-compatible providers share the same model list."""
+    def test_openai_compatible_have_provider_specific_models(self):
+        """Test that OpenAI-compatible providers have provider-specific model lists."""
         openai_meta = ProviderRegistry.get_provider_metadata("openai")
         azure_meta = ProviderRegistry.get_provider_metadata("azure")
         deepseek_meta = ProviderRegistry.get_provider_metadata("deepseek")
+        ollama_meta = ProviderRegistry.get_provider_metadata("ollama")
 
         assert openai_meta is not None
         assert azure_meta is not None
         assert deepseek_meta is not None
+        assert ollama_meta is not None
 
-        # All should have the same models
+        # OpenAI and Azure share models (Azure hosts OpenAI models)
         assert openai_meta.default_models == azure_meta.default_models
-        assert openai_meta.default_models == deepseek_meta.default_models
+
+        # DeepSeek has its own models
+        assert "deepseek-chat" in deepseek_meta.default_models
+        assert "deepseek-coder" in deepseek_meta.default_models
+        assert len(deepseek_meta.default_models) > 0
+
+        # Ollama has local models
+        assert "llama3.1" in ollama_meta.default_models
+        assert len(ollama_meta.default_models) > 0
 
     def test_openai_compatible_use_same_model_class(self):
         """Test that all OpenAI-compatible providers use OpenAIChatModel."""

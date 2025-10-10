@@ -60,33 +60,34 @@ def _extract_model_names(model_name_type: Any) -> list[str]:
 def _create_openai_models() -> dict[str, ProviderMetadata]:
     from pydantic_ai.models.openai import OpenAIChatModel, OpenAIModelName
 
-    all_models = _extract_model_names(OpenAIModelName)
+    openai_models = _extract_model_names(OpenAIModelName)
 
-    # OpenAI-compatible providers - all use OpenAIChatModel class
-    # Each gets all available OpenAI models as options
-    openai_providers = [
-        ("openai", "OpenAI"),
-        ("azure", "Azure OpenAI"),
-        ("deepseek", "DeepSeek"),
-        ("cerebras", "Cerebras"),
-        ("fireworks", "Fireworks AI"),
-        ("github", "GitHub Models"),
-        ("grok", "Grok (xAI)"),
-        ("heroku", "Heroku"),
-        ("ollama", "Ollama (Local)"),
-        ("openrouter", "OpenRouter"),
-        ("together", "Together AI"),
-        ("vercel", "Vercel AI"),
-        ("litellm", "LiteLLM"),
+    # Provider-specific model mappings
+    # OpenAI and Azure use all OpenAI models
+    # Other providers have their own model lists
+    provider_configs = [
+        ("openai", "OpenAI", openai_models),
+        ("azure", "Azure OpenAI", openai_models),
+        ("deepseek", "DeepSeek", ["deepseek-chat", "deepseek-coder"]),
+        ("cerebras", "Cerebras", ["llama3.1-8b", "llama3.1-70b"]),
+        ("fireworks", "Fireworks AI", ["llama-v3p1-70b-instruct", "mixtral-8x7b-instruct"]),
+        ("github", "GitHub Models", openai_models),  # GitHub hosts OpenAI models
+        ("grok", "Grok (xAI)", ["grok-beta", "grok-2-1212"]),
+        ("heroku", "Heroku", openai_models),
+        ("ollama", "Ollama (Local)", ["llama3.1", "llama3.1:70b", "mistral", "codellama"]),
+        ("openrouter", "OpenRouter", openai_models),  # Supports many models
+        ("together", "Together AI", ["llama-3.3-70b-turbo", "mixtral-8x7b-instruct"]),
+        ("vercel", "Vercel AI", openai_models),
+        ("litellm", "LiteLLM", openai_models),  # Proxy for multiple providers
     ]
 
     provider_metadata = {}
-    for provider_type, display_name in openai_providers:
+    for provider_type, display_name, models in provider_configs:
         provider_metadata[provider_type] = ProviderMetadata(
             provider_type=provider_type,
             display_name=display_name,
             model_class=OpenAIChatModel,
-            default_models=all_models,
+            default_models=models,
         )
     return provider_metadata
 
