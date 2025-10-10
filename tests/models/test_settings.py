@@ -55,7 +55,7 @@ class TestProviderConfig:
 
     def test_provider_config_validates_required_fields(self):
         """Test that ProviderConfig requires all mandatory fields."""
-        with pytest.raises(ValueError):  # Pydantic validation error
+        with pytest.raises(ValueError, match="validation errors for ProviderConfig"):
             ProviderConfig(name="Test", provider_type="openai")  # type: ignore
 
 
@@ -144,7 +144,7 @@ class TestSettingsDomainModel:
         assert settings.target_language == "fr"
 
         # Invalid type should raise validation error
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="validation error for Settings"):
             Settings(target_language=123)  # type: ignore
 
 

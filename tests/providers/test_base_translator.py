@@ -26,17 +26,18 @@ def mock_model():
 
 @pytest.fixture
 def mock_agent():
-    """Create a mock PydanticAI Agent."""
-    with patch("birkenbihl.providers.base_translator.Agent") as mock_agent_class:
-        mock_instance = MagicMock()
-        mock_agent_class.return_value = mock_instance
-        yield mock_instance
+    """Create a mock PydanticAI Agent instance."""
+    return MagicMock()
 
 
 @pytest.fixture
-def base_translator(mock_model: MagicMock):
+def base_translator(mock_model: MagicMock, mock_agent: MagicMock):
     """Create BaseTranslator with mocked Agent."""
-    return BaseTranslator(mock_model)
+    with patch("birkenbihl.providers.base_translator.Agent", return_value=mock_agent):
+        translator = BaseTranslator(mock_model)
+        # Ensure the agent is accessible for verification
+        translator._agent = mock_agent
+        return translator
 
 
 @pytest.mark.unit
@@ -45,18 +46,18 @@ class TestBaseTranslator:
 
     def test_initialization(self, mock_model: MagicMock):
         """Test translator initialization creates Agent correctly."""
-        BaseTranslator(mock_model)
-
-        # Verify Agent was created with correct parameters
-        from birkenbihl.providers.base_translator import Agent
         from birkenbihl.providers.models import TranslationResponse
         from birkenbihl.providers.prompts import BIRKENBIHL_SYSTEM_PROMPT
 
-        Agent.assert_called_once_with(  # type: ignore[reportAttributeAccessIssue]
-            model=mock_model,
-            output_type=TranslationResponse,
-            system_prompt=BIRKENBIHL_SYSTEM_PROMPT,
-        )
+        with patch("birkenbihl.providers.base_translator.Agent") as mock_agent_class:
+            BaseTranslator(mock_model)
+
+            # Verify Agent was created with correct parameters
+            mock_agent_class.assert_called_once_with(
+                model=mock_model,
+                output_type=TranslationResponse,
+                system_prompt=BIRKENBIHL_SYSTEM_PROMPT,
+            )
 
     def test_translate_single_sentence(self, base_translator: BaseTranslator, mock_agent: MagicMock):
         """Test translation of single sentence returns correct domain model."""

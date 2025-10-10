@@ -124,14 +124,29 @@ target_language: es
         finally:
             os.chdir(original_cwd)
 
-    def test_get_settings_loads_defaults_when_settings_file_missing(self):
+    def test_get_settings_loads_defaults_when_settings_file_missing(self, tmp_path: Path):
         """Test that get_settings loads default settings when settings.yaml file is missing."""
-        settings = SettingsService.get_settings()
+        import os
 
-        assert settings is not None
-        assert settings.providers == []
-        assert settings.target_language == "de"
-        assert SettingsService.get_current_provider() is None
+        original_cwd = os.getcwd()
+        try:
+            # Change to temp directory where no settings.yaml exists
+            os.chdir(tmp_path)
+            # Reset cached settings to force reload
+            SettingsService._settings = None
+            SettingsService._current_provider = None
+
+            settings = SettingsService.get_settings()
+
+            assert settings is not None
+            assert settings.providers == []
+            assert settings.target_language == "de"
+            assert SettingsService.get_current_provider() is None
+        finally:
+            os.chdir(original_cwd)
+            # Reset again to avoid affecting other tests
+            SettingsService._settings = None
+            SettingsService._current_provider = None
 
 
 @pytest.mark.unit
