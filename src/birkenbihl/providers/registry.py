@@ -10,6 +10,8 @@ from typing import Any, get_args
 
 from pydantic_ai.models import Model
 
+from birkenbihl.models.settings import ProviderConfig
+
 
 @dataclass
 class ProviderMetadata:
@@ -306,3 +308,36 @@ class ProviderRegistry:
         """
         cls._initialize()
         return provider_type in cls._providers
+
+    @classmethod
+    def supports_streaming(cls, config: ProviderConfig) -> bool:
+        """Check if provider/model combination supports streaming structured output.
+
+        Uses a blacklist approach: most providers support streaming,
+        only known problematic provider/model combinations return False.
+
+        Known issues:
+        - bedrock/*: Bedrock-Claude returns streaming as single chunk (Issue #1889)
+
+        Args:
+            config: Provider configuration with provider_type and model
+
+        Returns:
+            True if streaming is supported (default), False if known to not work
+        """
+        # Blacklist of provider/model combinations with known streaming issues
+        # Format: (provider_type, model_pattern)
+        # Use "*" as wildcard for all models of a provider
+        streaming_blacklist = {
+            ("bedrock", "*"),  # All Bedrock models: streaming returns as single chunk
+        }
+
+        # Check exact matches first
+        if (config.provider_type, config.model) in streaming_blacklist:
+            return False
+
+        # Check wildcard matches (provider_type, "*")
+        if (config.provider_type, "*") in streaming_blacklist:
+            return False
+
+        return True

@@ -16,11 +16,14 @@
 #   - model: Model identifier (without provider prefix)
 #   - api_key: Your actual API key (keep this file private!)
 #   - is_default: Set one provider as default (true/false)
+#   - supports_streaming: Enable streaming progress bar (true/false, default: true)
 #
 # Supported provider_type values:
 #   OpenAI-based: openai, azure, deepseek, cerebras, fireworks, github, grok,
 #                 heroku, ollama, openrouter, together, vercel, litellm
 #   Other: anthropic, gemini, groq, cohere, mistral, bedrock
+#
+# Note: bedrock provider does not support streaming (known issue)
 
 providers:
   # Example: OpenAI GPT-4
@@ -64,6 +67,14 @@ providers:
   #   model: llama3.1
   #   api_key: ollama  # Dummy value, not used for local Ollama
   #   is_default: false
+
+  # Example: AWS Bedrock (Streaming not supported)
+  # - name: Bedrock Claude
+  #   provider_type: bedrock
+  #   model: anthropic.claude-3-5-sonnet-20241022-v2:0
+  #   api_key: your-aws-credentials-here
+  #   is_default: false
+  #   supports_streaming: false  # Required: bedrock does not support streaming
 
   # Example: OpenAI GPT-4o Mini (cheaper/faster)
   # - name: OpenAI GPT-4o Mini

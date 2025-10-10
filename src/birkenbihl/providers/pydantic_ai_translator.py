@@ -4,6 +4,7 @@ Factory-based translator that works with all registered PydanticAI providers.
 Uses ProviderRegistry to dynamically instantiate the correct Model class.
 """
 
+from collections.abc import AsyncIterator
 from typing import Any
 
 from pydantic_ai.models import Model
@@ -227,6 +228,27 @@ class PydanticAITranslator:
             Exception: If API call fails or API key is invalid
         """
         return self._translator.translate(text, source_lang, target_lang)
+
+    async def translate_stream(
+        self, text: str, source_lang: str, target_lang: str
+    ) -> AsyncIterator[tuple[float, Translation | None]]:
+        """Translate text using Birkenbihl method with streaming progress.
+
+        Args:
+            text: Text to translate
+            source_lang: Source language code (en, es)
+            target_lang: Target language code (de)
+
+        Yields:
+            Tuple of (progress: float, translation: Translation | None)
+            - progress: 0.0 to 1.0 based on completed sentences
+            - translation: Partial Translation with completed sentences
+
+        Raises:
+            Exception: If API call fails or API key is invalid
+        """
+        async for progress, translation in self._translator.translate_stream(text, source_lang, target_lang):
+            yield progress, translation
 
     def detect_language(self, text: str) -> str:
         """Detect language of given text.

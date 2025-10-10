@@ -129,6 +129,33 @@ class SettingsService:
         return cls._settings
 
     @classmethod
+    def validate_provider_config(cls, provider: ProviderConfig) -> str | None:
+        """Validate provider configuration.
+
+        Checks if provider settings are valid, especially streaming support.
+
+        Args:
+            provider: Provider configuration to validate
+
+        Returns:
+            Error message if validation fails, None if valid
+        """
+        from birkenbihl.providers.registry import ProviderRegistry
+
+        # Check if provider type is supported
+        if not ProviderRegistry.is_supported(provider.provider_type):
+            return f"Provider '{provider.provider_type}' wird nicht unterstützt"
+
+        # Check if streaming is enabled but not supported
+        if provider.supports_streaming and not ProviderRegistry.supports_streaming(provider):
+            return (
+                f"Provider '{provider.provider_type}' mit Modell '{provider.model}' unterstützt kein Streaming. "
+                f"Bitte deaktivieren Sie die Streaming-Option für diese Kombination."
+            )
+
+        return None
+
+    @classmethod
     def save_settings(cls, settings: Settings, settings_file: str | Path = "settings.yaml") -> None:
         """Save settings to specified settings file.
 
@@ -138,7 +165,16 @@ class SettingsService:
         Args:
             settings: Settings instance to save
             settings_file: Path to settings file (defaults to settings.yaml in current directory)
+
+        Raises:
+            ValueError: If any provider configuration is invalid
         """
+        # Validate all providers before saving
+        for provider in settings.providers:
+            error = cls.validate_provider_config(provider)
+            if error:
+                raise ValueError(error)
+
         with cls._lock:
             cls._save_settings_to_file(settings, settings_file)
             cls._settings = settings

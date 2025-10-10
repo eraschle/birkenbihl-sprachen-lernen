@@ -1,13 +1,23 @@
 """Translation tab UI for the Birkenbihl application."""
 
+import asyncio
 import html
 
 import streamlit as st
+from pydantic import BaseModel
 
 from birkenbihl.models.settings import ProviderConfig
+from birkenbihl.models.translation import Translation
 from birkenbihl.providers.pydantic_ai_translator import PydanticAITranslator
 from birkenbihl.services.settings_service import SettingsService
 from birkenbihl.ui.constants import LANGUAGES
+
+
+class TranslationModel(BaseModel):
+    text: str
+    title: str
+    source_language: str
+    target_language: str
 
 
 def render_translation_tab() -> None:
@@ -42,9 +52,7 @@ def render_translation_tab() -> None:
 
         # Target language options: all languages, default to German
         target_lang_options = list(LANGUAGES.values())
-        default_target_lang = LANGUAGES.get(
-            st.session_state.settings.target_language, "Deutsch"
-        )
+        default_target_lang = LANGUAGES.get(st.session_state.settings.target_language, "Deutsch")
         default_target_index = target_lang_options.index(default_target_lang)
 
         target_lang = st.selectbox(
@@ -64,13 +72,13 @@ def render_translation_tab() -> None:
             current_provider = SettingsService.get_current_provider()
             default_index = 0
             if current_provider:
-                for i, p in enumerate(providers):
-                    if p.name == current_provider.name:
-                        default_index = i
+                for idx, provider in enumerate(providers):
+                    if provider.name == current_provider.name:
+                        default_index = idx
                         break
 
             # Select provider
-            selected_provider_display = st.selectbox(
+            sel_provider_display = st.selectbox(
                 "Provider",
                 options=provider_display_names,
                 index=default_index,
@@ -78,13 +86,33 @@ def render_translation_tab() -> None:
             )
 
             # Get the selected provider
-            selected_provider_index = provider_display_names.index(selected_provider_display)
+            selected_provider_index = provider_display_names.index(sel_provider_display)
             selected_provider = providers[selected_provider_index]
         else:
             selected_provider = None
             st.warning("⚠️ Kein Provider konfiguriert")
 
         st.markdown("")  # Small spacing
+
+        # Streaming option based on provider settings
+        if selected_provider:
+            streaming_enabled = selected_provider.supports_streaming
+            streaming_help = (
+                "Zeigt Fortschritt während der Übersetzung an (empfohlen für lange Texte)"
+                if streaming_enabled
+                else "Dieser Provider unterstützt kein Streaming"
+            )
+        else:
+            streaming_enabled = False
+            streaming_help = "Kein Provider ausgewählt"
+
+        use_streaming = st.checkbox(
+            "Streaming aktivieren",
+            value=streaming_enabled,
+            disabled=not streaming_enabled,
+            help=streaming_help,
+        )
+
         translate_button = st.button(
             "🔄 Übersetzen",
             type="primary",
@@ -97,15 +125,30 @@ def render_translation_tab() -> None:
         elif not text_input.strip():
             st.error("Bitte geben Sie einen Text ein.")
         else:
-            translate_text(text_input, title_input.strip(), language_detection, target_lang, selected_provider)
+            model = TranslationModel(
+                text=text_input,
+                title=title_input,
+                source_language=language_detection,
+                target_language=target_lang,
+            )
+            if use_streaming:
+                # Use streaming mode with progress bar
+                try:
+                    asyncio.run(translate_text_streaming(model, selected_provider))
+                except Exception as stream_error:
+                    # Fallback to sync mode if streaming fails
+                    st.warning(f"Streaming fehlgeschlagen: {str(stream_error)}")
+                    st.info("Verwende Standardmodus ohne Fortschrittsanzeige...")
+                    translate_text(model, selected_provider)
+            else:
+                # Use traditional sync mode
+                translate_text(model, selected_provider)
 
     if st.session_state.translation_result:
         render_translation_results()
 
 
-def translate_text(
-    text: str, title: str, source_lang_option: str, target_lang_option: str, provider: ProviderConfig | None
-) -> None:
+def translate_text(model: TranslationModel, provider: ProviderConfig | None) -> None:
     """Translate text using configured provider.
 
     Args:
@@ -126,25 +169,25 @@ def translate_text(
     lang_name_to_code = {name: code for code, name in LANGUAGES.items()}
 
     # Handle "Automatisch" for source language
-    if source_lang_option == "Automatisch":
+    if model.source_language == "Automatisch":
         source_lang = "auto"
     else:
-        source_lang = lang_name_to_code.get(source_lang_option, "en")
+        source_lang = lang_name_to_code.get(model.source_language, "en")
 
     # Target language must be a valid language (no "auto")
-    target_lang = lang_name_to_code.get(target_lang_option, "de")
+    target_lang = lang_name_to_code.get(model.target_language, "de")
 
     try:
         with st.spinner(f"Übersetze Text mit {provider.name}..."):
             translator = PydanticAITranslator(provider)
 
             if source_lang == "auto":
-                detected_lang = translator.detect_language(text)
+                detected_lang = translator.detect_language(model.text)
                 st.info(f"Erkannte Sprache: {detected_lang.upper()}")
                 source_lang = detected_lang
 
-            translation = translator.translate(text, source_lang, target_lang)
-            translation.title = title
+            translation = translator.translate(model.text, source_lang, target_lang)
+            translation.title = model.title
             st.session_state.translation_result = translation
 
         st.success(f"Übersetzung erfolgreich mit {provider.name}!")
@@ -156,18 +199,83 @@ def translate_text(
         )
 
 
+async def translate_text_streaming(
+    model: TranslationModel, provider: ProviderConfig | None
+) -> None:
+    """Translate text using streaming with progress bar.
+
+    Args:
+        text: Input text to translate
+        title: Title for the translation
+        source_lang_option: Source language selection
+        target_lang_option: Target language selection
+        provider: Provider configuration to use for translation
+    """
+    if not provider:
+        st.error(
+            "Kein Provider konfiguriert. Bitte fügen Sie einen Provider in den Einstellungen hinzu."
+        )
+        return
+
+    # Convert language display names back to ISO codes
+    lang_name_to_code = {name: code for code, name in LANGUAGES.items()}
+
+    # Handle "Automatisch" for source language
+    if model.source_language == "Automatisch":
+        source_lang = "auto"
+    else:
+        source_lang = lang_name_to_code.get(model.source_language, "en")
+
+    # Target language must be a valid language (no "auto")
+    target_lang = lang_name_to_code.get(model.target_language, "de")
+
+    try:
+        translator = PydanticAITranslator(provider)
+
+        # Handle language detection if needed
+        if source_lang == "auto":
+            detected_lang = translator.detect_language(model.text)
+            st.info(f"Erkannte Sprache: {detected_lang.upper()}")
+            source_lang = detected_lang
+
+        # Create progress bar
+        progress_bar = st.progress(0.0, text="Starte Übersetzung...")
+
+        # Stream translation with progress updates
+        translations = translator.translate_stream(model.text, source_lang, target_lang)
+        async for progress, translation in translations:
+            if translation:
+                # Update progress bar
+                progress_bar.progress(progress, text=f"Übersetze: {int(progress * 100)}%")
+
+                # Store partial result (will be overwritten with final result)
+                translation.title = model.title
+                st.session_state.translation_result = translation
+
+        # Clear progress bar
+        progress_bar.empty()
+        st.success(f"Übersetzung erfolgreich mit {provider.name}!")
+
+    except Exception as e:
+        st.error(f"Fehler bei der Übersetzung: {str(e)}")
+        st.info(
+            "Bitte überprüfen Sie:\n- API-Schlüssel ist korrekt\n- Modellname ist gültig\n- Internetverbindung"
+        )
+
+
+def _create_translation_message(translation: Translation) -> str:
+    message = f"**{translation.title}** | "
+    message += f"{translation.source_language.upper()} → {translation.target_language.upper()} | "
+    message += f"{len(translation.sentences)} Sätze"
+    return message
+
+
 def render_translation_results() -> None:
     """Render translation results with formatting."""
     translation = st.session_state.translation_result
 
     st.markdown("---")
-    st.markdown(
-        (
-            f"**{translation.title}** | "
-            f"{translation.source_language.upper()} → {translation.target_language.upper()} | "
-            f"{len(translation.sentences)} Sätze"
-        )
-    )
+    st.markdown(_create_translation_message(translation))
 
     for i, sentence in enumerate(translation.sentences, 1):
         # Only expand first sentence, collapse others for compact view

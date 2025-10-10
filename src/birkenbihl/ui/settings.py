@@ -3,11 +3,21 @@
 from pathlib import Path
 
 import streamlit as st
+from pydantic import BaseModel
 
 from birkenbihl.models.settings import ProviderConfig
 from birkenbihl.providers.registry import ProviderRegistry
 from birkenbihl.services.settings_service import SettingsService
 from birkenbihl.ui.constants import LANGUAGES
+
+
+class ProviderConfigModel(BaseModel):
+    name: str
+    provider_type: str
+    model: str
+    api_key: str
+    is_default: bool = False
+    supports_streaming: bool = True
 
 
 def render_settings_tab() -> None:
@@ -157,6 +167,25 @@ def render_add_provider_form() -> None:
         value=len(st.session_state.settings.providers) == 0,
     )
 
+    # Streaming support checkbox
+    # Create temporary config to check streaming support
+    temp_config = ProviderConfig(
+        name="temp",
+        provider_type=selected_provider_type,
+        model=selected_model,
+        api_key="temp",
+    )
+    provider_supports_streaming = ProviderRegistry.supports_streaming(temp_config)
+
+    supports_streaming = st.checkbox(
+        "Streaming aktivieren",
+        value=provider_supports_streaming,
+        disabled=not provider_supports_streaming,
+        help="Zeigt Fortschritt während der Übersetzung an (empfohlen für lange Texte)"
+        if provider_supports_streaming
+        else "Dieser Provider/Modell unterstützt kein Streaming",
+    )
+
     # Action buttons
     col1, col2 = st.columns(2)
     with col1:
@@ -164,9 +193,15 @@ def render_add_provider_form() -> None:
             if not provider_name or not api_key:
                 st.error("Bitte füllen Sie alle Felder aus.")
             else:
-                add_provider(
-                    provider_name, selected_provider_type, selected_model, api_key, is_default
+                model = ProviderConfigModel(
+                    provider_type=selected_provider_type,
+                    name=provider_name,
+                    model=selected_model,
+                    api_key=api_key,
+                    is_default=is_default,
+                    supports_streaming=supports_streaming,
                 )
+                add_provider(model)
                 st.session_state.show_add_provider_form = False
                 st.rerun()
 
@@ -176,7 +211,7 @@ def render_add_provider_form() -> None:
             st.rerun()
 
 
-def add_provider(name: str, provider_type: str, model: str, api_key: str, is_default: bool) -> None:
+def add_provider(model: ProviderConfigModel) -> None:
     """Add a new provider configuration.
 
     Args:
@@ -185,17 +220,12 @@ def add_provider(name: str, provider_type: str, model: str, api_key: str, is_def
         model: Model identifier
         api_key: API key for authentication
         is_default: Whether this should be the default provider
+        supports_streaming: Whether streaming is enabled for this provider
     """
     try:
-        new_provider = ProviderConfig(
-            name=name,
-            provider_type=provider_type,
-            model=model,
-            api_key=api_key,
-            is_default=is_default,
-        )
+        new_provider = ProviderConfig(**model.model_dump())
 
-        if is_default:
+        if model.is_default:
             for provider in st.session_state.settings.providers:
                 provider.is_default = False
 
@@ -204,7 +234,7 @@ def add_provider(name: str, provider_type: str, model: str, api_key: str, is_def
         settings_file = Path.cwd() / "settings.yaml"
         SettingsService.save_settings(st.session_state.settings, settings_file)
 
-        st.success(f"Provider '{name}' erfolgreich hinzugefügt!")
+        st.success(f"Provider '{model.name}' erfolgreich hinzugefügt!")
 
     except Exception as e:
         st.error(f"Fehler beim Hinzufügen des Providers: {e}")
