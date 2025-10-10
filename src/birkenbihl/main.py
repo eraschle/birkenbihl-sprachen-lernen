@@ -25,15 +25,26 @@ def main() -> None:
 
 
 def main_gui() -> None:
-    """Entry point for GUI mode (future implementation).
+    """Entry point for GUI mode using Streamlit.
 
-    This will be used when the GUI is implemented, allowing:
-        birkenbihl-gui
-    or as a separate command in pyproject.toml
+    Launches the Streamlit web interface for the Birkenbihl application.
+    Use with: birkenbihl-gui
     """
-    # Future GUI implementation
-    print("GUI not yet implemented. Use CLI for now.")
-    sys.exit(1)
+    import subprocess
+    from pathlib import Path
+
+    app_path = Path(__file__).parent / "ui" / "app.py"
+    try:
+        subprocess.run(
+            ["streamlit", "run", str(app_path)],
+            check=True,
+        )
+    except ImportError:
+        print("Error: Streamlit not installed. Install with: uv sync")
+        sys.exit(1)
+    except subprocess.CalledProcessError as e:
+        print(f"Error launching Streamlit: {e}")
+        sys.exit(1)
 
 
 if __name__ in {"__main__", "__mp_main__"}:
