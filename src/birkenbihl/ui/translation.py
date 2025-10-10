@@ -1,5 +1,7 @@
 """Translation tab UI for the Birkenbihl application."""
 
+import html
+
 import streamlit as st
 
 from birkenbihl.models.settings import ProviderConfig
@@ -15,7 +17,7 @@ def render_translation_tab() -> None:
     with col1:
         text_input = st.text_area(
             "Text eingeben",
-            height=150,
+            height=600,
             placeholder="Geben Sie hier den zu übersetzenden Text ein...",
             help="Geben Sie einen Text in einer beliebigen Sprache ein",
         )
@@ -46,54 +48,32 @@ def render_translation_tab() -> None:
             help="Wählen Sie die Zielsprache",
         )
 
-        # Provider selection (cascading: type -> model)
+        # Provider selection (single dropdown with all configured providers)
         providers = st.session_state.settings.providers
         if providers:
-            # Extract unique provider types
-            provider_types = sorted({p.provider_type for p in providers})
+            # Create display names for all providers
+            provider_display_names = [f"{p.name}" for p in providers]
 
             # Get current provider for default selection
             current_provider = SettingsService.get_current_provider()
-            default_type_index = 0
+            default_index = 0
             if current_provider:
-                try:
-                    default_type_index = provider_types.index(current_provider.provider_type)
-                except ValueError:
-                    pass
-
-            # Step 1: Select provider type
-            selected_provider_type = st.selectbox(
-                "Provider-Typ",
-                options=provider_types,
-                index=default_type_index,
-                help="Wählen Sie den Anbieter (OpenAI, Anthropic, etc.)",
-            )
-
-            # Step 2: Filter providers by selected type
-            filtered_providers = [p for p in providers if p.provider_type == selected_provider_type]
-
-            # Create display names for models (name + model)
-            provider_display_names = [f"{p.name} ({p.model})" for p in filtered_providers]
-
-            # Find default model index
-            default_model_index = 0
-            if current_provider and current_provider.provider_type == selected_provider_type:  # type: ignore[reportUnnecessaryComparison]
-                for i, p in enumerate(filtered_providers):
-                    if p.name == current_provider.name and p.model == current_provider.model:
-                        default_model_index = i
+                for i, p in enumerate(providers):
+                    if p.name == current_provider.name:
+                        default_index = i
                         break
 
-            # Step 3: Select specific model
-            selected_model_display = st.selectbox(
-                "Modell",
+            # Select provider
+            selected_provider_display = st.selectbox(
+                "Provider",
                 options=provider_display_names,
-                index=default_model_index,
-                help="Wählen Sie das spezifische Modell",
+                index=default_index,
+                help="Wählen Sie den Provider für die Übersetzung",
             )
 
             # Get the selected provider
-            selected_provider_index = provider_display_names.index(selected_model_display)
-            selected_provider = filtered_providers[selected_provider_index]
+            selected_provider_index = provider_display_names.index(selected_provider_display)
+            selected_provider = providers[selected_provider_index]
         else:
             selected_provider = None
             st.warning("⚠️ Kein Provider konfiguriert")
@@ -196,15 +176,16 @@ def render_translation_results() -> None:
 
             alignment_html = "<div style='font-size: 13px; line-height: 1.8;'>"
             for alignment in sentence.word_alignments:
-                alignment_html += f"""
-                <span style='display: inline-block; margin: 2px; padding: 4px 8px;
-                             background-color: #f0f2f6; border-radius: 6px;
-                             border: 1px solid #ddd;'>
-                    <div style='color: #0066cc; font-weight: 600; font-size: 12px;'>{alignment.source_word}</div>
-                    <div style='color: #666; font-size: 10px;'>↓</div>
-                    <div style='color: #009900; font-weight: 600; font-size: 12px;'>{alignment.target_word}</div>
-                </span>
-                """
+                source_escaped = html.escape(alignment.source_word)
+                target_escaped = html.escape(alignment.target_word)
+                alignment_html += (
+                    f"<span style='display: inline-block; margin: 2px; padding: 4px 8px; "
+                    f"background-color: #f0f2f6; border-radius: 6px; border: 1px solid #ddd;'>"
+                    f"<div style='color: #0066cc; font-weight: 600; font-size: 12px;'>{source_escaped}</div>"
+                    f"<div style='color: #666; font-size: 10px;'>↓</div>"
+                    f"<div style='color: #009900; font-weight: 600; font-size: 12px;'>{target_escaped}</div>"
+                    f"</span>"
+                )
             alignment_html += "</div>"
 
             st.markdown(alignment_html, unsafe_allow_html=True)
