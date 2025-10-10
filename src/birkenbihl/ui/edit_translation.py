@@ -247,7 +247,7 @@ def render_alignment_edit_mode(translation: Translation, sentence: Sentence, ser
     """
     st.markdown("**Manuelle Word-by-Word Zuordnung:**")
 
-    target_words = [w for w in re.findall(r"\b\w+\b", sentence.natural_translation)]
+    target_words = re.findall(r"\b\w+\b", sentence.natural_translation)
     source_words = [a.source_word for a in sentence.word_alignments]
 
     editor_key = f"alignment_editor_{sentence.uuid}"

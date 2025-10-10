@@ -20,14 +20,13 @@ class TranslationService:
     Follows SOLID principles with dependency injection via protocols.
     """
 
-    def __init__(self, translator: ITranslationProvider, storage: IStorageProvider):
+    def __init__(self, translator: ITranslationProvider | None, storage: IStorageProvider):
         """Initialize service with providers.
 
         Args:
-            transaltor: Provider for AI-based translations
+            translator: Provider for AI-based translations (optional, only needed for translate_and_save)
             storage: Provider for persistence operations
         """
-        super().__init__()
         self._translator = translator
         self._storage = storage
 
@@ -46,7 +45,11 @@ class TranslationService:
         Raises:
             TranslationError: If translation fails
             StorageError: If save fails
+            ValueError: If translator not configured
         """
+        if not self._translator:
+            raise ValueError("Translator required for translate_and_save operation")
+
         # Get translation from AI provider
         result = self._translator.translate(text, source_lang, target_lang)
 
@@ -118,7 +121,11 @@ class TranslationService:
 
         Raises:
             TranslationError: If detection or translation fails
+            ValueError: If translator not configured
         """
+        if not self._translator:
+            raise ValueError("Translator required for auto_detect_and_translate operation")
+
         source_lang = self._translator.detect_language(text)
         return self.translate_and_save(text, source_lang, target_lang, title)
 

@@ -176,9 +176,7 @@ class TestFullWorkflowEditAlignmentManually:
 class TestDeleteTranslation:
     """Integration test for translation deletion workflow."""
 
-    def test_delete_translation(
-        self, translation_service_with_storage: TranslationService, openai_provider_config: ProviderConfig
-    ):
+    def test_delete_translation(self, translation_service_with_storage: TranslationService):
         """Test complete workflow: create → delete → verify not in storage.
 
         Workflow:

@@ -34,7 +34,7 @@ def mock_agent():
 
 
 @pytest.fixture
-def base_translator(mock_agent, mock_model):
+def base_translator(mock_model: MagicMock):
     """Create BaseTranslator with mocked Agent."""
     return BaseTranslator(mock_model)
 
@@ -43,7 +43,7 @@ def base_translator(mock_agent, mock_model):
 class TestBaseTranslator:
     """Test BaseTranslator core functionality."""
 
-    def test_initialization(self, mock_agent, mock_model):
+    def test_initialization(self, mock_model: MagicMock):
         """Test translator initialization creates Agent correctly."""
         BaseTranslator(mock_model)
 
@@ -58,7 +58,7 @@ class TestBaseTranslator:
             system_prompt=BIRKENBIHL_SYSTEM_PROMPT,
         )
 
-    def test_translate_single_sentence(self, base_translator: BaseTranslator, mock_agent):
+    def test_translate_single_sentence(self, base_translator: BaseTranslator, mock_agent: MagicMock):
         """Test translation of single sentence returns correct domain model."""
         # Arrange: Mock AI response
         mock_response = TranslationResponse(
@@ -104,7 +104,7 @@ class TestBaseTranslator:
         assert sentence.word_alignments[1].target_word == "Welt"
         assert sentence.word_alignments[1].position == 1
 
-    def test_translate_multiple_sentences(self, base_translator: BaseTranslator, mock_agent):
+    def test_translate_multiple_sentences(self, base_translator: BaseTranslator, mock_agent: MagicMock):
         """Test translation of multiple sentences."""
         # Arrange: Mock AI response with 2 sentences
         mock_response = TranslationResponse(
@@ -141,7 +141,7 @@ class TestBaseTranslator:
         assert result.sentences[1].source_text == "How are you"
         assert result.sentences[1].natural_translation == "Wie geht es dir"
 
-    def test_translate_spanish_to_german(self, base_translator: BaseTranslator, mock_agent):
+    def test_translate_spanish_to_german(self, base_translator: BaseTranslator, mock_agent: MagicMock):
         """Test Spanish to German translation (Birkenbihl method focus)."""
         # Arrange: Example from ORIGINAL_REQUIREMENTS.md
         mock_response = TranslationResponse(
@@ -254,7 +254,7 @@ class TestBaseTranslator:
 class TestBirkenbilFormatValidation:
     """Test Birkenbihl method format requirements."""
 
-    def test_word_alignment_position_ordering(self, base_translator: BaseTranslator, mock_agent):
+    def test_word_alignment_position_ordering(self, base_translator: BaseTranslator, mock_agent: MagicMock):
         """Test that word alignments maintain correct position ordering."""
         # Arrange: Example from ORIGINAL_REQUIREMENTS.md
         mock_response = TranslationResponse(
@@ -284,7 +284,7 @@ class TestBirkenbilFormatValidation:
         for i, alignment in enumerate(alignments):
             assert alignment.position == i
 
-    def test_hyphenated_compound_words(self, base_translator: BaseTranslator, mock_agent):
+    def test_hyphenated_compound_words(self, base_translator: BaseTranslator, mock_agent: MagicMock):
         """Test that compound translations use hyphens correctly."""
         # Arrange: Example with compound word
         mock_response = TranslationResponse(

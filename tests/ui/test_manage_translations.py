@@ -1,5 +1,6 @@
 """Unit tests for translation management UI."""
 
+from collections.abc import Generator
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
@@ -15,18 +16,30 @@ from birkenbihl.ui.manage_translations import (
 )
 
 
+class SessionState(dict):
+    """Simple dict subclass that supports both dict and attribute access."""
+
+    def __getattr__(self, key: str):
+        return self.get(key)
+
+    def __setattr__(self, key: str, value: object):
+        self[key] = value
+
+    def __delattr__(self, key: str):
+        if key in self:
+            del self[key]
+
+    def __delitem__(self, key: str):
+        if key in self:
+            super().__delitem__(key)
+
+
 @pytest.fixture
-def mock_streamlit():
+def mock_streamlit() -> Generator[MagicMock, None, None]:
     """Mock Streamlit module and session state."""
     with patch("birkenbihl.ui.manage_translations.st") as mock_st:
-        # Configure session_state as a dict-like object with attribute access
-        session_state = MagicMock()
-        session_state.__getitem__ = lambda self, key: session_state.__dict__.get(key)
-        session_state.__setitem__ = lambda self, key, value: session_state.__dict__.__setitem__(key, value)
-        session_state.__contains__ = lambda self, key: key in session_state.__dict__
-        session_state.__delitem__ = lambda self, key: session_state.__dict__.__delitem__(key)
-
-        mock_st.session_state = session_state
+        # Use SessionState for both dict and attribute access
+        mock_st.session_state = SessionState()
 
         # Configure st.columns to return mock column objects
         mock_st.columns.return_value = [MagicMock(), MagicMock()]
@@ -39,7 +52,7 @@ def mock_streamlit():
 
 
 @pytest.fixture
-def sample_translation():
+def sample_translation() -> Translation:
     """Create a sample translation for testing."""
     translation_id = uuid4()
     sentence_id = uuid4()
@@ -68,7 +81,7 @@ def sample_translation():
 class TestRenderManageTranslationsTab:
     """Test cases for render_manage_translations_tab function."""
 
-    def test_render_empty_translations_list(self, mock_streamlit):
+    def test_render_empty_translations_list(self, mock_streamlit: MagicMock) -> None:
         """Test rendering when no translations exist."""
         mock_service = MagicMock()
         mock_service.list_all_translations.return_value = []
@@ -83,7 +96,9 @@ class TestRenderManageTranslationsTab:
             mock_streamlit.info.assert_called_once()
             assert "Keine Übersetzungen vorhanden" in str(mock_streamlit.info.call_args)
 
-    def test_render_translations_list_with_data(self, mock_streamlit, sample_translation):
+    def test_render_translations_list_with_data(
+        self, mock_streamlit: MagicMock, sample_translation: Translation
+    ) -> None:
         """Test rendering with existing translations."""
         mock_service = MagicMock()
         mock_service.list_all_translations.return_value = [sample_translation]
@@ -100,7 +115,7 @@ class TestRenderManageTranslationsTab:
             assert "1 Übersetzung(en) gefunden" in str(mock_streamlit.write.call_args)
             mock_render_card.assert_called_once_with(sample_translation, mock_service)
 
-    def test_render_error_handling(self, mock_streamlit):
+    def test_render_error_handling(self, mock_streamlit: MagicMock) -> None:
         """Test error handling when loading translations fails."""
         with patch("birkenbihl.ui.manage_translations.JsonStorageProvider", side_effect=Exception("Storage error")):
             render_manage_translations_tab()
@@ -112,7 +127,7 @@ class TestRenderManageTranslationsTab:
 class TestRenderTranslationCard:
     """Test cases for render_translation_card function."""
 
-    def test_render_translation_card_basic(self, mock_streamlit, sample_translation):
+    def test_render_translation_card_basic(self, mock_streamlit: MagicMock, sample_translation: Translation) -> None:
         """Test rendering a translation card with basic info."""
         mock_service = MagicMock()
 
@@ -124,7 +139,7 @@ class TestRenderTranslationCard:
         assert "ES → DE" in expander_label
         assert "1 Satz/Sätze" in expander_label
 
-    def test_render_translation_card_without_title(self, mock_streamlit):
+    def test_render_translation_card_without_title(self, mock_streamlit: MagicMock):
         """Test rendering a translation card without title."""
         translation = Translation(
             uuid=uuid4(),
@@ -146,7 +161,9 @@ class TestRenderTranslationCard:
 class TestDeleteTranslationWithConfirmation:
     """Test cases for delete_translation_with_confirmation function."""
 
-    def test_delete_translation_confirmation_initial_state(self, mock_streamlit, sample_translation):
+    def test_delete_translation_confirmation_initial_state(
+        self, mock_streamlit: MagicMock, sample_translation: Translation
+    ):
         """Test initial confirmation dialog display."""
         mock_service = MagicMock()
         mock_streamlit.session_state = {}
@@ -157,7 +174,9 @@ class TestDeleteTranslationWithConfirmation:
         assert mock_streamlit.session_state[confirmation_key] is True
         mock_streamlit.rerun.assert_called_once()
 
-    def test_delete_translation_confirmation_dialog_shown(self, mock_streamlit, sample_translation):
+    def test_delete_translation_confirmation_dialog_shown(
+        self, mock_streamlit: MagicMock, sample_translation: Translation
+    ):
         """Test confirmation dialog is shown when flag is set."""
         mock_service = MagicMock()
         confirmation_key = f"confirm_delete_{sample_translation.uuid}"
@@ -170,7 +189,7 @@ class TestDeleteTranslationWithConfirmation:
         assert "Test Translation" in warning_text
         assert "wirklich löschen" in warning_text
 
-    def test_delete_translation_success(self, mock_streamlit, sample_translation):
+    def test_delete_translation_success(self, mock_streamlit: MagicMock, sample_translation: Translation):
         """Test successful deletion flow."""
         mock_service = MagicMock()
         mock_service.delete_translation.return_value = True
@@ -189,7 +208,7 @@ class TestDeleteTranslationWithConfirmation:
 class TestOpenTranslationEditor:
     """Test cases for open_translation_editor function."""
 
-    def test_open_translation_editor(self, mock_streamlit):
+    def test_open_translation_editor(self, mock_streamlit: MagicMock):
         """Test opening translation editor sets correct session state."""
         translation_id = uuid4()
         mock_streamlit.session_state.current_view = "Meine Übersetzungen"

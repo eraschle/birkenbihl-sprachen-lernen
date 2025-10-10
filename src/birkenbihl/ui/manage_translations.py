@@ -18,7 +18,7 @@ def render_manage_translations_tab() -> None:
 
     try:
         storage_provider = JsonStorageProvider()
-        service = TranslationService(translator=None, storage=storage_provider)  # type: ignore
+        service = TranslationService(translator=None, storage=storage_provider)
 
         translations = service.list_all_translations()
 

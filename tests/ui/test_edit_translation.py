@@ -19,19 +19,33 @@ from birkenbihl.ui.edit_translation import (
 )
 
 
+class SessionState(dict):
+    """Simple dict subclass that supports both dict and attribute access."""
+
+    def __getattr__(self, key: str):
+        return self.get(key)
+
+    def __setattr__(self, key: str, value: object):
+        self[key] = value
+
+    def __delattr__(self, key: str):
+        if key in self:
+            del self[key]
+
+    def __delitem__(self, key: str):
+        if key in self:
+            super().__delitem__(key)
+
+
 @pytest.fixture
 def mock_streamlit():
     """Mock Streamlit module and session state."""
     with patch("birkenbihl.ui.edit_translation.st") as mock_st:
-        # Configure session_state as a dict-like object with attribute access
-        session_state = MagicMock()
+        # Use SessionState for both dict and attribute access
+        session_state = SessionState()
         session_state.selected_translation_id = uuid4()
         session_state.settings = MagicMock(providers=[])
         session_state.suggestions_cache = {}
-
-        session_state.__getitem__ = lambda self, key: getattr(self, key)
-        session_state.__setitem__ = lambda self, key, value: setattr(self, key, value)
-        session_state.__contains__ = lambda self, key: hasattr(self, key)
 
         mock_st.session_state = session_state
 
@@ -81,7 +95,7 @@ def sample_sentence():
 
 
 @pytest.fixture
-def sample_translation(sample_sentence):
+def sample_translation(sample_sentence: Sentence):
     """Create a sample translation for testing."""
     return Translation(
         uuid=uuid4(),
@@ -97,7 +111,7 @@ def sample_translation(sample_sentence):
 class TestRenderEditTranslationTab:
     """Test cases for render_edit_translation_tab function."""
 
-    def test_render_no_translation_selected(self, mock_streamlit):
+    def test_render_no_translation_selected(self, mock_streamlit: MagicMock):
         """Test error when no translation is selected."""
         mock_streamlit.session_state["selected_translation_id"] = None
 
@@ -105,13 +119,14 @@ class TestRenderEditTranslationTab:
 
         mock_streamlit.error.assert_called_once_with("Keine Übersetzung ausgewählt")
 
-    def test_render_translation_not_found(self, mock_streamlit):
+    def test_render_translation_not_found(self, mock_streamlit: MagicMock):
         """Test error when translation is not found."""
         mock_service = MagicMock()
         mock_service.get_translation.return_value = None
 
-        with patch("birkenbihl.ui.edit_translation.JsonStorageProvider"), patch(
-            "birkenbihl.ui.edit_translation.TranslationService", return_value=mock_service
+        with (
+            patch("birkenbihl.ui.edit_translation.JsonStorageProvider"),
+            patch("birkenbihl.ui.edit_translation.TranslationService", return_value=mock_service),
         ):
             render_edit_translation_tab()
 
@@ -119,16 +134,17 @@ class TestRenderEditTranslationTab:
             error_text = str(mock_streamlit.error.call_args)
             assert "nicht gefunden" in error_text
 
-    def test_render_translation_success(self, mock_streamlit, sample_translation):
+    def test_render_translation_success(self, sample_translation: Translation):
         """Test successful rendering of translation editor."""
         mock_service = MagicMock()
         mock_service.get_translation.return_value = sample_translation
 
-        with patch("birkenbihl.ui.edit_translation.JsonStorageProvider"), patch(
-            "birkenbihl.ui.edit_translation.TranslationService", return_value=mock_service
-        ), patch("birkenbihl.ui.edit_translation.render_header") as mock_header, patch(
-            "birkenbihl.ui.edit_translation.render_sentence_editor"
-        ) as mock_sentence_editor:
+        with (
+            patch("birkenbihl.ui.edit_translation.JsonStorageProvider"),
+            patch("birkenbihl.ui.edit_translation.TranslationService", return_value=mock_service),
+            patch("birkenbihl.ui.edit_translation.render_header") as mock_header,
+            patch("birkenbihl.ui.edit_translation.render_sentence_editor") as mock_sentence_editor,
+        ):
             render_edit_translation_tab()
 
             mock_header.assert_called_once_with(sample_translation)
@@ -138,7 +154,7 @@ class TestRenderEditTranslationTab:
 class TestRenderHeader:
     """Test cases for render_header function."""
 
-    def test_render_header_basic(self, mock_streamlit, sample_translation):
+    def test_render_header_basic(self, mock_streamlit: MagicMock, sample_translation: Translation):
         """Test header rendering with title and metadata."""
         render_header(sample_translation)
 
@@ -154,7 +170,7 @@ class TestRenderHeader:
         assert "1 Sätze" in caption_text
         assert "02.01.2024" in caption_text
 
-    def test_render_header_back_button(self, mock_streamlit, sample_translation):
+    def test_render_header_back_button(self, mock_streamlit: MagicMock, sample_translation: Translation):
         """Test back button functionality."""
         mock_streamlit.button.return_value = False
         mock_streamlit.session_state = {"current_view": "Übersetzung bearbeiten"}
@@ -168,13 +184,16 @@ class TestRenderHeader:
 class TestRenderSentenceEditor:
     """Test cases for render_sentence_editor function."""
 
-    def test_render_sentence_editor(self, mock_streamlit, sample_translation, sample_sentence):
+    def test_render_sentence_editor(
+        self, mock_streamlit: MagicMock, sample_translation: Translation, sample_sentence: Sentence
+    ):
         """Test sentence editor renders with tabs."""
         mock_service = MagicMock()
 
-        with patch("birkenbihl.ui.edit_translation.render_natural_edit_mode") as mock_natural, patch(
-            "birkenbihl.ui.edit_translation.render_alignment_edit_mode"
-        ) as mock_alignment:
+        with (
+            patch("birkenbihl.ui.edit_translation.render_natural_edit_mode"),
+            patch("birkenbihl.ui.edit_translation.render_alignment_edit_mode"),
+        ):
             render_sentence_editor(sample_translation, sample_sentence, 1, mock_service)
 
             # Check expander created
@@ -194,7 +213,9 @@ class TestRenderSentenceEditor:
 class TestRenderNaturalEditMode:
     """Test cases for render_natural_edit_mode function."""
 
-    def test_natural_edit_no_providers(self, mock_streamlit, sample_translation, sample_sentence):
+    def test_natural_edit_no_providers(
+        self, mock_streamlit: MagicMock, sample_translation: Translation, sample_sentence: Sentence
+    ):
         """Test warning when no providers configured."""
         mock_service = MagicMock()
         mock_streamlit.session_state["settings"] = MagicMock(providers=[])
@@ -206,7 +227,11 @@ class TestRenderNaturalEditMode:
         assert "Kein Provider konfiguriert" in warning_text
 
     def test_natural_edit_with_providers(
-        self, mock_streamlit, sample_translation, sample_sentence, sample_provider_config
+        self,
+        mock_streamlit: MagicMock,
+        sample_translation: Translation,
+        sample_sentence: Sentence,
+        sample_provider_config: ProviderConfig,
     ):
         """Test provider selection dropdown."""
         mock_service = MagicMock()
@@ -226,7 +251,11 @@ class TestRenderNaturalEditMode:
             assert "Provider wählen" in str(selectbox_args)
 
     def test_natural_edit_generate_suggestions(
-        self, mock_streamlit, sample_translation, sample_sentence, sample_provider_config
+        self,
+        mock_streamlit: MagicMock,
+        sample_translation: Translation,
+        sample_sentence: Sentence,
+        sample_provider_config: ProviderConfig,
     ):
         """Test suggestion generation workflow."""
         mock_service = MagicMock()
@@ -255,7 +284,9 @@ class TestRenderNaturalEditMode:
 class TestRenderAlignmentEditMode:
     """Test cases for render_alignment_edit_mode function."""
 
-    def test_alignment_edit_mode_initialization(self, mock_streamlit, sample_translation, sample_sentence):
+    def test_alignment_edit_mode_initialization(
+        self, mock_streamlit: MagicMock, sample_translation: Translation, sample_sentence: Sentence
+    ):
         """Test alignment editor initialization."""
         mock_service = MagicMock()
 
@@ -272,7 +303,9 @@ class TestRenderAlignmentEditMode:
             # Check multiselect created for each source word
             assert mock_streamlit.multiselect.call_count >= 3
 
-    def test_alignment_edit_validation_success(self, mock_streamlit, sample_translation, sample_sentence):
+    def test_alignment_edit_validation_success(
+        self, mock_streamlit: MagicMock, sample_translation: Translation, sample_sentence: Sentence
+    ):
         """Test validation success message."""
         mock_service = MagicMock()
 
@@ -285,7 +318,9 @@ class TestRenderAlignmentEditMode:
             success_calls = [call for call in mock_streamlit.success.call_args_list]
             assert any("vollständig und gültig" in str(call) for call in success_calls)
 
-    def test_alignment_edit_validation_failure(self, mock_streamlit, sample_translation, sample_sentence):
+    def test_alignment_edit_validation_failure(
+        self, mock_streamlit: MagicMock, sample_translation: Translation, sample_sentence: Sentence
+    ):
         """Test validation error message."""
         mock_service = MagicMock()
 
@@ -304,7 +339,7 @@ class TestRenderAlignmentEditMode:
 class TestRenderAlignmentPreview:
     """Test cases for render_alignment_preview function."""
 
-    def test_render_alignment_preview(self, mock_streamlit):
+    def test_render_alignment_preview(self, mock_streamlit: MagicMock):
         """Test alignment preview HTML rendering."""
         alignments = [
             WordAlignment(source_word="Yo", target_word="Ich", position=0),
@@ -359,7 +394,7 @@ class TestExtractTargetWordsForSource:
 class TestValidationErrors:
     """Integration test for validation error scenarios."""
 
-    def test_validation_with_missing_words(self, mock_streamlit, sample_translation):
+    def test_validation_with_missing_words(self, mock_streamlit: MagicMock, sample_translation: Translation):
         """Test validation error when words are missing."""
         mock_service = MagicMock()
 
