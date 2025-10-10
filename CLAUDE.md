@@ -78,6 +78,62 @@ It is important that all word of the `natural` translation are used in the `word
 
 ### Data Models
 
+**Translation Results** (`src/birkenbihl/models/translation.py`):
+- Uses Pydantic models for validation and serialization
+- **UUIDs for Identity:** All entities use UUIDs for cross-storage compatibility (JSON, DB, Excel)
+- Domain models (not tied to specific storage implementation):
+  - `WordAlignment`: Maps source_word ↔ target_word with position for UI ordering
+  - `Sentence`: Single sentence with source_text, natural_translation, word_alignments[]
+    - Each sentence has unique UUID for referencing in UI/storage
+  - `Translation`: Root aggregate containing multiple sentences
+    - Fields: id, title (optional), source_language, target_language, sentences[]
+    - Timestamps: created_at, updated_at
+    - Represents complete translation document/session
+
+**ID Strategy:**
+- Domain models have UUIDs (not database auto-increment IDs)
+- Why: Cross-storage portability - same ID works in JSON files, SQLite, Excel exports
+- Storage layer (DAOs) may use additional internal IDs but must preserve domain UUIDs
+
+### Services Layer
+
+Services orchestrate business logic by coordinating protocols/providers:
+
+**TranslationService** (`src/birkenbihl/services/translation_service.py`):
+- Coordinates TranslationProvider (AI) + StorageProvider (persistence)
+- High-level workflows:
+  - `translate_and_save()`: Translate text and persist to storage
+  - `auto_detect_and_translate()`: Auto-detect language before translation
+  - `get_translation()`, `list_all_translations()`: Retrieval operations
+  - `update_translation()`, `delete_translation()`: Modification operations
+- Follows dependency injection via Protocol-based constructors
+- No business logic in providers - services orchestrate the flow
+
+**AudioService** (`src/birkenbihl/services/audio_service.py`) - Phase 2:
+- Coordinates AudioProvider for text-to-speech operations
+- Supports active listening phase of Birkenbihl method
+- Workflows:
+  - `generate_sentence_audio()`: Create audio file for single sentence
+  - `play_sentence()`: Direct playback of sentence audio
+  - `batch_generate_audio()`: Generate audio for multiple sentences
+- Status: Stub implementation (raises NotImplementedError)
+
+### Storage Layer
+
+**Storage Protocol** (`src/birkenbihl/protocols/storage.py`):
+- `StorageProvider`: Defines CRUD interface for Translation persistence
+- Operations: `save()`, `get()`, `list_all()`, `update()`, `delete()`
+- All operations use UUIDs for entity identification
+
+**Planned Implementations:**
+- `JsonStorageProvider`: File-based storage in `.json` format (Phase 1)
+- `SqliteStorageProvider`: SQLite database with SQLModel (Phase 2)
+- `ExcelStorageProvider`: Export translations to Excel format (Phase 2)
+
+**DAO Pattern:**
+- Storage implementations may use internal DAO models for persistence
+- DAOs must map to/from domain models (`Translation`, `Sentence`, `WordAlignment`)
+- Domain UUIDs must be preserved across all storage backends
 
 ## Code Style Requirements
 
@@ -149,12 +205,24 @@ It is important that all word of the `natural` translation are used in the `word
 
 ```
 src/birkenbihl/
-├── protocols/       # Protocol definitions (interfaces)
-├── providers/       # Protocol implementations
-├── models/          # Data models (Pydantic)
-├── main.py          # Application entry point
-tests/               # Test files matching src/ structure
-specs/               # Requirements documentation
+├── protocols/           # Protocol definitions (interfaces)
+│   ├── translation.py   # TranslationProvider protocol
+│   ├── storage.py       # StorageProvider protocol
+│   └── audio.py         # AudioProvider protocol (Phase 2)
+├── providers/           # Protocol implementations
+│   └── (translation providers - to be implemented)
+├── models/              # Domain models (Pydantic)
+│   └── translation.py   # Translation, Sentence, WordAlignment
+├── services/            # Business logic orchestration
+│   ├── translation_service.py  # Translation + Storage coordination
+│   └── audio_service.py        # Audio/TTS (Phase 2 stub)
+├── storage/             # Storage implementations (planned)
+│   ├── json_storage.py      # JSON file storage
+│   ├── sqlite_storage.py    # SQLite + SQLModel
+│   └── excel_storage.py     # Excel export
+└── main.py              # Application entry point
+tests/                   # Test files matching src/ structure
+specs/                   # Requirements documentation
 ```
 
 ## Testing Notes
