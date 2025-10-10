@@ -46,7 +46,7 @@ class Translation(BaseModel):
     """
 
     uuid: UUID = Field(default_factory=uuid4)
-    title: str | None = None  # Optional document name for organization
+    title: str  # Document name for organization
     source_language: str  # ISO 639-1 code: en, es, etc.
     target_language: str  # ISO 639-1 code: de
     sentences: list[Sentence]

@@ -15,6 +15,12 @@ def render_translation_tab() -> None:
     col1, col2 = st.columns([3, 1])
 
     with col1:
+        title_input = st.text_input(
+            "Titel *",
+            placeholder="Geben Sie einen Titel für die Übersetzung ein",
+            help="Ein beschreibender Titel für diese Übersetzung",
+        )
+
         text_input = st.text_area(
             "Text eingeben",
             height=600,
@@ -86,22 +92,25 @@ def render_translation_tab() -> None:
         )
 
     if translate_button:
-        if not text_input.strip():
+        if not title_input.strip():
+            st.error("Bitte geben Sie einen Titel ein.")
+        elif not text_input.strip():
             st.error("Bitte geben Sie einen Text ein.")
         else:
-            translate_text(text_input, language_detection, target_lang, selected_provider)
+            translate_text(text_input, title_input.strip(), language_detection, target_lang, selected_provider)
 
     if st.session_state.translation_result:
         render_translation_results()
 
 
 def translate_text(
-    text: str, source_lang_option: str, target_lang_option: str, provider: ProviderConfig | None
+    text: str, title: str, source_lang_option: str, target_lang_option: str, provider: ProviderConfig | None
 ) -> None:
     """Translate text using configured provider.
 
     Args:
         text: Input text to translate
+        title: Title for the translation
         source_lang_option: Source language selection
         target_lang_option: Target language selection
         provider: Provider configuration to use for translation
@@ -135,6 +144,7 @@ def translate_text(
                 source_lang = detected_lang
 
             translation = translator.translate(text, source_lang, target_lang)
+            translation.title = title
             st.session_state.translation_result = translation
 
         st.success(f"Übersetzung erfolgreich mit {provider.name}!")

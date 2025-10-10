@@ -27,7 +27,7 @@ class TranslationService:
         self._storage = storage
 
     def translate_and_save(
-        self, text: str, source_lang: str, target_lang: str, title: str | None = None
+        self, text: str, source_lang: str, target_lang: str, title: str
     ) -> Translation:
         """Translate text using Birkenbihl method and save to storage.
 
@@ -35,7 +35,7 @@ class TranslationService:
             text: Text to translate (can contain multiple sentences)
             source_lang: Source language code (en, es)
             target_lang: Target language code (de)
-            title: Optional document title
+            title: Document title
 
         Returns:
             Saved Translation with natural and word-by-word translations
@@ -103,14 +103,14 @@ class TranslationService:
         return self._storage.update(translation)
 
     def auto_detect_and_translate(
-        self, text: str, target_lang: str = "de", title: str | None = None
+        self, text: str, target_lang: str, title: str
     ) -> Translation:
         """Auto-detect source language and translate.
 
         Args:
             text: Text to translate
-            target_lang: Target language code (default: de)
-            title: Optional document title
+            target_lang: Target language code
+            title: Document title
 
         Returns:
             Saved Translation

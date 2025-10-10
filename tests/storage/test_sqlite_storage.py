@@ -403,32 +403,11 @@ class TestSqliteStorageProviderUpdate:
 class TestSqliteStorageProviderEdgeCases:
     """Test edge cases and error handling."""
 
-    def test_save_translation_without_title(self, storage_provider: SqliteStorageProvider):
-        """Test saving a translation without title."""
-        translation = Translation(
-            id=uuid4(),
-            title=None,
-            source_language="es",
-            target_language="de",
-            sentences=[
-                Sentence(
-                    id=uuid4(),
-                    source_text="Hola",
-                    natural_translation="Hallo",
-                    word_alignments=[
-                        WordAlignment(source_word="Hola", target_word="Hallo", position=0)
-                    ],
-                )
-            ],
-        )
-
-        saved = storage_provider.save(translation)
-        assert saved.title is None
 
     def test_save_translation_with_empty_sentences(self, storage_provider: SqliteStorageProvider):
         """Test saving a translation with no sentences."""
         translation = Translation(
-            id=uuid4(),
+            uuid=uuid4(),
             title="Empty",
             source_language="es",
             target_language="de",

@@ -17,7 +17,20 @@ def configure_page() -> None:
         page_title="Birkenbihl Sprachlernmethode",
         page_icon="📚",
         layout="wide",
-        initial_sidebar_state="collapsed",
+        initial_sidebar_state="expanded",
+    )
+
+    # Reduce top padding/margin
+    st.markdown(
+        """
+        <style>
+        .block-container {
+            padding-top: 3rem;
+            padding-bottom: 0rem;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
     )
 
     st.markdown("### 📚 Birkenbihl Sprachlernmethode")
@@ -32,6 +45,8 @@ def initialize_session_state() -> None:
         st.session_state.translation_result = None
     if "show_add_provider_form" not in st.session_state:
         st.session_state.show_add_provider_form = False
+    if "current_view" not in st.session_state:
+        st.session_state.current_view = "Übersetzen"
 
 
 def main() -> None:
@@ -39,12 +54,22 @@ def main() -> None:
     configure_page()
     initialize_session_state()
 
-    tab1, tab2 = st.tabs(["Übersetzen", "Einstellungen"])
+    # Sidebar navigation
+    with st.sidebar:
+        st.markdown("## Navigation")
 
-    with tab1:
+        if st.button("📝 Übersetzen", use_container_width=True, type="primary" if st.session_state.current_view == "Übersetzen" else "secondary"):
+            st.session_state.current_view = "Übersetzen"
+            st.rerun()
+
+        if st.button("⚙️ Einstellungen", use_container_width=True, type="primary" if st.session_state.current_view == "Einstellungen" else "secondary"):
+            st.session_state.current_view = "Einstellungen"
+            st.rerun()
+
+    # Render current view
+    if st.session_state.current_view == "Übersetzen":
         render_translation_tab()
-
-    with tab2:
+    else:
         render_settings_tab()
 
 

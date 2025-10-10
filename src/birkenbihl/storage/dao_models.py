@@ -45,7 +45,7 @@ class TranslationDAO(SQLModel, table=True):
     __tablename__ = "translations"  # type: ignore[reportAssignmentType]
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    title: str | None = None
+    title: str
     source_language: str
     target_language: str
     created_at: datetime = Field(default_factory=dateutils.create_now)
