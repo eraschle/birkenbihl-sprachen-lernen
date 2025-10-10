@@ -4,41 +4,14 @@ from pathlib import Path
 from uuid import UUID
 
 import click
-from dotenv import load_dotenv
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
+from birkenbihl.app import DEFAULT_PROVIDER, get_service
 from birkenbihl.models.translation import Translation
-from birkenbihl.providers import AnthropicTranslator, OpenAITranslator
-from birkenbihl.services.translation_service import TranslationService
-from birkenbihl.storage import JsonStorageProvider
-
-# Load environment variables
-load_dotenv()
 
 console = Console()
-
-
-def get_translator(provider: str, model: str | None = None):
-    """Create translator based on provider choice."""
-    if provider == "openai":
-        model = model or "openai:gpt-4o"
-        return OpenAITranslator(model)
-    elif provider == "anthropic":
-        model = model or "anthropic:claude-3-5-sonnet-20241022"
-        return AnthropicTranslator(model)
-    else:
-        raise ValueError(f"Unknown provider: {provider}")
-
-
-def get_service(
-    provider: str, model: str | None = None, storage_path: Path | None = None
-) -> TranslationService:
-    """Create translation service with configured providers."""
-    translator = get_translator(provider, model)
-    storage = JsonStorageProvider(storage_path)
-    return TranslationService(translator, storage)
 
 
 def display_translation(translation: Translation) -> None:
@@ -102,8 +75,8 @@ def cli():
     "--provider",
     "-p",
     type=click.Choice(["openai", "anthropic"]),
-    default="openai",
-    help="AI provider to use (default: openai)",
+    default=DEFAULT_PROVIDER,
+    help=f"AI provider to use (default: {DEFAULT_PROVIDER})",
 )
 @click.option(
     "--model",
@@ -157,7 +130,7 @@ def translate(
 def list(storage: Path | None):
     """List all saved translations."""
     try:
-        service = get_service("openai", storage_path=storage)
+        service = get_service(storage_path=storage)
         translations = service.list_all_translations()
 
         if not translations:
@@ -203,7 +176,7 @@ def show(translation_id: str, storage: Path | None):
     TRANSLATION_ID can be the full UUID or just the first 8 characters.
     """
     try:
-        service = get_service("openai", storage_path=storage)
+        service = get_service(storage_path=storage)
 
         # Try to find by partial ID if not full UUID
         if len(translation_id) < 36:
@@ -253,7 +226,7 @@ def delete(translation_id: str, storage: Path | None):
     TRANSLATION_ID can be the full UUID or just the first 8 characters.
     """
     try:
-        service = get_service("openai", storage_path=storage)
+        service = get_service(storage_path=storage)
 
         # Try to find by partial ID if not full UUID
         if len(translation_id) < 36:

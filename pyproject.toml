@@ -27,6 +27,7 @@ dev = [
 
 [project.scripts]
 birkenbihl = "birkenbihl.main:main"
+birkenbihl-gui = "birkenbihl.main:main_gui"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/birkenbihl"]
