@@ -5,12 +5,12 @@ with tabs for translation and settings management.
 """
 
 from pathlib import Path
-from uuid import uuid4
 
 import streamlit as st
 
 from birkenbihl.models.settings import ProviderConfig
-from birkenbihl.models.translation import Sentence, Translation, WordAlignment
+from birkenbihl.providers.pydantic_ai_translator import PydanticAITranslator
+from birkenbihl.providers.registry import ProviderRegistry
 from birkenbihl.services.settings_service import SettingsService
 
 
@@ -111,55 +111,23 @@ def translate_text(text: str, source_lang_option: str, target_lang_option: str) 
     source_lang = lang_map[source_lang_option]
     target_lang = lang_map[target_lang_option]
 
-    with st.spinner(f"Übersetze Text mit {current_provider.name}..."):
-        translation = create_mock_translation(text, source_lang, target_lang)
-        st.session_state.translation_result = translation
+    try:
+        with st.spinner(f"Übersetze Text mit {current_provider.name}..."):
+            translator = PydanticAITranslator(current_provider)
 
-    st.success(f"Übersetzung erfolgreich mit {current_provider.name}!")
+            if source_lang == "auto":
+                detected_lang = translator.detect_language(text)
+                st.info(f"Erkannte Sprache: {detected_lang.upper()}")
+                source_lang = detected_lang
 
+            translation = translator.translate(text, source_lang, target_lang)
+            st.session_state.translation_result = translation
 
-def create_mock_translation(text: str, source_lang: str, target_lang: str) -> Translation:
-    """Create mock translation for demonstration.
+        st.success(f"Übersetzung erfolgreich mit {current_provider.name}!")
 
-    Args:
-        text: Source text
-        source_lang: Source language code
-        target_lang: Target language code
-
-    Returns:
-        Mock Translation object
-    """
-    sentences = []
-    for sentence_text in text.split("."):
-        if sentence_text.strip():
-            word_alignments = []
-            words = sentence_text.strip().split()
-            for pos, word in enumerate(words):
-                word_alignments.append(
-                    WordAlignment(
-                        source_word=word,
-                        target_word=f"[{word}]",
-                        position=pos,
-                    )
-                )
-
-            sentences.append(
-                Sentence(
-                    source_text=sentence_text.strip(),
-                    natural_translation=f"[Natürliche Übersetzung: {sentence_text.strip()}]",
-                    word_alignments=word_alignments,
-                )
-            )
-
-    detected_source = source_lang if source_lang != "auto" else "en"
-
-    return Translation(
-        id=uuid4(),
-        title=f"Übersetzung {text[:30]}...",
-        source_language=detected_source,
-        target_language=target_lang,
-        sentences=sentences,
-    )
+    except Exception as e:
+        st.error(f"Fehler bei der Übersetzung: {str(e)}")
+        st.info("Bitte überprüfen Sie:\n- API-Schlüssel ist korrekt\n- Modellname ist gültig\n- Internetverbindung")
 
 
 def render_translation_results() -> None:
@@ -208,15 +176,25 @@ def render_translation_results() -> None:
 def get_provider_templates() -> dict[str, dict[str, str]]:
     """Get predefined provider templates for common AI models.
 
+    Uses ProviderRegistry to get recommended models (max 3 per provider).
+
     Returns:
         Dictionary mapping template names to provider configurations
     """
-    return {
-        "GPT-4": {"provider_type": "openai", "model": "gpt-4"},
-        "GPT-4o": {"provider_type": "openai", "model": "gpt-4o"},
-        "Claude 3.5 Sonnet": {"provider_type": "anthropic", "model": "claude-3-5-sonnet-20241022"},
-        "Claude 3 Opus": {"provider_type": "anthropic", "model": "claude-3-opus-20240229"},
-    }
+    templates = {}
+
+    for metadata in ProviderRegistry.get_supported_providers():
+        # Only use first 3 models per provider for templates (most recommended)
+        recommended_models = metadata.default_models[:3]
+
+        for model in recommended_models:
+            template_name = f"{metadata.display_name} - {model}"
+            templates[template_name] = {
+                "provider_type": metadata.provider_type,
+                "model": model,
+            }
+
+    return templates
 
 
 def render_provider_card(provider: ProviderConfig, index: int) -> None:
@@ -283,10 +261,16 @@ def render_add_provider_form() -> None:
         col1, col2 = st.columns(2)
 
         with col1:
+            provider_types = ProviderRegistry.get_provider_types()
+            try:
+                default_index = provider_types.index(default_type)
+            except ValueError:
+                default_index = 0
+
             provider_type = st.selectbox(
                 "Provider-Typ",
-                options=["openai", "anthropic"],
-                index=0 if default_type == "openai" else 1,
+                options=provider_types,
+                index=default_index,
                 help="Wählen Sie den Provider-Typ",
             )
 

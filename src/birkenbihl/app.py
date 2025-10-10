@@ -8,7 +8,7 @@ creating services and handles configuration.
 from pathlib import Path
 
 from birkenbihl.models.settings import ProviderConfig
-from birkenbihl.providers import AnthropicTranslator, OpenAITranslator
+from birkenbihl.providers import PydanticAITranslator
 from birkenbihl.services.settings_service import SettingsService
 from birkenbihl.services.translation_service import TranslationService
 from birkenbihl.storage import JsonStorageProvider
@@ -26,7 +26,7 @@ def get_translator(provider: ProviderConfig | None = None):
         Configured translator instance
 
     Raises:
-        ValueError: If no provider configured or provider type is unknown
+        ValueError: If no provider configured
     """
     if provider is None:
         provider = SettingsService.get_current_provider()
@@ -34,12 +34,7 @@ def get_translator(provider: ProviderConfig | None = None):
     if provider is None:
         raise ValueError("No provider configured in settings.yaml")
 
-    if provider.provider_type == "openai":
-        return OpenAITranslator(provider)
-    elif provider.provider_type == "anthropic":
-        return AnthropicTranslator(provider)
-    else:
-        raise ValueError(f"Unknown provider type: {provider.provider_type}")
+    return PydanticAITranslator(provider)
 
 
 def get_service(storage_path: Path | None = None) -> TranslationService:

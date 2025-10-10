@@ -10,9 +10,9 @@ from pydantic_ai import Agent
 from pydantic_ai.models import Model
 
 from birkenbihl.models.translation import Sentence, Translation, WordAlignment
+from birkenbihl.providers import text_utils
 from birkenbihl.providers.models import SentenceResponse, TranslationResponse
 from birkenbihl.providers.prompts import BIRKENBIHL_SYSTEM_PROMPT, create_translation_prompt
-from birkenbihl.providers import text_utils
 
 
 class BaseTranslator:

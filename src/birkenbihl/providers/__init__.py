@@ -1,9 +1,10 @@
 """Translation provider implementations."""
 
-from birkenbihl.providers.anthropic_translator import AnthropicTranslator
-from birkenbihl.providers.openai_translator import OpenAITranslator
+from birkenbihl.providers.pydantic_ai_translator import PydanticAITranslator
+from birkenbihl.providers.registry import ProviderMetadata, ProviderRegistry
 
 __all__ = [
-    "AnthropicTranslator",
-    "OpenAITranslator",
+    "PydanticAITranslator",
+    "ProviderRegistry",
+    "ProviderMetadata",
 ]
