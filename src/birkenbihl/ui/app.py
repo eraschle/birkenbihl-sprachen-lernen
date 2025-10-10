@@ -13,6 +13,48 @@ from birkenbihl.providers.pydantic_ai_translator import PydanticAITranslator
 from birkenbihl.providers.registry import ProviderRegistry
 from birkenbihl.services.settings_service import SettingsService
 
+# Supported languages (ISO 639-1 codes) - European languages first, then others alphabetically
+LANGUAGES = {
+    # European languages (alphabetically by German name)
+    "bg": "Bulgarisch",
+    "da": "Dänisch",
+    "de": "Deutsch",
+    "en": "Englisch",
+    "et": "Estnisch",
+    "fi": "Finnisch",
+    "fr": "Französisch",
+    "el": "Griechisch",
+    "it": "Italienisch",
+    "hr": "Kroatisch",
+    "lv": "Lettisch",
+    "lt": "Litauisch",
+    "nl": "Niederländisch",
+    "no": "Norwegisch",
+    "pl": "Polnisch",
+    "pt": "Portugiesisch",
+    "ro": "Rumänisch",
+    "ru": "Russisch",
+    "sv": "Schwedisch",
+    "sk": "Slowakisch",
+    "sl": "Slowenisch",
+    "es": "Spanisch",
+    "cs": "Tschechisch",
+    "tr": "Türkisch",
+    "uk": "Ukrainisch",
+    "hu": "Ungarisch",
+    # Non-European languages (alphabetically by German name)
+    "ar": "Arabisch",
+    "zh": "Chinesisch",
+    "he": "Hebräisch",
+    "hi": "Hindi",
+    "id": "Indonesisch",
+    "ja": "Japanisch",
+    "ko": "Koreanisch",
+    "fa": "Persisch",
+    "th": "Thailändisch",
+    "vi": "Vietnamesisch",
+}
+
 
 def configure_page() -> None:
     """Configure Streamlit page settings and styling."""
@@ -46,24 +88,33 @@ def render_translation_tab() -> None:
             "Text eingeben",
             height=150,
             placeholder="Geben Sie hier den zu übersetzenden Text ein...",
-            help="Geben Sie einen Text in Englisch oder Spanisch ein",
+            help="Geben Sie einen Text in einer beliebigen Sprache ein",
         )
 
     with col2:
         st.markdown("**Einstellungen**")
 
+        # Source language options: "Automatisch" + all languages
+        source_lang_options = ["Automatisch"] + list(LANGUAGES.values())
         language_detection = st.selectbox(
-            "Spracherkennung",
-            options=["Automatisch", "Englisch", "Spanisch"],
+            "Quellsprache",
+            options=source_lang_options,
             index=0,
-            help="Wählen Sie die Ausgangssprache",
+            help="Wählen Sie die Ausgangssprache oder 'Automatisch' für auto-detect",
         )
+
+        # Target language options: all languages, default to German
+        target_lang_options = list(LANGUAGES.values())
+        default_target_lang = LANGUAGES.get(
+            st.session_state.settings.target_language, "Deutsch"
+        )
+        default_target_index = target_lang_options.index(default_target_lang)
 
         target_lang = st.selectbox(
             "Zielsprache",
-            options=["Deutsch", "Englisch", "Spanisch"],
-            index=0,
-            help="Wählen Sie die Zielsprache für die Übersetzung",
+            options=target_lang_options,
+            index=default_target_index,
+            help="Wählen Sie die Zielsprache",
         )
 
         # Provider selection (cascading: type -> model)
@@ -152,15 +203,18 @@ def translate_text(
         )
         return
 
-    lang_map = {
-        "Automatisch": "auto",
-        "Englisch": "en",
-        "Spanisch": "es",
-        "Deutsch": "de",
-    }
+    # Convert language display names back to ISO codes
+    # Create reverse mapping: "Deutsch" -> "de"
+    lang_name_to_code = {name: code for code, name in LANGUAGES.items()}
 
-    source_lang = lang_map[source_lang_option]
-    target_lang = lang_map[target_lang_option]
+    # Handle "Automatisch" for source language
+    if source_lang_option == "Automatisch":
+        source_lang = "auto"
+    else:
+        source_lang = lang_name_to_code.get(source_lang_option, "en")
+
+    # Target language must be a valid language (no "auto")
+    target_lang = lang_name_to_code.get(target_lang_option, "de")
 
     try:
         with st.spinner(f"Übersetze Text mit {provider.name}..."):
@@ -189,9 +243,11 @@ def render_translation_results() -> None:
 
     st.markdown("---")
     st.markdown(
-        f"**{translation.title}** | "
-        f"{translation.source_language.upper()} → {translation.target_language.upper()} | "
-        f"{len(translation.sentences)} Sätze"
+        (
+            f"**{translation.title}** | "
+            f"{translation.source_language.upper()} → {translation.target_language.upper()} | "
+            f"{len(translation.sentences)} Sätze"
+        )
     )
 
     for i, sentence in enumerate(translation.sentences, 1):
@@ -367,14 +423,28 @@ def render_settings_tab() -> None:
     st.markdown("**Allgemeine Einstellungen**")
 
     with st.form("general_settings_form"):
-        target_language = st.selectbox(
+        # Show language names but save ISO codes
+        lang_codes = list(LANGUAGES.keys())
+        lang_names = list(LANGUAGES.values())
+
+        # Find current language index
+        current_code = st.session_state.settings.target_language
+        try:
+            current_index = lang_codes.index(current_code)
+        except ValueError:
+            current_index = lang_codes.index("de")  # Default to German
+
+        selected_lang_name = st.selectbox(
             "Standard-Zielsprache",
-            options=["de", "en", "es"],
-            index=["de", "en", "es"].index(st.session_state.settings.target_language),
+            options=lang_names,
+            index=current_index,
         )
 
+        # Convert back to ISO code for saving
+        selected_lang_code = lang_codes[lang_names.index(selected_lang_name)]
+
         if st.form_submit_button("Speichern", type="primary", use_container_width=True):
-            save_general_settings(target_language)
+            save_general_settings(selected_lang_code)
 
 
 def add_provider(name: str, provider_type: str, model: str, api_key: str, is_default: bool) -> None:
