@@ -4,6 +4,7 @@ Provides common translation logic shared across OpenAI, Anthropic, and other pro
 """
 
 import datetime
+import logging
 from collections.abc import AsyncIterator
 from typing import Protocol
 
@@ -25,6 +26,8 @@ from birkenbihl.providers.prompts import (
     create_regenerate_alignment_prompt,
     create_translation_prompt,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class IWordAlignmentResponse(Protocol):
@@ -71,31 +74,46 @@ class BaseTranslator:
         """
         # Split text into sentences deterministically
         sentences = text_utils.split_into_sentences(text)
+        logger.info("Split text into %d sentences", len(sentences))
+        logger.debug("Sentences: %s", [s[:50] + "..." if len(s) > 50 else s for s in sentences])
 
         # Create user prompt with sentence list
         user_prompt = create_translation_prompt(sentences, source_lang, target_lang)
+        logger.debug("Created translation prompt")
 
         # Run PydanticAI agent synchronously
+        logger.info("Sending translation request to AI model...")
         result = self._agent.run_sync(user_prompt)
+        logger.info("Received response from AI: %d sentences", len(result.output.sentences))
 
         # Validation: If AI merged sentences, redistribute them
         if len(result.output.sentences) == 1 and len(sentences) > 1:
+            logger.warning("AI merged %d sentences into 1, attempting to redistribute...", len(sentences))
             # AI ignored our instructions and merged sentences - try to fix it
             try:
                 result.output.sentences = text_utils.redistribute_merged_translation(
                     result.output.sentences[0], sentences
                 )
-            except ValueError:
+                logger.info("Successfully redistributed merged translation")
+            except ValueError as e:
+                logger.warning("Redistribution failed (%s), falling back to individual sentence translation", str(e))
                 # Redistribution failed (AI didn't translate all sentences)
                 # Fallback: translate each sentence individually
                 result.output.sentences = []
-                for sentence in sentences:
+                for i, sentence in enumerate(sentences, 1):
+                    logger.debug("Translating sentence %d/%d individually", i, len(sentences))
                     single_prompt = create_translation_prompt([sentence], source_lang, target_lang)
                     single_result = self._agent.run_sync(single_prompt)
                     result.output.sentences.extend(single_result.output.sentences)
+                logger.info("Completed individual sentence translation: %d sentences", len(result.output.sentences))
 
         # Convert AI response to domain model
-        return self._convert_to_domain_model(result.output, source_lang, target_lang)
+        logger.debug("Converting AI response to domain model")
+        translation = self._convert_to_domain_model(result.output, source_lang, target_lang)
+        logger.info("Translation complete: %d sentences, %d total word alignments",
+                   len(translation.sentences),
+                   sum(len(s.word_alignments) for s in translation.sentences))
+        return translation
 
     async def translate_stream(
         self, text: str, source_lang: str, target_lang: str
@@ -120,12 +138,14 @@ class BaseTranslator:
         """
         sentences = text_utils.split_into_sentences(text)
         total_sentences = len(sentences)
+        logger.info("Starting streaming translation: %d sentences", total_sentences)
         user_prompt = create_translation_prompt(sentences, source_lang, target_lang)
 
         # Track completed sentences for progress calculation
         last_sentence_count = 0
         final_translation = None
 
+        logger.debug("Initiating streaming API request...")
         async with self._agent.run_stream(user_prompt) as result:
             async for partial_response in result.stream_output(debounce_by=0.01):
                 current_sentence_count = len(partial_response.sentences)
@@ -136,6 +156,9 @@ class BaseTranslator:
                     progress = current_sentence_count / total_sentences
                     progress = min(progress, 1.0)
 
+                    logger.info("Streaming progress: %d/%d sentences (%.0f%%)",
+                               current_sentence_count, total_sentences, progress * 100)
+
                     # Convert partial response to domain model
                     final_translation = self._convert_to_domain_model(partial_response, source_lang, target_lang)
 
@@ -144,7 +167,10 @@ class BaseTranslator:
 
         # Ensure we yield final result with 100% progress if not already done
         if final_translation and last_sentence_count < total_sentences:
+            logger.debug("Yielding final translation result")
             yield (1.0, final_translation)
+
+        logger.info("Streaming translation completed")
 
     def detect_language(self, text: str) -> str:
         """Detect language of given text.

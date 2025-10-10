@@ -4,6 +4,7 @@ Factory-based translator that works with all registered PydanticAI providers.
 Uses ProviderRegistry to dynamically instantiate the correct Model class.
 """
 
+import logging
 from collections.abc import AsyncIterator
 from typing import Any
 
@@ -13,6 +14,8 @@ from birkenbihl.models.settings import ProviderConfig
 from birkenbihl.models.translation import Translation, WordAlignment
 from birkenbihl.providers.base_translator import BaseTranslator
 from birkenbihl.providers.registry import ProviderRegistry
+
+logger = logging.getLogger(__name__)
 
 
 class PydanticAITranslator:
@@ -67,8 +70,15 @@ class PydanticAITranslator:
             ValueError: If provider_type is not registered in ProviderRegistry
             ImportError: If required provider library is not installed
         """
+        logger.info(
+            "Initializing PydanticAITranslator: provider=%s, model=%s, base_url=%s",
+            provider_config.provider_type,
+            provider_config.model,
+            provider_config.base_url or "default",
+        )
         model = self._create_model(provider_config)
         self._translator = BaseTranslator(model)
+        logger.debug("PydanticAITranslator initialized successfully")
 
     def _create_model(self, config: ProviderConfig) -> Model:
         """Create appropriate PydanticAI Model instance for provider.
@@ -86,11 +96,15 @@ class PydanticAITranslator:
             ValueError: If provider_type is not supported
             ImportError: If provider library is not installed
         """
+        logger.debug("Creating model for provider_type: %s", config.provider_type)
         model_class = ProviderRegistry.get_model_class(config.provider_type)
 
         if model_class is None:
             supported = ", ".join(ProviderRegistry.get_provider_types())
+            logger.error("Unsupported provider: %s", config.provider_type)
             raise ValueError(f"Unsupported provider: {config.provider_type}. Supported providers: {supported}")
+
+        logger.debug("Using model class: %s", model_class.__name__)
 
         # For OpenAI-compatible providers using OpenAIChatModel
         if model_class.__name__ == "OpenAIChatModel":
@@ -159,6 +173,7 @@ class PydanticAITranslator:
             "heroku": "pydantic_ai.providers.openai.OpenAIProvider",
             "ollama": "pydantic_ai.providers.openai.OpenAIProvider",
             "openrouter": "pydantic_ai.providers.openai.OpenAIProvider",
+            "publicai": "pydantic_ai.providers.openai.OpenAIProvider",
             "together": "pydantic_ai.providers.openai.OpenAIProvider",
             "vercel": "pydantic_ai.providers.openai.OpenAIProvider",
             "litellm": "pydantic_ai.providers.openai.OpenAIProvider",
@@ -174,8 +189,22 @@ class PydanticAITranslator:
         module = __import__(module_path, fromlist=[class_name])
         provider_class = getattr(module, class_name)
 
-        # Instantiate with API key
-        return provider_class(api_key=config.api_key)
+        # Build provider arguments
+        provider_kwargs: dict[str, object] = {"api_key": config.api_key}
+
+        # Add base_url if configured
+        if config.base_url:
+            provider_kwargs["base_url"] = config.base_url
+
+        # Create custom HTTP client with User-Agent header for better API compatibility
+        from httpx import AsyncClient
+
+        headers = {"User-Agent": "Birkenbihl/1.0 (PydanticAI)"}
+        http_client = AsyncClient(headers=headers)
+        provider_kwargs["http_client"] = http_client
+
+        # Instantiate provider
+        return provider_class(**provider_kwargs)
 
     def _get_native_provider(self, config: ProviderConfig, model_class: Any):
         """Get native Provider instance for dedicated Model classes.
@@ -227,7 +256,15 @@ class PydanticAITranslator:
         Raises:
             Exception: If API call fails or API key is invalid
         """
-        return self._translator.translate(text, source_lang, target_lang)
+        logger.info(
+            "Starting translation: %s → %s, text_length=%d chars",
+            source_lang,
+            target_lang,
+            len(text),
+        )
+        result = self._translator.translate(text, source_lang, target_lang)
+        logger.info("Translation completed: %d sentences generated", len(result.sentences))
+        return result
 
     async def translate_stream(
         self, text: str, source_lang: str, target_lang: str
@@ -259,7 +296,10 @@ class PydanticAITranslator:
         Returns:
             Language code (en, es, de)
         """
-        return self._translator.detect_language(text)
+        logger.debug("Detecting language for text: %d chars", len(text))
+        detected = self._translator.detect_language(text)
+        logger.info("Language detected: %s", detected)
+        return detected
 
     def generate_alternatives(
         self,

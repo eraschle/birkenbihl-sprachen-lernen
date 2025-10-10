@@ -69,6 +69,40 @@ birkenbihl-gui
 
 Die App öffnet sich im Browser unter `http://localhost:8501`.
 
+## Logging
+
+Die App verwendet Python's `logging` Modul für detaillierte Prozess-Logs:
+
+### Log-Ausgaben anzeigen
+
+**GUI (Streamlit):**
+```bash
+# Logs werden auf stdout ausgegeben
+birkenbihl-gui
+
+# Logs in Datei umleiten
+birkenbihl-gui 2>&1 | tee birkenbihl.log
+```
+
+### Was wird geloggt?
+
+- **Provider-Initialisierung**: Welcher Provider und Model wird verwendet
+- **Übersetzungsprozess**:
+  - Textaufteilung in Sätze
+  - API-Requests und Responses
+  - Fortschritt bei Streaming-Übersetzungen
+  - Anzahl generierter Sätze und Wort-Alignments
+- **Spracherkennung**: Erkannte Sprachen
+- **Fehlerbehandlung**: Detaillierte Fehler-Logs mit Stack-Traces
+
+### Log-Levels konfigurieren
+
+Die Log-Levels sind in `src/birkenbihl/ui/app.py` konfiguriert:
+- `birkenbihl.providers`: `DEBUG` (detaillierte Provider-Logs)
+- `birkenbihl.ui`: `INFO` (UI-Events)
+- `birkenbihl` (gesamt): `INFO`
+- Third-Party-Libraries: `WARNING` (reduziertes Rauschen)
+
 ## Birkenbihl-Methode
 
 Die App implementiert die 4 Schritte der Birkenbihl-Sprachlernmethode:

@@ -4,6 +4,9 @@ This module provides a web-based graphical interface using Streamlit,
 with tabs for translation and settings management.
 """
 
+import logging
+import sys
+
 import streamlit as st
 
 from birkenbihl.services.settings_service import SettingsService
@@ -11,6 +14,40 @@ from birkenbihl.ui.settings import render_settings_tab
 from birkenbihl.ui.translation import render_translation_tab
 from birkenbihl.ui.manage_translations import render_manage_translations_tab
 from birkenbihl.ui.edit_translation import render_edit_translation_tab
+
+
+def configure_logging() -> None:
+    """Configure logging for the application.
+
+    Sets up logging to stdout with colored formatting and appropriate levels.
+    """
+    # Create formatter with colors and timestamps
+    formatter = logging.Formatter(
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S"
+    )
+
+    # Console handler
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setFormatter(formatter)
+
+    # Configure root logger
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.INFO)
+    root_logger.addHandler(console_handler)
+
+    # Set specific levels for birkenbihl modules
+    logging.getLogger("birkenbihl").setLevel(logging.INFO)
+    logging.getLogger("birkenbihl.providers").setLevel(logging.DEBUG)
+    logging.getLogger("birkenbihl.ui").setLevel(logging.INFO)
+
+    # Reduce noise from third-party libraries
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("httpcore").setLevel(logging.WARNING)
+    logging.getLogger("openai").setLevel(logging.WARNING)
+    logging.getLogger("anthropic").setLevel(logging.WARNING)
+
+    logging.info("Logging configured successfully")
 
 
 def configure_page() -> None:
@@ -65,6 +102,7 @@ def initialize_session_state() -> None:
 
 def main() -> None:
     """Main entry point for Streamlit app."""
+    configure_logging()
     configure_page()
     initialize_session_state()
 

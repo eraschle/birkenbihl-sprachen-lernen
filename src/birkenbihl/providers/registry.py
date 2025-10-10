@@ -59,6 +59,27 @@ def _extract_model_names(model_name_type: Any) -> list[str]:
     return [model for model in result if isinstance(model, str)]
 
 
+# import os
+# from openai import OpenAI
+
+# client = OpenAI(
+#     base_url="https://router.huggingface.co/v1",
+#     api_key=os.environ["HF_TOKEN"],
+# )
+
+# completion = client.chat.completions.create(
+#     model="swiss-ai/Apertus-70B-Instruct-2509:publicai",
+#     messages=[
+#         {
+#             "role": "user",
+#             "content": "What is the capital of France?"
+#         }
+#     ],
+# )
+
+# print(completion.choices[0].message)
+
+
 def _create_openai_models() -> dict[str, ProviderMetadata]:
     from pydantic_ai.models.openai import OpenAIChatModel, OpenAIModelName
 
@@ -78,6 +99,12 @@ def _create_openai_models() -> dict[str, ProviderMetadata]:
         ("heroku", "Heroku", openai_models),
         ("ollama", "Ollama (Local)", ["llama3.1", "llama3.1:70b", "mistral", "codellama"]),
         ("openrouter", "OpenRouter", openai_models),  # Supports many models
+        ("publicai", "PublicAI", ["swiss-ai/apertus-8b-instruct"]),
+        (
+            "hugginface",
+            "HuggingFace",
+            ["swiss-ai/Apertus-70B-Instruct-2509", "swiss-ai/Apertus-70B-2509"],
+        ),  # Supports many models
         ("together", "Together AI", ["llama-3.3-70b-turbo", "mixtral-8x7b-instruct"]),
         ("vercel", "Vercel AI", openai_models),
         ("litellm", "LiteLLM", openai_models),  # Proxy for multiple providers

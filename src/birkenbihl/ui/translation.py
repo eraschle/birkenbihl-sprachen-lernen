@@ -2,6 +2,7 @@
 
 import asyncio
 import html
+import logging
 
 import streamlit as st
 from pydantic import BaseModel
@@ -11,6 +12,8 @@ from birkenbihl.models.settings import ProviderConfig
 from birkenbihl.models.translation import Translation
 from birkenbihl.providers.pydantic_ai_translator import PydanticAITranslator
 from birkenbihl.services.settings_service import SettingsService
+
+logger = logging.getLogger(__name__)
 
 
 class TranslationModel(BaseModel):
@@ -22,6 +25,10 @@ class TranslationModel(BaseModel):
 
 def render_translation_tab() -> None:
     """Render the translation tab with input and results."""
+    # Initialize session state for uploaded text content
+    if "uploaded_text_content" not in st.session_state:
+        st.session_state.uploaded_text_content = ""
+
     col1, col2 = st.columns([3, 1])
 
     with col1:
@@ -33,6 +40,7 @@ def render_translation_tab() -> None:
 
         text_input = st.text_area(
             "Text eingeben",
+            value=st.session_state.uploaded_text_content,
             height=600,
             placeholder="Geben Sie hier den zu übersetzenden Text ein...",
             help="Geben Sie einen Text in einer beliebigen Sprache ein",
@@ -40,6 +48,28 @@ def render_translation_tab() -> None:
 
     with col2:
         st.markdown("**Einstellungen**")
+
+        # File upload
+        uploaded_file = st.file_uploader(
+            "📁 Datei hochladen",
+            type=["txt", "md"],
+            help="Laden Sie eine Textdatei (.txt, .md), um ihren Inhalt ins Eingabefeld zu übernehmen",
+        )
+
+        if uploaded_file is not None:
+            # Read file content
+            content = uploaded_file.read().decode("utf-8")
+            st.session_state.uploaded_text_content = content
+            st.success(f"✓ Datei '{uploaded_file.name}' geladen ({len(content)} Zeichen)")
+            st.rerun()
+
+        # Clear button to reset the text area
+        if st.session_state.uploaded_text_content:
+            if st.button("🗑️ Text löschen", use_container_width=True):
+                st.session_state.uploaded_text_content = ""
+                st.rerun()
+
+        st.markdown("---")
 
         # Source language options: "Automatisch" + all languages
         source_lang_options = ["Automatisch"] + languages.get_german_names()
@@ -162,6 +192,7 @@ def translate_text(model: TranslationModel, provider: ProviderConfig | None) -> 
         provider: Provider configuration to use for translation
     """
     if not provider:
+        logger.warning("Translation attempted with no provider configured")
         st.error("Kein Provider konfiguriert. Bitte fügen Sie einen Provider in den Einstellungen hinzu.")
         return
 
@@ -173,13 +204,18 @@ def translate_text(model: TranslationModel, provider: ProviderConfig | None) -> 
         try:
             source_lang = languages.get_language_code_by(model.source_language)
         except KeyError:
+            logger.warning("Unknown source language: %s, defaulting to 'en'", model.source_language)
             source_lang = "en"
 
     # Target language must be a valid language (no "auto")
     try:
         target_lang = languages.get_language_code_by(model.target_language)
     except KeyError:
+        logger.warning("Unknown target language: %s, defaulting to 'de'", model.target_language)
         target_lang = "de"
+
+    logger.info("UI: Starting translation - provider=%s, source=%s, target=%s, title='%s'",
+                provider.name, source_lang, target_lang, model.title)
 
     try:
         with st.spinner(f"Übersetze Text mit {provider.name}..."):
@@ -194,9 +230,11 @@ def translate_text(model: TranslationModel, provider: ProviderConfig | None) -> 
             translation.title = model.title
             st.session_state.translation_result = translation
 
+        logger.info("UI: Translation successful - %d sentences", len(translation.sentences))
         st.success(f"Übersetzung erfolgreich mit {provider.name}!")
 
     except Exception as e:
+        logger.error("UI: Translation failed - %s: %s", type(e).__name__, str(e), exc_info=True)
         st.error(f"Fehler bei der Übersetzung: {str(e)}")
         st.info("Bitte überprüfen Sie:\n- API-Schlüssel ist korrekt\n- Modellname ist gültig\n- Internetverbindung")
 

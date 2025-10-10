@@ -14,6 +14,7 @@ class ProviderConfig(BaseModel):
     provider_type: str
     model: str
     api_key: str
+    base_url: str | None = None
     is_default: bool = False
     supports_streaming: bool = True
 
