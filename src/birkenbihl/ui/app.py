@@ -45,6 +45,10 @@ def initialize_session_state() -> None:
         st.session_state.translation_result = None
     if "show_add_provider_form" not in st.session_state:
         st.session_state.show_add_provider_form = False
+    if "show_edit_provider_form" not in st.session_state:
+        st.session_state.show_edit_provider_form = False
+    if "edit_provider_index" not in st.session_state:
+        st.session_state.edit_provider_index = None
     if "current_view" not in st.session_state:
         st.session_state.current_view = "Übersetzen"
 
