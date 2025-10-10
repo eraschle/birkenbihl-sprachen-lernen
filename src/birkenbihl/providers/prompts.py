@@ -38,11 +38,11 @@ Provide accurate, pedagogically useful translations that help language learners 
 """
 
 
-def create_translation_prompt(text: str, source_lang: str, target_lang: str) -> str:
+def create_translation_prompt(sentences: list[str], source_lang: str, target_lang: str) -> str:
     """Create user prompt for translation request.
 
     Args:
-        text: Text to translate (can contain multiple sentences)
+        sentences: List of sentences to translate
         source_lang: Source language code (en, es, etc.)
         target_lang: Target language code (de, etc.)
 
@@ -62,14 +62,32 @@ def create_translation_prompt(text: str, source_lang: str, target_lang: str) -> 
     source_name = lang_names.get(source_lang, source_lang.upper())
     target_name = lang_names.get(target_lang, target_lang.upper())
 
-    return f"""Translate the following text from {source_name} to {target_name} using the Birkenbihl method.
+    # Format sentences as numbered list
+    if len(sentences) == 1:
+        sentences_text = sentences[0]
+    else:
+        sentences_text = "\n".join(f"{i+1}. {sent}" for i, sent in enumerate(sentences))
 
-Source text:
-{text}
+    if len(sentences) == 1:
+        return f"""Translate the following sentence from {source_name} to {target_name} using the Birkenbihl method.
+
+Source sentence:
+{sentences_text}
 
 Provide:
 1. Natural translation in {target_name}
 2. Word-by-word alignment showing how each source word maps to the target language
+"""
+    else:
+        return f"""Translate ALL {len(sentences)} sentences from {source_name} to {target_name} using the Birkenbihl method.
 
-Split the text into individual sentences and provide both translation types for each sentence.
+Source sentences:
+{sentences_text}
+
+CRITICAL: You must translate ALL {len(sentences)} sentences listed above.
+Provide for EACH sentence separately:
+1. Natural translation in {target_name}
+2. Word-by-word alignment showing how each source word maps to the target language
+
+Your response must contain exactly {len(sentences)} sentence translations - one for each source sentence.
 """

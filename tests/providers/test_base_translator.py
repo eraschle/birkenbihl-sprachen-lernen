@@ -39,14 +39,14 @@ class TestBaseTranslator:
 
     def test_initialization(self, mock_agent):
         """Test translator initialization creates Agent correctly."""
-        translator = BaseTranslator(model="openai:gpt-4o")
+        translator = BaseTranslator(model="openai:gpt-4o")  # type: ignore[reportUnusedVariable]
 
         # Verify Agent was created with correct parameters
         from birkenbihl.providers.base_translator import Agent
         from birkenbihl.providers.models import TranslationResponse
         from birkenbihl.providers.prompts import BIRKENBIHL_SYSTEM_PROMPT
 
-        Agent.assert_called_once_with(
+        Agent.assert_called_once_with(  # type: ignore[reportAttributeAccessIssue]
             model="openai:gpt-4o",
             output_type=TranslationResponse,
             system_prompt=BIRKENBIHL_SYSTEM_PROMPT,

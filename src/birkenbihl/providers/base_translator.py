@@ -11,6 +11,7 @@ from pydantic_ai import Agent
 from birkenbihl.models.translation import Sentence, Translation, WordAlignment
 from birkenbihl.providers.models import SentenceResponse, TranslationResponse
 from birkenbihl.providers.prompts import BIRKENBIHL_SYSTEM_PROMPT, create_translation_prompt
+from birkenbihl.providers import text_utils
 
 
 class BaseTranslator:
@@ -48,11 +49,30 @@ class BaseTranslator:
         Raises:
             Exception: If translation fails
         """
-        # Create user prompt
-        user_prompt = create_translation_prompt(text, source_lang, target_lang)
+        # Split text into sentences deterministically
+        sentences = text_utils.split_into_sentences(text)
+
+        # Create user prompt with sentence list
+        user_prompt = create_translation_prompt(sentences, source_lang, target_lang)
 
         # Run PydanticAI agent synchronously
         result = self._agent.run_sync(user_prompt)
+
+        # Validation: If AI merged sentences, redistribute them
+        if len(result.output.sentences) == 1 and len(sentences) > 1:
+            # AI ignored our instructions and merged sentences - try to fix it
+            try:
+                result.output.sentences = text_utils.redistribute_merged_translation(
+                    result.output.sentences[0], sentences
+                )
+            except ValueError:
+                # Redistribution failed (AI didn't translate all sentences)
+                # Fallback: translate each sentence individually
+                result.output.sentences = []
+                for sentence in sentences:
+                    single_prompt = create_translation_prompt([sentence], source_lang, target_lang)
+                    single_result = self._agent.run_sync(single_prompt)
+                    result.output.sentences.extend(single_result.output.sentences)
 
         # Convert AI response to domain model
         return self._convert_to_domain_model(result.output, source_lang, target_lang)
@@ -73,6 +93,7 @@ class BaseTranslator:
         return detector_factory.detect(text)
 
     def _create_word_alignments(self, sentence: SentenceResponse) -> list[WordAlignment]:
+        """Create WordAlignment models from AI Sentence response model."""
         alignments = []
         for align in sentence.word_alignments:
             word_alignment = WordAlignment(
@@ -84,6 +105,7 @@ class BaseTranslator:
         return alignments
 
     def _create_sentences(self, translation: TranslationResponse) -> list[Sentence]:
+        """Create Sentence models from AI response model."""
         sentences = []
         for sent in translation.sentences:
             sentence = Sentence(

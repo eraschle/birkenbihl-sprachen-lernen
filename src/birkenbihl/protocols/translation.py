@@ -1,6 +1,6 @@
 """Translation provider protocol."""
 
-from typing import TYPE_CHECKING, Protocol
+from typing import Protocol
 
 from birkenbihl.models.translation import Translation
 
