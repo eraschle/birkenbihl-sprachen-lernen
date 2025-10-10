@@ -4,6 +4,8 @@ These prompts are used by all translation providers to ensure consistent
 behavior across OpenAI, Anthropic, and other models.
 """
 
+from birkenbihl.models.languages import get_english_name
+
 BIRKENBIHL_SYSTEM_PROMPT = """You are a language translation expert specializing in the Vera F. Birkenbihl \
 language learning method.
 
@@ -50,18 +52,8 @@ def create_translation_prompt(sentences: list[str], source_lang: str, target_lan
     Returns:
         Formatted prompt for the AI model
     """
-    # Map language codes to full names for clarity
-    lang_names = {
-        "en": "English",
-        "es": "Spanish",
-        "de": "German",
-        "fr": "French",
-        "it": "Italian",
-        "pt": "Portuguese",
-    }
-
-    source_name = lang_names.get(source_lang, source_lang.upper())
-    target_name = lang_names.get(target_lang, target_lang.upper())
+    source_name = get_english_name(source_lang)
+    target_name = get_english_name(target_lang)
 
     # Format sentences as numbered list
     if len(sentences) == 1:
@@ -107,17 +99,8 @@ def create_alternatives_prompt(source_text: str, source_lang: str, target_lang: 
     Returns:
         Formatted prompt for generating alternatives
     """
-    lang_names = {
-        "en": "English",
-        "es": "Spanish",
-        "de": "German",
-        "fr": "French",
-        "it": "Italian",
-        "pt": "Portuguese",
-    }
-
-    source_name = lang_names.get(source_lang, source_lang.upper())
-    target_name = lang_names.get(target_lang, target_lang.upper())
+    source_name = get_english_name(source_lang)
+    target_name = get_english_name(target_lang)
 
     return f"""Generate {count} different natural translations for the following {source_name} sentence \
 into {target_name}.
@@ -148,17 +131,8 @@ def create_regenerate_alignment_prompt(
     Returns:
         Formatted prompt for alignment generation
     """
-    lang_names = {
-        "en": "English",
-        "es": "Spanish",
-        "de": "German",
-        "fr": "French",
-        "it": "Italian",
-        "pt": "Portuguese",
-    }
-
-    source_name = lang_names.get(source_lang, source_lang.upper())
-    target_name = lang_names.get(target_lang, target_lang.upper())
+    source_name = get_english_name(source_lang)
+    target_name = get_english_name(target_lang)
 
     return f"""Create a word-by-word alignment for the Birkenbihl method based on the given natural translation.
 

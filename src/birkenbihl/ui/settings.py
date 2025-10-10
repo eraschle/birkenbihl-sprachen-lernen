@@ -5,10 +5,10 @@ from pathlib import Path
 import streamlit as st
 from pydantic import BaseModel
 
+from birkenbihl.models import languages
 from birkenbihl.models.settings import ProviderConfig
 from birkenbihl.providers.registry import ProviderRegistry
 from birkenbihl.services.settings_service import SettingsService
-from birkenbihl.ui.constants import LANGUAGES
 
 
 class ProviderConfigModel(BaseModel):
@@ -56,15 +56,15 @@ def render_settings_tab() -> None:
 
     with st.form("general_settings_form"):
         # Show language names but save ISO codes
-        lang_codes = list(LANGUAGES.keys())
-        lang_names = list(LANGUAGES.values())
+        lang_names = languages.get_german_names()
 
         # Find current language index
         current_code = st.session_state.settings.target_language
         try:
-            current_index = lang_codes.index(current_code)
-        except ValueError:
-            current_index = lang_codes.index("de")  # Default to German
+            current_lang_name = languages.get_german_name(current_code)
+            current_index = lang_names.index(current_lang_name)
+        except (KeyError, ValueError):
+            current_index = lang_names.index("Deutsch")  # Default to German
 
         selected_lang_name = st.selectbox(
             "Standard-Zielsprache",
@@ -73,7 +73,10 @@ def render_settings_tab() -> None:
         )
 
         # Convert back to ISO code for saving
-        selected_lang_code = lang_codes[lang_names.index(selected_lang_name)]
+        try:
+            selected_lang_code = languages.get_language_code_by(selected_lang_name)
+        except KeyError:
+            selected_lang_code = "de"
 
         if st.form_submit_button("Speichern", type="primary", use_container_width=True):
             save_general_settings(selected_lang_code)

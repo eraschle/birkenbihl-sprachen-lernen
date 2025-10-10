@@ -6,11 +6,11 @@ import html
 import streamlit as st
 from pydantic import BaseModel
 
+from birkenbihl.models import languages
 from birkenbihl.models.settings import ProviderConfig
 from birkenbihl.models.translation import Translation
 from birkenbihl.providers.pydantic_ai_translator import PydanticAITranslator
 from birkenbihl.services.settings_service import SettingsService
-from birkenbihl.ui.constants import LANGUAGES
 
 
 class TranslationModel(BaseModel):
@@ -42,7 +42,7 @@ def render_translation_tab() -> None:
         st.markdown("**Einstellungen**")
 
         # Source language options: "Automatisch" + all languages
-        source_lang_options = ["Automatisch"] + list(LANGUAGES.values())
+        source_lang_options = ["Automatisch"] + languages.get_german_names()
         language_detection = st.selectbox(
             "Quellsprache",
             options=source_lang_options,
@@ -51,8 +51,11 @@ def render_translation_tab() -> None:
         )
 
         # Target language options: all languages, default to German
-        target_lang_options = list(LANGUAGES.values())
-        default_target_lang = LANGUAGES.get(st.session_state.settings.target_language, "Deutsch")
+        target_lang_options = languages.get_german_names()
+        try:
+            default_target_lang = languages.get_german_name(st.session_state.settings.target_language)
+        except KeyError:
+            default_target_lang = "Deutsch"
         default_target_index = target_lang_options.index(default_target_lang)
 
         target_lang = st.selectbox(
@@ -163,17 +166,20 @@ def translate_text(model: TranslationModel, provider: ProviderConfig | None) -> 
         return
 
     # Convert language display names back to ISO codes
-    # Create reverse mapping: "Deutsch" -> "de"
-    lang_name_to_code = {name: code for code, name in LANGUAGES.items()}
-
     # Handle "Automatisch" for source language
     if model.source_language == "Automatisch":
         source_lang = "auto"
     else:
-        source_lang = lang_name_to_code.get(model.source_language, "en")
+        try:
+            source_lang = languages.get_language_code_by(model.source_language)
+        except KeyError:
+            source_lang = "en"
 
     # Target language must be a valid language (no "auto")
-    target_lang = lang_name_to_code.get(model.target_language, "de")
+    try:
+        target_lang = languages.get_language_code_by(model.target_language)
+    except KeyError:
+        target_lang = "de"
 
     try:
         with st.spinner(f"Übersetze Text mit {provider.name}..."):
@@ -210,16 +216,20 @@ async def translate_text_streaming(model: TranslationModel, provider: ProviderCo
         return
 
     # Convert language display names back to ISO codes
-    lang_name_to_code = {name: code for code, name in LANGUAGES.items()}
-
     # Handle "Automatisch" for source language
     if model.source_language == "Automatisch":
         source_lang = "auto"
     else:
-        source_lang = lang_name_to_code.get(model.source_language, "en")
+        try:
+            source_lang = languages.get_language_code_by(model.source_language)
+        except KeyError:
+            source_lang = "en"
 
     # Target language must be a valid language (no "auto")
-    target_lang = lang_name_to_code.get(model.target_language, "de")
+    try:
+        target_lang = languages.get_language_code_by(model.target_language)
+    except KeyError:
+        target_lang = "de"
 
     try:
         translator = PydanticAITranslator(provider)
