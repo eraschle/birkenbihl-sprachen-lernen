@@ -1,10 +1,10 @@
 """JSON file-based storage provider implementation."""
 
 import json
-from datetime import datetime, timezone
 from pathlib import Path
 from uuid import UUID
 
+from birkenbihl.models import dateutils
 from birkenbihl.models.translation import Translation
 
 
@@ -48,12 +48,12 @@ class JsonStorageProvider:
 
         # Check if translation exists (update case)
         existing_idx = next(
-            (i for i, t in enumerate(translations) if t.id == translation.id),
+            (i for i, t in enumerate(translations) if t.uuid == translation.uuid),
             None,
         )
 
         # Update timestamp
-        translation.updated_at = datetime.now(timezone.utc)
+        translation.updated_at = dateutils.create_now()
 
         if existing_idx is not None:
             translations[existing_idx] = translation
@@ -73,7 +73,7 @@ class JsonStorageProvider:
             Translation if found, None otherwise
         """
         translations = self._read_translations()
-        return next((t for t in translations if t.id == translation_id), None)
+        return next((t for t in translations if t.uuid == translation_id), None)
 
     def list_all(self) -> list[Translation]:
         """List all stored translations.
@@ -95,7 +95,7 @@ class JsonStorageProvider:
         """
         translations = self._read_translations()
         initial_count = len(translations)
-        translations = [t for t in translations if t.id != translation_id]
+        translations = [t for t in translations if t.uuid != translation_id]
 
         if len(translations) < initial_count:
             self._write_translations(translations)
@@ -116,14 +116,14 @@ class JsonStorageProvider:
         """
         translations = self._read_translations()
         existing_idx = next(
-            (i for i, t in enumerate(translations) if t.id == translation.id),
+            (i for i, t in enumerate(translations) if t.uuid == translation.uuid),
             None,
         )
 
         if existing_idx is None:
-            raise ValueError(f"Translation with id {translation.id} not found")
+            raise ValueError(f"Translation with id {translation.uuid} not found")
 
-        translation.updated_at = datetime.now(timezone.utc)
+        translation.updated_at = dateutils.create_now()
         translations[existing_idx] = translation
         self._write_translations(translations)
         return translation

@@ -18,7 +18,7 @@ console = Console()
 def display_translation(translation: Translation) -> None:
     """Display a translation with rich formatting."""
     # Header
-    title = translation.title or f"Translation {str(translation.id)[:8]}"
+    title = translation.title or f"Translation {str(translation.uuid)[:8]}"
     header = f"[bold cyan]{title}[/bold cyan]"
     lang_info = f"[dim]{translation.source_language} → {translation.target_language}[/dim]"
     console.print(Panel(f"{header}\n{lang_info}", border_style="cyan"))
@@ -86,7 +86,7 @@ def translate(
     text: str,
     source: str | None,
     target: str,
-    title: str | None,
+    title: str,
     provider: str | None,
     storage: Path | None,
 ):
@@ -103,7 +103,9 @@ def translate(
             settings = SettingsService.get_settings()
             matching_providers = [p for p in settings.providers if p.name == provider]
             if not matching_providers:
-                console.print(f"[bold red]Error:[/bold red] Provider '{provider}' not found in settings.yaml")
+                console.print(
+                    f"[bold red]Error:[/bold red] Provider '{provider}' not found in settings.yaml"
+                )
                 console.print("\nAvailable providers:")
                 for p in settings.providers:
                     console.print(f"  - {p.name}")
@@ -153,15 +155,15 @@ def list(storage: Path | None):
         table.add_column("Sentences", justify="right")
         table.add_column("Updated", style="dim")
 
-        for t in translations:
-            title = t.title or "[dim]Untitled[/dim]"
-            langs = f"{t.source_language} → {t.target_language}"
-            updated = t.updated_at.strftime("%Y-%m-%d %H:%M")
+        for trans in translations:
+            title = trans.title or "[dim]Untitled[/dim]"
+            langs = f"{trans.source_language} → {trans.target_language}"
+            updated = trans.updated_at.strftime("%Y-%m-%d %H:%M")
             table.add_row(
-                str(t.id)[:8] + "...",
+                str(trans.uuid)[:8] + "...",
                 title,
                 langs,
-                str(len(t.sentences)),
+                str(len(trans.sentences)),
                 updated,
             )
 
@@ -190,7 +192,9 @@ def show(translation_id: str, storage: Path | None):
         # Try to find by partial ID if not full UUID
         if len(translation_id) < 36:
             translations = service.list_all_translations()
-            matches = [t for t in translations if str(t.id).startswith(translation_id)]
+            matches = [
+                trans for trans in translations if str(trans.uuid).startswith(translation_id)
+            ]
 
             if not matches:
                 console.print(
@@ -199,11 +203,11 @@ def show(translation_id: str, storage: Path | None):
                 raise click.Abort()
             if len(matches) > 1:
                 console.print("[bold red]Error:[/bold red] Ambiguous ID. Multiple matches found:")
-                for t in matches:
-                    console.print(f"  - {t.id}")
+                for trans in matches:
+                    console.print(f"  - {trans.uuid}")
                 raise click.Abort()
 
-            translation_id = str(matches[0].id)
+            translation_id = str(matches[0].uuid)
 
         result = service.get_translation(UUID(translation_id))
 
@@ -240,7 +244,9 @@ def delete(translation_id: str, storage: Path | None):
         # Try to find by partial ID if not full UUID
         if len(translation_id) < 36:
             translations = service.list_all_translations()
-            matches = [t for t in translations if str(t.id).startswith(translation_id)]
+            matches = [
+                trans for trans in translations if str(trans.uuid).startswith(translation_id)
+            ]
 
             if not matches:
                 console.print(
@@ -249,11 +255,11 @@ def delete(translation_id: str, storage: Path | None):
                 raise click.Abort()
             if len(matches) > 1:
                 console.print("[bold red]Error:[/bold red] Ambiguous ID. Multiple matches found:")
-                for t in matches:
-                    console.print(f"  - {t.id}")
+                for trans in matches:
+                    console.print(f"  - {trans.uuid}")
                 raise click.Abort()
 
-            translation_id = str(matches[0].id)
+            translation_id = str(matches[0].uuid)
 
         success = service.delete_translation(UUID(translation_id))
 

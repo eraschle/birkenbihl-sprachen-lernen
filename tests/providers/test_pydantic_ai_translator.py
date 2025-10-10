@@ -4,7 +4,6 @@ Tests cover both unit tests (mocking) and integration tests (real API calls).
 Integration tests require appropriate API keys for each provider.
 """
 
-
 import pytest
 
 from birkenbihl.models.settings import ProviderConfig
@@ -27,7 +26,9 @@ class TestPydanticAITranslatorUnit:
         )
 
         # Act & Assert
-        with pytest.raises(ValueError, match="Unsupported provider: unsupported_provider") as exc_info:
+        with pytest.raises(
+            ValueError, match="Unsupported provider: unsupported_provider"
+        ) as exc_info:
             PydanticAITranslator(config)
 
         assert "Supported providers:" in str(exc_info.value)
@@ -104,9 +105,7 @@ class TestPydanticAITranslatorAnthropicIntegration:
         # Assert
         assert result == "en"
 
-    def test_spanish_translation_with_anthropic(
-        self, anthropic_provider_config: ProviderConfig
-    ):
+    def test_spanish_translation_with_anthropic(self, anthropic_provider_config: ProviderConfig):
         """Test Spanish to German translation using Anthropic."""
         # Arrange
         translator = PydanticAITranslator(anthropic_provider_config)
@@ -204,9 +203,7 @@ class TestPydanticAITranslatorBirkenbilhCompliance:
             assert alignment.source_word.strip() != ""
             assert alignment.target_word.strip() != ""
 
-    def test_word_alignment_positions_sequential(
-        self, anthropic_provider_config: ProviderConfig
-    ):
+    def test_word_alignment_positions_sequential(self, anthropic_provider_config: ProviderConfig):
         """Test that word alignment positions are sequential."""
         # Arrange
         translator = PydanticAITranslator(anthropic_provider_config)
@@ -228,12 +225,12 @@ class TestPydanticAITranslatorBirkenbilhCompliance:
         result = translator.translate("Hello world", "en", "de")
 
         # Assert
-        assert result.id is not None
+        assert result.uuid is not None
         assert result.source_language == "en"
         assert result.target_language == "de"
         assert result.created_at is not None
         assert result.updated_at is not None
 
         sentence = result.sentences[0]
-        assert sentence.id is not None
+        assert sentence.uuid is not None
         assert sentence.created_at is not None

@@ -1,14 +1,22 @@
 """SQLite storage provider implementation using SQLModel."""
 
-from datetime import datetime, timezone
 from pathlib import Path
 from uuid import UUID
 
 from sqlmodel import Session, SQLModel, create_engine, desc, select
 
+from birkenbihl.models import dateutils
 from birkenbihl.models.translation import Sentence, Translation, WordAlignment
-from birkenbihl.storage.dao_models import SentenceDAO, TranslationDAO, WordAlignmentDAO
-from birkenbihl.storage.exceptions import DatabaseConnectionError, NotFoundError, StorageError
+from birkenbihl.storage.dao_models import (
+    SentenceDAO,
+    TranslationDAO,
+    WordAlignmentDAO,
+)
+from birkenbihl.storage.exceptions import (
+    DatabaseConnectionError,
+    NotFoundError,
+    StorageError,
+)
 
 
 class SqliteStorageProvider:
@@ -44,7 +52,7 @@ class SqliteStorageProvider:
         """
         try:
             with Session(self.engine) as session:
-                existing = session.get(TranslationDAO, translation.id)
+                existing = session.get(TranslationDAO, translation.uuid)
                 if existing:
                     return self.update(translation)
 
@@ -123,21 +131,21 @@ class SqliteStorageProvider:
         """
         try:
             with Session(self.engine) as session:
-                translation_dao = session.get(TranslationDAO, translation.id)
+                translation_dao = session.get(TranslationDAO, translation.uuid)
                 if not translation_dao:
-                    raise NotFoundError(f"Translation with ID {translation.id} not found")
+                    raise NotFoundError(f"Translation with ID {translation.uuid} not found")
 
                 session.delete(translation_dao)
                 session.flush()
 
                 updated_translation = Translation(
-                    id=translation.id,
+                    uuid=translation.uuid,
                     title=translation.title,
                     source_language=translation.source_language,
                     target_language=translation.target_language,
                     sentences=translation.sentences,
                     created_at=translation.created_at,
-                    updated_at=datetime.now(timezone.utc),
+                    updated_at=dateutils.create_now(),
                 )
 
                 new_translation_dao = self._to_dao(updated_translation)
@@ -160,7 +168,7 @@ class SqliteStorageProvider:
             TranslationDAO database model
         """
         translation_dao = TranslationDAO(
-            id=translation.id,
+            id=translation.uuid,
             title=translation.title,
             source_language=translation.source_language,
             target_language=translation.target_language,
@@ -170,14 +178,14 @@ class SqliteStorageProvider:
 
         translation_dao.sentences = [
             SentenceDAO(
-                id=sentence.id,
-                translation_id=translation.id,
+                id=sentence.uuid,
+                translation_id=translation.uuid,
                 source_text=sentence.source_text,
                 natural_translation=sentence.natural_translation,
                 created_at=sentence.created_at,
                 word_alignments=[
                     WordAlignmentDAO(
-                        sentence_id=sentence.id,
+                        sentence_id=sentence.uuid,
                         source_word=wa.source_word,
                         target_word=wa.target_word,
                         position=wa.position,
@@ -200,7 +208,7 @@ class SqliteStorageProvider:
             Domain Translation model
         """
         return Translation(
-            id=translation_dao.id,
+            uuid=translation_dao.id,
             title=translation_dao.title,
             source_language=translation_dao.source_language,
             target_language=translation_dao.target_language,
@@ -208,7 +216,7 @@ class SqliteStorageProvider:
             updated_at=translation_dao.updated_at,
             sentences=[
                 Sentence(
-                    id=sentence_dao.id,
+                    uuid=sentence_dao.id,
                     source_text=sentence_dao.source_text,
                     natural_translation=sentence_dao.natural_translation,
                     created_at=sentence_dao.created_at,

@@ -85,7 +85,7 @@ class TestBaseTranslator:
         assert result.source_language == "en"
         assert result.target_language == "de"
         assert len(result.sentences) == 1
-        assert isinstance(result.id, UUID)
+        assert isinstance(result.uuid, UUID)
         assert isinstance(result.created_at, datetime)
         assert isinstance(result.updated_at, datetime)
 
@@ -226,8 +226,8 @@ class TestBaseTranslator:
         result2 = base_translator._convert_to_domain_model(response, "en", "de")
 
         # Assert: Each conversion creates unique UUIDs
-        assert result1.id != result2.id
-        assert result1.sentences[0].id != result2.sentences[0].id
+        assert result1.uuid != result2.uuid
+        assert result1.sentences[0].uuid != result2.sentences[0].uuid
 
     def test_convert_to_domain_model_timestamps(self, base_translator: BaseTranslator):
         """Test that domain model has proper timestamps."""

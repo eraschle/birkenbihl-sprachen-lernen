@@ -1,9 +1,11 @@
 """Domain models for translation data."""
 
-from datetime import datetime, timezone
+from datetime import datetime
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
+
+from birkenbihl.models import dateutils
 
 
 class WordAlignment(BaseModel):
@@ -26,12 +28,12 @@ class Sentence(BaseModel):
     2. Word-by-word alignment (Wort-für-Wort Dekodierung)
     """
 
-    id: UUID = Field(default_factory=uuid4)
+    uuid: UUID = Field(default_factory=uuid4)
     source_text: str
     natural_translation: str
     word_alignments: list[WordAlignment]
 
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=dateutils.create_now)
 
 
 class Translation(BaseModel):
@@ -43,11 +45,11 @@ class Translation(BaseModel):
     Uses UUIDs for cross-storage compatibility (JSON, DB, Excel, etc.).
     """
 
-    id: UUID = Field(default_factory=uuid4)
+    uuid: UUID = Field(default_factory=uuid4)
     title: str | None = None  # Optional document name for organization
     source_language: str  # ISO 639-1 code: en, es, etc.
     target_language: str  # ISO 639-1 code: de
     sentences: list[Sentence]
 
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=dateutils.create_now)
+    updated_at: datetime = Field(default_factory=dateutils.create_now)

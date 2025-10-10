@@ -32,13 +32,13 @@ def storage_provider(temp_db: Path):
 def sample_translation() -> Translation:
     """Create sample translation for testing."""
     return Translation(
-        id=uuid4(),
+        uuid=uuid4(),
         title="Spanish Lesson 1",
         source_language="es",
         target_language="de",
         sentences=[
             Sentence(
-                id=uuid4(),
+                uuid=uuid4(),
                 source_text="Yo te extrañaré",
                 natural_translation="Ich werde dich vermissen",
                 word_alignments=[
@@ -50,7 +50,7 @@ def sample_translation() -> Translation:
                 ],
             ),
             Sentence(
-                id=uuid4(),
+                uuid=uuid4(),
                 source_text="Buenos días",
                 natural_translation="Guten Morgen",
                 word_alignments=[
@@ -93,7 +93,7 @@ class TestSqliteStorageProviderSave:
         """Test saving a new translation."""
         saved = storage_provider.save(sample_translation)
 
-        assert saved.id == sample_translation.id
+        assert saved.uuid == sample_translation.uuid
         assert saved.title == sample_translation.title
         assert saved.source_language == sample_translation.source_language
         assert saved.target_language == sample_translation.target_language
@@ -103,14 +103,14 @@ class TestSqliteStorageProviderSave:
         self, storage_provider: SqliteStorageProvider, sample_translation: Translation
     ):
         """Test that UUIDs are preserved across save operations."""
-        original_id = sample_translation.id
-        original_sentence_ids = [s.id for s in sample_translation.sentences]
+        original_uuid = sample_translation.uuid
+        original_sentence_uuids = [s.uuid for s in sample_translation.sentences]
 
         saved = storage_provider.save(sample_translation)
 
-        assert saved.id == original_id
-        saved_sentence_ids = [s.id for s in saved.sentences]
-        assert saved_sentence_ids == original_sentence_ids
+        assert saved.uuid == original_uuid
+        saved_sentence_uuids = [s.uuid for s in saved.sentences]
+        assert saved_sentence_uuids == original_sentence_uuids
 
     def test_save_preserves_word_alignments(
         self, storage_provider: SqliteStorageProvider, sample_translation: Translation
@@ -134,7 +134,7 @@ class TestSqliteStorageProviderSave:
         updated = storage_provider.save(sample_translation)
 
         assert updated.title == "Updated Title"
-        assert updated.id == sample_translation.id
+        assert updated.uuid == sample_translation.uuid
 
 
 @pytest.mark.unit
@@ -146,10 +146,10 @@ class TestSqliteStorageProviderGet:
     ):
         """Test retrieving an existing translation."""
         storage_provider.save(sample_translation)
-        retrieved = storage_provider.get(sample_translation.id)
+        retrieved = storage_provider.get(sample_translation.uuid)
 
         assert retrieved is not None
-        assert retrieved.id == sample_translation.id
+        assert retrieved.uuid == sample_translation.uuid
         assert retrieved.title == sample_translation.title
         assert len(retrieved.sentences) == 2
 
@@ -157,8 +157,8 @@ class TestSqliteStorageProviderGet:
         self, storage_provider: SqliteStorageProvider
     ):
         """Test that getting a non-existent translation returns None."""
-        nonexistent_id = uuid4()
-        result = storage_provider.get(nonexistent_id)
+        nonexistent_uuid = uuid4()
+        result = storage_provider.get(nonexistent_uuid)
 
         assert result is None
 
@@ -167,7 +167,7 @@ class TestSqliteStorageProviderGet:
     ):
         """Test that sentence order is preserved."""
         storage_provider.save(sample_translation)
-        retrieved = storage_provider.get(sample_translation.id)
+        retrieved = storage_provider.get(sample_translation.uuid)
 
         assert retrieved is not None
         original_texts = [s.source_text for s in sample_translation.sentences]
@@ -179,7 +179,7 @@ class TestSqliteStorageProviderGet:
     ):
         """Test that word alignment order is preserved by position."""
         storage_provider.save(sample_translation)
-        retrieved = storage_provider.get(sample_translation.id)
+        retrieved = storage_provider.get(sample_translation.uuid)
 
         assert retrieved is not None
         first_sentence = retrieved.sentences[0]
@@ -199,13 +199,13 @@ class TestSqliteStorageProviderListAll:
     def test_list_all_returns_all_translations(self, storage_provider: SqliteStorageProvider):
         """Test that list_all returns all saved translations."""
         translation1 = Translation(
-            id=uuid4(),
+            uuid=uuid4(),
             title="Translation 1",
             source_language="es",
             target_language="de",
             sentences=[
                 Sentence(
-                    id=uuid4(),
+                    uuid=uuid4(),
                     source_text="Hola",
                     natural_translation="Hallo",
                     word_alignments=[
@@ -215,13 +215,13 @@ class TestSqliteStorageProviderListAll:
             ],
         )
         translation2 = Translation(
-            id=uuid4(),
+            uuid=uuid4(),
             title="Translation 2",
             source_language="en",
             target_language="de",
             sentences=[
                 Sentence(
-                    id=uuid4(),
+                    uuid=uuid4(),
                     source_text="Hello",
                     natural_translation="Hallo",
                     word_alignments=[
@@ -236,20 +236,20 @@ class TestSqliteStorageProviderListAll:
 
         result = storage_provider.list_all()
         assert len(result) == 2
-        ids = {t.id for t in result}
-        assert translation1.id in ids
-        assert translation2.id in ids
+        uuids = {t.uuid for t in result}
+        assert translation1.uuid in uuids
+        assert translation2.uuid in uuids
 
     def test_list_all_ordered_by_updated_at_desc(self, storage_provider: SqliteStorageProvider):
         """Test that list_all returns translations ordered by updated_at (newest first)."""
         translation1 = Translation(
-            id=uuid4(),
+            uuid=uuid4(),
             title="First",
             source_language="es",
             target_language="de",
             sentences=[
                 Sentence(
-                    id=uuid4(),
+                    uuid=uuid4(),
                     source_text="Uno",
                     natural_translation="Eins",
                     word_alignments=[
@@ -261,13 +261,13 @@ class TestSqliteStorageProviderListAll:
             updated_at=datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone.utc),
         )
         translation2 = Translation(
-            id=uuid4(),
+            uuid=uuid4(),
             title="Second",
             source_language="es",
             target_language="de",
             sentences=[
                 Sentence(
-                    id=uuid4(),
+                    uuid=uuid4(),
                     source_text="Dos",
                     natural_translation="Zwei",
                     word_alignments=[
@@ -297,15 +297,15 @@ class TestSqliteStorageProviderDelete:
     ):
         """Test deleting an existing translation."""
         storage_provider.save(sample_translation)
-        result = storage_provider.delete(sample_translation.id)
+        result = storage_provider.delete(sample_translation.uuid)
 
         assert result is True
-        assert storage_provider.get(sample_translation.id) is None
+        assert storage_provider.get(sample_translation.uuid) is None
 
     def test_delete_nonexistent_translation(self, storage_provider: SqliteStorageProvider):
         """Test deleting a non-existent translation returns False."""
-        nonexistent_id = uuid4()
-        result = storage_provider.delete(nonexistent_id)
+        nonexistent_uuid = uuid4()
+        result = storage_provider.delete(nonexistent_uuid)
 
         assert result is False
 
@@ -314,7 +314,7 @@ class TestSqliteStorageProviderDelete:
     ):
         """Test that deleting a translation cascades to sentences and word alignments."""
         storage_provider.save(sample_translation)
-        storage_provider.delete(sample_translation.id)
+        storage_provider.delete(sample_translation.uuid)
 
         from sqlmodel import Session, select
 
@@ -352,7 +352,7 @@ class TestSqliteStorageProviderUpdate:
     ):
         """Test that updating a non-existent translation raises NotFoundError."""
         nonexistent_translation = Translation(
-            id=uuid4(),
+            uuid=uuid4(),
             title="Does not exist",
             source_language="es",
             target_language="de",
@@ -383,7 +383,7 @@ class TestSqliteStorageProviderUpdate:
 
         sample_translation.sentences = [
             Sentence(
-                id=uuid4(),
+                uuid=uuid4(),
                 source_text="New sentence",
                 natural_translation="Neuer Satz",
                 word_alignments=[
@@ -443,13 +443,13 @@ class TestSqliteStorageProviderEdgeCases:
     ):
         """Test saving a sentence with no word alignments."""
         translation = Translation(
-            id=uuid4(),
+            uuid=uuid4(),
             title="No alignments",
             source_language="es",
             target_language="de",
             sentences=[
                 Sentence(
-                    id=uuid4(),
+                    uuid=uuid4(),
                     source_text="Hola",
                     natural_translation="Hallo",
                     word_alignments=[],
@@ -464,13 +464,13 @@ class TestSqliteStorageProviderEdgeCases:
         """Test that multiple provider instances can access same database."""
         with SqliteStorageProvider(temp_db) as provider1:
             translation = Translation(
-                id=uuid4(),
+                uuid=uuid4(),
                 title="Test",
                 source_language="es",
                 target_language="de",
                 sentences=[
                     Sentence(
-                        id=uuid4(),
+                        uuid=uuid4(),
                         source_text="Hola",
                         natural_translation="Hallo",
                         word_alignments=[
@@ -482,7 +482,7 @@ class TestSqliteStorageProviderEdgeCases:
             provider1.save(translation)
 
         with SqliteStorageProvider(temp_db) as provider2:
-            retrieved = provider2.get(translation.id)
+            retrieved = provider2.get(translation.uuid)
 
             assert retrieved is not None
-            assert retrieved.id == translation.id
+            assert retrieved.uuid == translation.uuid

@@ -1,9 +1,11 @@
 """Database models (DAOs) for SQLModel persistence layer."""
 
-from datetime import datetime, timezone
+from datetime import datetime
 from uuid import UUID, uuid4
 
 from sqlmodel import Field, Relationship, SQLModel
+
+from birkenbihl.models import dateutils
 
 
 class WordAlignmentDAO(SQLModel, table=True):
@@ -29,7 +31,7 @@ class SentenceDAO(SQLModel, table=True):
     translation_id: UUID = Field(foreign_key="translations.id", index=True)
     source_text: str
     natural_translation: str
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=dateutils.create_now)
 
     translation: "TranslationDAO" = Relationship(back_populates="sentences")
     word_alignments: list[WordAlignmentDAO] = Relationship(
@@ -46,8 +48,8 @@ class TranslationDAO(SQLModel, table=True):
     title: str | None = None
     source_language: str
     target_language: str
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=dateutils.create_now)
+    updated_at: datetime = Field(default_factory=dateutils.create_now)
 
     sentences: list[SentenceDAO] = Relationship(
         back_populates="translation", sa_relationship_kwargs={"cascade": "all, delete-orphan"}
