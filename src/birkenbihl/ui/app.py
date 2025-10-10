@@ -13,7 +13,7 @@ from birkenbihl.services.settings_service import SettingsService
 from birkenbihl.ui.settings import render_settings_tab
 from birkenbihl.ui.translation import render_translation_tab
 from birkenbihl.ui.manage_translations import render_manage_translations_tab
-from birkenbihl.ui.edit_translation import render_edit_translation_tab
+from birkenbihl.ui.translation_result import render_translation_result_tab
 
 
 def configure_logging() -> None:
@@ -122,6 +122,14 @@ def initialize_session_state() -> None:
         st.session_state.edit_mode = None
     if "suggestions_cache" not in st.session_state:
         st.session_state.suggestions_cache = {}
+    if "is_new_translation" not in st.session_state:
+        st.session_state.is_new_translation = False
+    if "detected_language_info" not in st.session_state:
+        st.session_state.detected_language_info = None
+    if "is_translating" not in st.session_state:
+        st.session_state.is_translating = False
+    if "translation_pending" not in st.session_state:
+        st.session_state.translation_pending = None
 
 
 def main() -> None:
@@ -148,7 +156,9 @@ def main() -> None:
 
         st.session_state.app_started_logged = True
 
-    # Sidebar navigation
+    # Sidebar navigation (disable during translation)
+    is_translating = st.session_state.get("is_translating", False)
+
     with st.sidebar:
         st.markdown("## Navigation")
 
@@ -156,6 +166,7 @@ def main() -> None:
             "📝 Übersetzen",
             use_container_width=True,
             type="primary" if st.session_state.current_view == "Übersetzen" else "secondary",
+            disabled=is_translating,
         ):
             st.session_state.current_view = "Übersetzen"
             st.rerun()
@@ -164,6 +175,7 @@ def main() -> None:
             "📋 Meine Übersetzungen",
             use_container_width=True,
             type="primary" if st.session_state.current_view == "Meine Übersetzungen" else "secondary",
+            disabled=is_translating,
         ):
             st.session_state.current_view = "Meine Übersetzungen"
             st.rerun()
@@ -172,6 +184,7 @@ def main() -> None:
             "⚙️ Einstellungen",
             use_container_width=True,
             type="primary" if st.session_state.current_view == "Einstellungen" else "secondary",
+            disabled=is_translating,
         ):
             st.session_state.current_view = "Einstellungen"
             st.rerun()
@@ -181,8 +194,10 @@ def main() -> None:
         render_translation_tab()
     elif st.session_state.current_view == "Meine Übersetzungen":
         render_manage_translations_tab()
+    elif st.session_state.current_view == "Übersetzungsergebnis":
+        render_translation_result_tab()
     elif st.session_state.current_view == "Übersetzung bearbeiten":
-        render_edit_translation_tab()
+        render_translation_result_tab()  # Use the same view for editing
     else:
         render_settings_tab()
 
