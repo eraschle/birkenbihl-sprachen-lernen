@@ -1,3 +1,6 @@
+"""Main entry point for the Birkenbihl application."""
+
+
 def main() -> None:
     """Main function to start the app."""
     pass
