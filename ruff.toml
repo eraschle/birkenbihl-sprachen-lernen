@@ -21,6 +21,8 @@ select = [
     "F841",    # Local variable assigned but never used (pytest fixtures)
     "ARG001",  # Unused function argument (pytest fixtures)
     "ARG002",  # Unused method argument
+    "C416",    # Unnecessary list comprehension (list() is less readable in tests)
+    "UP043",   # Unnecessary default type arguments (explicit is better in tests)
 ]
 
 [format]

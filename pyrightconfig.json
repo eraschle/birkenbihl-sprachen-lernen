@@ -60,7 +60,7 @@
   "reportUndefinedVariable": "error",
   "reportUninitializedInstanceVariable": "warning",
   "reportUnknownArgumentType": false,
-  "reportUnknownLambdaType": "warning",
+  "reportUnknownLambdaType": false,
   "reportUnknownMemberType": false,
   "reportUnknownParameterType": false,
   "reportUnknownVariableType": false,
