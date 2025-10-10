@@ -32,7 +32,7 @@ def split_into_sentences(text: str) -> list[str]:
 
     # Pattern: Split after .!? when followed by whitespace and capital letter
     # This avoids splitting on abbreviations like "Mr. Smith"
-    pattern = r'(?<=[.!?])\s+(?=[A-Z])'
+    pattern = r"(?<=[.!?])\s+(?=[A-Z])"
 
     # Split the text
     sentences = re.split(pattern, text)
@@ -85,7 +85,7 @@ def redistribute_merged_translation(
     # Verify we got the expected number of sentences
     if len(natural_sentences) != len(source_sentences):
         raise ValueError(
-            f"Natural translation split into {len(natural_sentences)} sentences "
+            f"Natural translation split into {len(natural_sentences)} sentences "  # type: ignore[reportImplicitStringConcatenation]
             f"but expected {len(source_sentences)}. "
             f"Natural: {natural_sentences}, Expected count: {len(source_sentences)}"
         )
@@ -109,7 +109,7 @@ def redistribute_merged_translation(
 
         if not matched:
             raise ValueError(
-                f"Could not match source_word '{alignment.source_word}' "
+                f"Could not match source_word '{alignment.source_word}' "  # type: ignore[reportImplicitStringConcatenation]
                 f"to any source sentence: {source_sentences}"
             )
 

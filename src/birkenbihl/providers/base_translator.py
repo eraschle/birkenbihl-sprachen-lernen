@@ -3,7 +3,7 @@
 Provides common translation logic shared across OpenAI, Anthropic, and other providers.
 """
 
-from datetime import datetime, timezone
+import datetime
 
 from langdetect import detector_factory
 from pydantic_ai import Agent
@@ -130,7 +130,7 @@ class BaseTranslator:
             Domain Translation model with UUIDs and timestamps
         """
         # Create Translation with metadata
-        now = datetime.now(timezone.utc)
+        now = datetime.datetime.now(datetime.UTC)
         return Translation(
             source_language=source_lang,
             target_language=target_lang,
