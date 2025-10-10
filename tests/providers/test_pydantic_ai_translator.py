@@ -232,3 +232,87 @@ class TestPydanticAITranslatorBirkenbilhCompliance:
         sentence = result.sentences[0]
         assert sentence.uuid is not None
         assert sentence.created_at is not None
+
+
+@pytest.mark.integration
+@pytest.mark.slow
+class TestPydanticAITranslatorEditingFeatures:
+    """Tests for translation editing features (generate_alternatives, regenerate_alignment)."""
+
+    def test_generate_alternatives_returns_multiple(self, openai_provider_config: ProviderConfig):
+        """Test that generate_alternatives returns multiple translation options."""
+        # Arrange
+        translator = PydanticAITranslator(openai_provider_config)
+        source_text = "Yo te extrañaré"
+
+        # Act
+        alternatives = translator.generate_alternatives(source_text, "es", "de", count=3)
+
+        # Assert
+        assert isinstance(alternatives, list)
+        assert len(alternatives) == 3
+        assert all(isinstance(alt, str) for alt in alternatives)
+        assert all(len(alt.strip()) > 0 for alt in alternatives)
+        # Should have different translations
+        assert len(set(alternatives)) >= 2  # At least 2 unique alternatives
+
+    def test_generate_alternatives_custom_count(self, anthropic_provider_config: ProviderConfig):
+        """Test that generate_alternatives respects custom count parameter."""
+        # Arrange
+        translator = PydanticAITranslator(anthropic_provider_config)
+        source_text = "Hello world"
+
+        # Act
+        alternatives = translator.generate_alternatives(source_text, "en", "de", count=5)
+
+        # Assert
+        assert len(alternatives) == 5
+        assert all(isinstance(alt, str) for alt in alternatives)
+        assert all(len(alt.strip()) > 0 for alt in alternatives)
+
+    def test_regenerate_alignment_creates_valid_alignments(self, openai_provider_config: ProviderConfig):
+        """Test that regenerate_alignment creates valid WordAlignment objects."""
+        # Arrange
+        translator = PydanticAITranslator(openai_provider_config)
+        source_text = "Yo te extrañaré"
+        natural_translation = "Ich werde dich vermissen"
+
+        # Act
+        alignments = translator.regenerate_alignment(source_text, natural_translation, "es", "de")
+
+        # Assert
+        assert isinstance(alignments, list)
+        assert len(alignments) > 0
+
+        # Check all alignments are valid WordAlignment objects
+        for i, alignment in enumerate(alignments):
+            assert alignment.source_word.strip() != ""
+            assert alignment.target_word.strip() != ""
+            assert alignment.position == i  # Sequential positions
+
+    def test_regenerate_alignment_preserves_all_words(self, anthropic_provider_config: ProviderConfig):
+        """Test that regenerate_alignment includes all words from natural translation."""
+        # Arrange
+        translator = PydanticAITranslator(anthropic_provider_config)
+        source_text = "Hello world"
+        natural_translation = "Hallo Welt"
+
+        # Act
+        alignments = translator.regenerate_alignment(source_text, natural_translation, "en", "de")
+
+        # Assert
+        # Extract all target words from alignments (handle hyphenated combinations)
+        target_words = []
+        for alignment in alignments:
+            if "-" in alignment.target_word:
+                target_words.extend(alignment.target_word.split("-"))
+            else:
+                target_words.append(alignment.target_word)
+
+        # All words from natural_translation should be present (case-insensitive)
+        natural_words = natural_translation.split()
+        natural_words_lower = [w.lower() for w in natural_words]
+        target_words_lower = [w.lower() for w in target_words]
+
+        for word in natural_words_lower:
+            assert word in target_words_lower, f"Word '{word}' from natural translation not found in alignments"

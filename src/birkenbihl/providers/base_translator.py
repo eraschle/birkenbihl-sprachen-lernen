@@ -5,6 +5,7 @@ Provides common translation logic shared across OpenAI, Anthropic, and other pro
 
 import datetime
 from collections.abc import AsyncIterator
+from typing import Protocol
 
 from langdetect import detector_factory
 from pydantic_ai import Agent
@@ -12,8 +13,22 @@ from pydantic_ai.models import Model
 
 from birkenbihl.models.translation import Sentence, Translation, WordAlignment
 from birkenbihl.providers import text_utils
-from birkenbihl.providers.models import SentenceResponse, TranslationResponse
-from birkenbihl.providers.prompts import BIRKENBIHL_SYSTEM_PROMPT, create_translation_prompt
+from birkenbihl.providers.models import (
+    AlignmentResponse,
+    AlternativesResponse,
+    TranslationResponse,
+    WordAlignmentResponse,
+)
+from birkenbihl.providers.prompts import (
+    BIRKENBIHL_SYSTEM_PROMPT,
+    create_alternatives_prompt,
+    create_regenerate_alignment_prompt,
+    create_translation_prompt,
+)
+
+
+class IWordAlignmentResponse(Protocol):
+    word_alignments: list[WordAlignmentResponse]
 
 
 class BaseTranslator:
@@ -146,10 +161,10 @@ class BaseTranslator:
         # Use langdetect library for language detection
         return detector_factory.detect(text)
 
-    def _create_word_alignments(self, sentence: SentenceResponse) -> list[WordAlignment]:
-        """Create WordAlignment models from AI Sentence response model."""
+    def _create_word_alignments(self, response: IWordAlignmentResponse) -> list[WordAlignment]:
+        """Create WordAlignment models from AI response model."""
         alignments = []
-        for align in sentence.word_alignments:
+        for align in response.word_alignments:
             word_alignment = WordAlignment(
                 source_word=align.source_word,
                 target_word=align.target_word,
@@ -199,3 +214,68 @@ class BaseTranslator:
             created_at=now,
             updated_at=now,
         )
+
+    def generate_alternatives(
+        self,
+        source_text: str,
+        source_lang: str,
+        target_lang: str,
+        count: int = 3,
+    ) -> list[str]:
+        """Generate alternative natural translations for a sentence.
+
+        Args:
+            source_text: Original sentence to translate
+            source_lang: Source language code (en, es)
+            target_lang: Target language code (de)
+            count: Number of alternative translations to generate (default: 3)
+
+        Returns:
+            List of natural translation alternatives
+
+        Raises:
+            Exception: If generation fails
+        """
+        agent = Agent(
+            model=self._agent.model,
+            output_type=AlternativesResponse,
+            system_prompt="You are a language translation expert providing multiple translation alternatives.",
+        )
+
+        prompt = create_alternatives_prompt(source_text, source_lang, target_lang, count)
+        result = agent.run_sync(prompt)
+
+        return result.output.alternatives
+
+    def regenerate_alignment(
+        self,
+        source_text: str,
+        natural_translation: str,
+        source_lang: str,
+        target_lang: str,
+    ) -> list[WordAlignment]:
+        """Generate word-by-word alignment based on given natural translation.
+
+        Args:
+            source_text: Original sentence
+            natural_translation: Natural translation (chosen by user)
+            source_lang: Source language code
+            target_lang: Target language code
+
+        Returns:
+            List of WordAlignment objects mapping source words to target words
+
+        Raises:
+            Exception: If alignment generation fails
+        """
+        agent = Agent(
+            model=self._agent.model,
+            output_type=AlignmentResponse,
+            system_prompt=BIRKENBIHL_SYSTEM_PROMPT,
+        )
+
+        prompt = create_regenerate_alignment_prompt(source_text, natural_translation, source_lang, target_lang)
+        result = agent.run_sync(prompt)
+
+        alignments = self._create_word_alignments(result.output)
+        return alignments

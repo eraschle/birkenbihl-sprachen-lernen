@@ -9,6 +9,8 @@ import streamlit as st
 from birkenbihl.services.settings_service import SettingsService
 from birkenbihl.ui.settings import render_settings_tab
 from birkenbihl.ui.translation import render_translation_tab
+from birkenbihl.ui.manage_translations import render_manage_translations_tab
+from birkenbihl.ui.edit_translation import render_edit_translation_tab
 
 
 def configure_page() -> None:
@@ -51,6 +53,14 @@ def initialize_session_state() -> None:
         st.session_state.edit_provider_index = None
     if "current_view" not in st.session_state:
         st.session_state.current_view = "Übersetzen"
+    if "selected_translation_id" not in st.session_state:
+        st.session_state.selected_translation_id = None
+    if "selected_sentence_uuid" not in st.session_state:
+        st.session_state.selected_sentence_uuid = None
+    if "edit_mode" not in st.session_state:
+        st.session_state.edit_mode = None
+    if "suggestions_cache" not in st.session_state:
+        st.session_state.suggestions_cache = {}
 
 
 def main() -> None:
@@ -71,6 +81,14 @@ def main() -> None:
             st.rerun()
 
         if st.button(
+            "📋 Meine Übersetzungen",
+            use_container_width=True,
+            type="primary" if st.session_state.current_view == "Meine Übersetzungen" else "secondary",
+        ):
+            st.session_state.current_view = "Meine Übersetzungen"
+            st.rerun()
+
+        if st.button(
             "⚙️ Einstellungen",
             use_container_width=True,
             type="primary" if st.session_state.current_view == "Einstellungen" else "secondary",
@@ -81,6 +99,10 @@ def main() -> None:
     # Render current view
     if st.session_state.current_view == "Übersetzen":
         render_translation_tab()
+    elif st.session_state.current_view == "Meine Übersetzungen":
+        render_manage_translations_tab()
+    elif st.session_state.current_view == "Übersetzung bearbeiten":
+        render_edit_translation_tab()
     else:
         render_settings_tab()
 

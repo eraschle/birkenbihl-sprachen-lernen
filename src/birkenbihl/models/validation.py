@@ -1,0 +1,107 @@
+"""Validation functions for translation models."""
+
+import re
+
+from birkenbihl.models.translation import WordAlignment
+
+
+def validate_alignment_complete(
+    natural_translation: str,
+    alignments: list[WordAlignment],
+) -> tuple[bool, str | None]:
+    """Validate that all words from natural translation are present in alignments.
+
+    Rules:
+    1. Split natural_translation into words (whitespace-separated)
+    2. Extract all target_words from alignments
+    3. Handle hyphenated combinations: "werde-vermissen" counts as ["werde", "vermissen"]
+    4. Check that every word from natural_translation appears in target_words
+    5. Check that no words are missing or extra
+
+    Args:
+        natural_translation: The natural translation text
+        alignments: List of WordAlignment objects
+
+    Returns:
+        Tuple of (is_valid, error_message)
+        - (True, None) if validation passes
+        - (False, "Fehlende Wörter: X, Y") if words are missing
+        - (False, "Zusätzliche Wörter: X, Y") if extra words present
+
+    Example:
+        natural = "Ich werde dich vermissen"
+        alignments = [
+            WordAlignment(..., target_word="Ich", ...),
+            WordAlignment(..., target_word="dich", ...),
+            WordAlignment(..., target_word="werde-vermissen", ...)
+        ]
+        Returns: (True, None)
+    """
+    if not natural_translation.strip():
+        if not alignments:
+            return (True, None)
+        return (False, "Natürliche Übersetzung ist leer, aber Alignments vorhanden")
+
+    if not alignments:
+        return (False, "Keine Alignments vorhanden")
+
+    expected_words = _extract_words(natural_translation)
+    actual_words = _extract_alignment_words(alignments)
+
+    expected_set = set(expected_words)
+    actual_set = set(actual_words)
+
+    missing_words = expected_set - actual_set
+    extra_words = actual_set - expected_set
+
+    if missing_words and extra_words:
+        error_msg = (
+            f"Fehlende Wörter: {', '.join(sorted(missing_words))}; "
+            + f"Zusätzliche Wörter: {', '.join(sorted(extra_words))}"
+        )
+        return (False, error_msg)
+    elif missing_words:
+        return (False, f"Fehlende Wörter: {', '.join(sorted(missing_words))}")
+    elif extra_words:
+        return (False, f"Zusätzliche Wörter: {', '.join(sorted(extra_words))}")
+
+    return (True, None)
+
+
+def _extract_words(text: str) -> list[str]:
+    """Extract normalized words from text.
+
+    - Removes punctuation (except apostrophes and hyphens)
+    - Converts to lowercase
+    - Splits on whitespace
+
+    Args:
+        text: Input text
+
+    Returns:
+        List of normalized words
+    """
+    text_no_punct = re.sub(r"[^\w\s'\-]", "", text)
+    words = text_no_punct.lower().split()
+    return [w for w in words if w]
+
+
+def _extract_alignment_words(alignments: list[WordAlignment]) -> list[str]:
+    """Extract all words from alignments, splitting hyphenated combinations.
+
+    Args:
+        alignments: List of WordAlignment objects
+
+    Returns:
+        List of normalized words (hyphenated words are split)
+    """
+    words = []
+    for alignment in alignments:
+        target_word = alignment.target_word.lower()
+        if "-" in target_word:
+            parts = target_word.split("-")
+            words.extend([p for p in parts if p])
+        else:
+            words.append(target_word)
+
+    return words

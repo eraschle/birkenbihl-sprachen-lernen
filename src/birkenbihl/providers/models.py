@@ -48,3 +48,29 @@ class TranslationResponse(BaseModel):
         description="List of translated sentences with natural and word-by-word translations",
         min_length=1,
     )
+
+
+class AlternativesResponse(BaseModel):
+    """Alternative natural translations response from AI.
+
+    Contains multiple translation alternatives for a single sentence.
+    """
+
+    alternatives: list[str] = Field(
+        description="List of alternative natural translations",
+        min_length=1,
+        max_length=10,
+    )
+
+
+class AlignmentResponse(BaseModel):
+    """Word-by-word alignment response from AI.
+
+    Contains only word alignments for a single sentence, used when
+    regenerating alignment based on a user-chosen natural translation.
+    """
+
+    word_alignments: list[WordAlignmentResponse] = Field(
+        description="Word-by-word alignment for Birkenbihl decoding method",
+        min_length=1,
+    )

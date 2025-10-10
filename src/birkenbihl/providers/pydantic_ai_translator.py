@@ -10,7 +10,7 @@ from typing import Any
 from pydantic_ai.models import Model
 
 from birkenbihl.models.settings import ProviderConfig
-from birkenbihl.models.translation import Translation
+from birkenbihl.models.translation import Translation, WordAlignment
 from birkenbihl.providers.base_translator import BaseTranslator
 from birkenbihl.providers.registry import ProviderRegistry
 
@@ -260,3 +260,49 @@ class PydanticAITranslator:
             Language code (en, es, de)
         """
         return self._translator.detect_language(text)
+
+    def generate_alternatives(
+        self,
+        source_text: str,
+        source_lang: str,
+        target_lang: str,
+        count: int = 3,
+    ) -> list[str]:
+        """Generate alternative natural translations for a sentence.
+
+        Args:
+            source_text: Original sentence to translate
+            source_lang: Source language code (en, es)
+            target_lang: Target language code (de)
+            count: Number of alternative translations to generate (default: 3)
+
+        Returns:
+            List of natural translation alternatives
+
+        Raises:
+            Exception: If generation fails
+        """
+        return self._translator.generate_alternatives(source_text, source_lang, target_lang, count)
+
+    def regenerate_alignment(
+        self,
+        source_text: str,
+        natural_translation: str,
+        source_lang: str,
+        target_lang: str,
+    ) -> list[WordAlignment]:
+        """Generate word-by-word alignment based on given natural translation.
+
+        Args:
+            source_text: Original sentence
+            natural_translation: Natural translation (chosen by user)
+            source_lang: Source language code
+            target_lang: Target language code
+
+        Returns:
+            List of WordAlignment objects mapping source words to target words
+
+        Raises:
+            Exception: If alignment generation fails
+        """
+        return self._translator.regenerate_alignment(source_text, natural_translation, source_lang, target_lang)

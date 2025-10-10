@@ -4,7 +4,8 @@ These prompts are used by all translation providers to ensure consistent
 behavior across OpenAI, Anthropic, and other models.
 """
 
-BIRKENBIHL_SYSTEM_PROMPT = """You are a language translation expert specializing in the Vera F. Birkenbihl language learning method.
+BIRKENBIHL_SYSTEM_PROMPT = """You are a language translation expert specializing in the Vera F. Birkenbihl \
+language learning method.
 
 Your task is to provide TWO types of translations:
 
@@ -79,7 +80,8 @@ Provide:
 2. Word-by-word alignment showing how each source word maps to the target language
 """
     else:
-        return f"""Translate ALL {len(sentences)} sentences from {source_name} to {target_name} using the Birkenbihl method.
+        return f"""Translate ALL {len(sentences)} sentences from {source_name} to {target_name} using the \
+Birkenbihl method.
 
 Source sentences:
 {sentences_text}
@@ -91,3 +93,85 @@ Provide for EACH sentence separately:
 
 Your response must contain exactly {len(sentences)} sentence translations - one for each source sentence.
 """
+
+
+def create_alternatives_prompt(source_text: str, source_lang: str, target_lang: str, count: int) -> str:
+    """Create prompt for generating alternative natural translations.
+
+    Args:
+        source_text: Source sentence to translate
+        source_lang: Source language code
+        target_lang: Target language code
+        count: Number of alternatives to generate
+
+    Returns:
+        Formatted prompt for generating alternatives
+    """
+    lang_names = {
+        "en": "English",
+        "es": "Spanish",
+        "de": "German",
+        "fr": "French",
+        "it": "Italian",
+        "pt": "Portuguese",
+    }
+
+    source_name = lang_names.get(source_lang, source_lang.upper())
+    target_name = lang_names.get(target_lang, target_lang.upper())
+
+    return f"""Generate {count} different natural translations for the following {source_name} sentence \
+into {target_name}.
+
+Source sentence:
+{source_text}
+
+Provide {count} alternative translations that:
+1. Are all natural and fluent in {target_name}
+2. Maintain the original meaning
+3. Vary in formality, word choice, or structure
+4. Are all equally valid translations
+
+Return only the list of alternatives, no explanations needed."""
+
+
+def create_regenerate_alignment_prompt(
+    source_text: str, natural_translation: str, source_lang: str, target_lang: str
+) -> str:
+    """Create prompt for regenerating word-by-word alignment.
+
+    Args:
+        source_text: Original source sentence
+        natural_translation: Natural translation chosen by user
+        source_lang: Source language code
+        target_lang: Target language code
+
+    Returns:
+        Formatted prompt for alignment generation
+    """
+    lang_names = {
+        "en": "English",
+        "es": "Spanish",
+        "de": "German",
+        "fr": "French",
+        "it": "Italian",
+        "pt": "Portuguese",
+    }
+
+    source_name = lang_names.get(source_lang, source_lang.upper())
+    target_name = lang_names.get(target_lang, target_lang.upper())
+
+    return f"""Create a word-by-word alignment for the Birkenbihl method based on the given natural translation.
+
+Source sentence ({source_name}):
+{source_text}
+
+Natural translation ({target_name}):
+{natural_translation}
+
+Create word alignments that:
+1. Map each source word to its translation in the natural translation
+2. Use hyphens for compound translations (e.g., "vermissen-werde")
+3. Ensure EVERY word from the natural translation appears in the alignments
+4. Follow the source language word order with sequential position numbers (0-indexed)
+
+Provide only the word-by-word alignment, following the Birkenbihl decoding method."""
