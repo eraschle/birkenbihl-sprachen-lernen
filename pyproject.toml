@@ -8,6 +8,7 @@ dependencies = [
     "sqlmodel>=0.0.14",
     "pydantic-ai>=0.0.12",
     "langdetect>=1.0.9",
+    "python-dotenv>=1.0.0",
 ]
 
 [dependency-groups]

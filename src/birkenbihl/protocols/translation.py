@@ -2,14 +2,13 @@
 
 from typing import TYPE_CHECKING, Protocol
 
-if TYPE_CHECKING:
-    from birkenbihl.models.translation import Translation
+from birkenbihl.models.translation import Translation
 
 
 class ITranslationProvider(Protocol):
     """Protocol for translation providers."""
 
-    def translate(self, text: str, source_lang: str, target_lang: str) -> "Translation":
+    def translate(self, text: str, source_lang: str, target_lang: str) -> Translation:
         """Translate text using Birkenbihl method.
 
         Args:
