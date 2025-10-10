@@ -26,9 +26,7 @@ class TranslationService:
         self._translator = translator
         self._storage = storage
 
-    def translate_and_save(
-        self, text: str, source_lang: str, target_lang: str, title: str
-    ) -> Translation:
+    def translate_and_save(self, text: str, source_lang: str, target_lang: str, title: str) -> Translation:
         """Translate text using Birkenbihl method and save to storage.
 
         Args:
@@ -102,9 +100,7 @@ class TranslationService:
         """
         return self._storage.update(translation)
 
-    def auto_detect_and_translate(
-        self, text: str, target_lang: str, title: str
-    ) -> Translation:
+    def auto_detect_and_translate(self, text: str, target_lang: str, title: str) -> Translation:
         """Auto-detect source language and translate.
 
         Args:

@@ -86,9 +86,7 @@ def sample_spanish_german_response():
                 word_alignments=[
                     WordAlignmentResponse(source_word="Yo", target_word="Ich", position=0),
                     WordAlignmentResponse(source_word="te", target_word="dich", position=1),
-                    WordAlignmentResponse(
-                        source_word="extrañaré", target_word="vermissen-werde", position=2
-                    ),
+                    WordAlignmentResponse(source_word="extrañaré", target_word="vermissen-werde", position=2),
                 ],
             )
         ]
@@ -139,9 +137,7 @@ def sample_complex_spanish_response():
                     WordAlignmentResponse(source_word="bellos", target_word="schöne", position=2),
                     WordAlignmentResponse(source_word="y", target_word="und", position=3),
                     WordAlignmentResponse(source_word="malos", target_word="schlechte", position=4),
-                    WordAlignmentResponse(
-                        source_word="momentos", target_word="momente", position=5
-                    ),
+                    WordAlignmentResponse(source_word="momentos", target_word="momente", position=5),
                 ],
             )
         ]
@@ -165,9 +161,7 @@ def sample_dekodierung_example():
                     WordAlignmentResponse(source_word="que", target_word="was", position=1),
                     WordAlignmentResponse(source_word="parecía", target_word="schien", position=2),
                     WordAlignmentResponse(source_word="no", target_word="nicht", position=3),
-                    WordAlignmentResponse(
-                        source_word="importante", target_word="wichtig", position=4
-                    ),
+                    WordAlignmentResponse(source_word="importante", target_word="wichtig", position=4),
                 ],
             )
         ]

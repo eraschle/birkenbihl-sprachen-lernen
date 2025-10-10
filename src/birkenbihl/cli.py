@@ -103,9 +103,7 @@ def translate(
             settings = SettingsService.get_settings()
             matching_providers = [p for p in settings.providers if p.name == provider]
             if not matching_providers:
-                console.print(
-                    f"[bold red]Error:[/bold red] Provider '{provider}' not found in settings.yaml"
-                )
+                console.print(f"[bold red]Error:[/bold red] Provider '{provider}' not found in settings.yaml")
                 console.print("\nAvailable providers:")
                 for p in settings.providers:
                     console.print(f"  - {p.name}")
@@ -192,9 +190,7 @@ def show(translation_id: str, storage: Path | None):
         # Try to find by partial ID if not full UUID
         if len(translation_id) < 36:
             translations = service.list_all_translations()
-            matches = [
-                trans for trans in translations if str(trans.uuid).startswith(translation_id)
-            ]
+            matches = [trans for trans in translations if str(trans.uuid).startswith(translation_id)]
 
             if not matches:
                 console.print(
@@ -244,9 +240,7 @@ def delete(translation_id: str, storage: Path | None):
         # Try to find by partial ID if not full UUID
         if len(translation_id) < 36:
             translations = service.list_all_translations()
-            matches = [
-                trans for trans in translations if str(trans.uuid).startswith(translation_id)
-            ]
+            matches = [trans for trans in translations if str(trans.uuid).startswith(translation_id)]
 
             if not matches:
                 console.print(
@@ -264,9 +258,7 @@ def delete(translation_id: str, storage: Path | None):
         success = service.delete_translation(UUID(translation_id))
 
         if success:
-            console.print(
-                f"[bold green]✓[/bold green] Translation deleted: {translation_id[:8]}..."
-            )
+            console.print(f"[bold green]✓[/bold green] Translation deleted: {translation_id[:8]}...")
         else:
             console.print(f"[bold red]Error:[/bold red] Translation not found: {translation_id}")
             raise click.Abort()

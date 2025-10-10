@@ -29,9 +29,7 @@ class SentenceResponse(BaseModel):
     """
 
     source_text: str = Field(description="Original sentence in source language")
-    natural_translation: str = Field(
-        description="Natural, fluent translation in target language"
-    )
+    natural_translation: str = Field(description="Natural, fluent translation in target language")
     word_alignments: list[WordAlignmentResponse] = Field(
         description="Word-by-word alignment for Birkenbihl decoding method"
     )

@@ -159,9 +159,7 @@ def translate_text(model: TranslationModel, provider: ProviderConfig | None) -> 
         provider: Provider configuration to use for translation
     """
     if not provider:
-        st.error(
-            "Kein Provider konfiguriert. Bitte fügen Sie einen Provider in den Einstellungen hinzu."
-        )
+        st.error("Kein Provider konfiguriert. Bitte fügen Sie einen Provider in den Einstellungen hinzu.")
         return
 
     # Convert language display names back to ISO codes
@@ -194,14 +192,10 @@ def translate_text(model: TranslationModel, provider: ProviderConfig | None) -> 
 
     except Exception as e:
         st.error(f"Fehler bei der Übersetzung: {str(e)}")
-        st.info(
-            "Bitte überprüfen Sie:\n- API-Schlüssel ist korrekt\n- Modellname ist gültig\n- Internetverbindung"
-        )
+        st.info("Bitte überprüfen Sie:\n- API-Schlüssel ist korrekt\n- Modellname ist gültig\n- Internetverbindung")
 
 
-async def translate_text_streaming(
-    model: TranslationModel, provider: ProviderConfig | None
-) -> None:
+async def translate_text_streaming(model: TranslationModel, provider: ProviderConfig | None) -> None:
     """Translate text using streaming with progress bar.
 
     Args:
@@ -212,9 +206,7 @@ async def translate_text_streaming(
         provider: Provider configuration to use for translation
     """
     if not provider:
-        st.error(
-            "Kein Provider konfiguriert. Bitte fügen Sie einen Provider in den Einstellungen hinzu."
-        )
+        st.error("Kein Provider konfiguriert. Bitte fügen Sie einen Provider in den Einstellungen hinzu.")
         return
 
     # Convert language display names back to ISO codes
@@ -258,9 +250,7 @@ async def translate_text_streaming(
 
     except Exception as e:
         st.error(f"Fehler bei der Übersetzung: {str(e)}")
-        st.info(
-            "Bitte überprüfen Sie:\n- API-Schlüssel ist korrekt\n- Modellname ist gültig\n- Internetverbindung"
-        )
+        st.info("Bitte überprüfen Sie:\n- API-Schlüssel ist korrekt\n- Modellname ist gültig\n- Internetverbindung")
 
 
 def _create_translation_message(translation: Translation) -> str:

@@ -43,9 +43,7 @@ def split_into_sentences(text: str) -> list[str]:
     return result if result else [text.strip()]
 
 
-def redistribute_merged_translation(
-    merged: SentenceResponse, source_sentences: list[str]
-) -> list[SentenceResponse]:
+def redistribute_merged_translation(merged: SentenceResponse, source_sentences: list[str]) -> list[SentenceResponse]:
     """Redistribute merged translation into separate sentences.
 
     When AI merges multiple sentences into one response, this function splits it back

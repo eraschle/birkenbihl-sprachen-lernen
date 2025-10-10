@@ -212,9 +212,7 @@ class TestRedistributeMergedTranslation:
         # Expect 2 sentences but natural only has 1
         source_sentences = ["Hello", "world"]
 
-        with pytest.raises(
-            ValueError, match="Natural translation split into 1 sentences but expected 2"
-        ):
+        with pytest.raises(ValueError, match="Natural translation split into 1 sentences but expected 2"):
             text_utils.redistribute_merged_translation(merged, source_sentences)
 
     def test_unknown_source_word_raises_error(self):

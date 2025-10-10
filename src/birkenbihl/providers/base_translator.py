@@ -122,9 +122,7 @@ class BaseTranslator:
                     progress = min(progress, 1.0)
 
                     # Convert partial response to domain model
-                    final_translation = self._convert_to_domain_model(
-                        partial_response, source_lang, target_lang
-                    )
+                    final_translation = self._convert_to_domain_model(partial_response, source_lang, target_lang)
 
                     yield (progress, final_translation)
                     last_sentence_count = current_sentence_count

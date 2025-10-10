@@ -26,9 +26,7 @@ class TestPydanticAITranslatorUnit:
         )
 
         # Act & Assert
-        with pytest.raises(
-            ValueError, match="Unsupported provider: unsupported_provider"
-        ) as exc_info:
+        with pytest.raises(ValueError, match="Unsupported provider: unsupported_provider") as exc_info:
             PydanticAITranslator(config)
 
         assert "Supported providers:" in str(exc_info.value)

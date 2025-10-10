@@ -152,9 +152,7 @@ class TestBaseTranslator:
                     word_alignments=[
                         WordAlignmentResponse(source_word="Yo", target_word="Ich", position=0),
                         WordAlignmentResponse(source_word="te", target_word="dich", position=1),
-                        WordAlignmentResponse(
-                            source_word="extrañaré", target_word="vermissen-werde", position=2
-                        ),
+                        WordAlignmentResponse(source_word="extrañaré", target_word="vermissen-werde", position=2),
                     ],
                 )
             ]
@@ -174,9 +172,7 @@ class TestBaseTranslator:
         # Verify word alignments follow Birkenbihl format
         assert len(sentence.word_alignments) == 3
         assert sentence.word_alignments[2].source_word == "extrañaré"
-        assert (
-            sentence.word_alignments[2].target_word == "vermissen-werde"
-        )  # Compound word with hyphen
+        assert sentence.word_alignments[2].target_word == "vermissen-werde"  # Compound word with hyphen
 
     def test_detect_language_english(self, base_translator: BaseTranslator):
         """Test language detection for English text."""
@@ -269,13 +265,9 @@ class TestBirkenbilFormatValidation:
                     word_alignments=[
                         WordAlignmentResponse(source_word="Lo", target_word="Das", position=0),
                         WordAlignmentResponse(source_word="que", target_word="was", position=1),
-                        WordAlignmentResponse(
-                            source_word="parecía", target_word="schien", position=2
-                        ),
+                        WordAlignmentResponse(source_word="parecía", target_word="schien", position=2),
                         WordAlignmentResponse(source_word="no", target_word="nicht", position=3),
-                        WordAlignmentResponse(
-                            source_word="importante", target_word="wichtig", position=4
-                        ),
+                        WordAlignmentResponse(source_word="importante", target_word="wichtig", position=4),
                     ],
                 )
             ]
@@ -301,22 +293,12 @@ class TestBirkenbilFormatValidation:
                     source_text="Fueron tantos bellos y malos momentos",
                     natural_translation="Waren so viele schöne und schlechte momente",
                     word_alignments=[
-                        WordAlignmentResponse(
-                            source_word="Fueron", target_word="Waren", position=0
-                        ),
-                        WordAlignmentResponse(
-                            source_word="tantos", target_word="so-viele", position=1
-                        ),
-                        WordAlignmentResponse(
-                            source_word="bellos", target_word="schöne", position=2
-                        ),
+                        WordAlignmentResponse(source_word="Fueron", target_word="Waren", position=0),
+                        WordAlignmentResponse(source_word="tantos", target_word="so-viele", position=1),
+                        WordAlignmentResponse(source_word="bellos", target_word="schöne", position=2),
                         WordAlignmentResponse(source_word="y", target_word="und", position=3),
-                        WordAlignmentResponse(
-                            source_word="malos", target_word="schlechte", position=4
-                        ),
-                        WordAlignmentResponse(
-                            source_word="momentos", target_word="momente", position=5
-                        ),
+                        WordAlignmentResponse(source_word="malos", target_word="schlechte", position=4),
+                        WordAlignmentResponse(source_word="momentos", target_word="momente", position=5),
                     ],
                 )
             ]

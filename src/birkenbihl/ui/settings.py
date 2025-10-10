@@ -83,11 +83,7 @@ def render_provider_card(provider: ProviderConfig, index: int) -> None:
         col1, col2 = st.columns([3, 1])
 
         with col1:
-            masked_key = (
-                provider.api_key[:8] + "..." + provider.api_key[-4:]
-                if len(provider.api_key) > 12
-                else "***"
-            )
+            masked_key = provider.api_key[:8] + "..." + provider.api_key[-4:] if len(provider.api_key) > 12 else "***"
             st.caption(f"API-Schlüssel: `{masked_key}`")
             if provider.is_default:
                 st.success("✓ Standard-Provider")
@@ -97,9 +93,7 @@ def render_provider_card(provider: ProviderConfig, index: int) -> None:
                 if st.button("Als Standard", key=f"default_{index}", use_container_width=True):
                     set_provider_as_default(index)
 
-            if st.button(
-                "Löschen", key=f"delete_{index}", type="secondary", use_container_width=True
-            ):
+            if st.button("Löschen", key=f"delete_{index}", type="secondary", use_container_width=True):
                 delete_provider(index)
 
 
@@ -109,9 +103,7 @@ def render_add_provider_form() -> None:
 
     # Step 1: Select provider type
     provider_types_list = ProviderRegistry.get_provider_types()
-    provider_metadata_map = {
-        pt: ProviderRegistry.get_provider_metadata(pt) for pt in provider_types_list
-    }
+    provider_metadata_map = {pt: ProviderRegistry.get_provider_metadata(pt) for pt in provider_types_list}
 
     # Filter out None values (should not happen, but type-safe)
     valid_metadata = {pt: meta for pt, meta in provider_metadata_map.items() if meta is not None}
@@ -121,9 +113,7 @@ def render_add_provider_form() -> None:
         return
 
     # Create display names for provider types
-    provider_type_displays = [
-        f"{valid_metadata[pt].display_name} ({pt})" for pt in valid_metadata.keys()
-    ]
+    provider_type_displays = [f"{valid_metadata[pt].display_name} ({pt})" for pt in valid_metadata.keys()]
 
     # Step 1 & 2 in columns
     col1, col2 = st.columns(2)
@@ -135,9 +125,7 @@ def render_add_provider_form() -> None:
         )
 
     # Extract provider_type from display
-    selected_provider_type = list(valid_metadata.keys())[
-        provider_type_displays.index(selected_provider_display)
-    ]
+    selected_provider_type = list(valid_metadata.keys())[provider_type_displays.index(selected_provider_display)]
     provider_metadata = valid_metadata[selected_provider_type]
     available_models = provider_metadata.default_models
 

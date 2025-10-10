@@ -28,9 +28,7 @@ class AudioService:
         super().__init__()
         self._audio = audio_provider
 
-    def generate_sentence_audio(
-        self, sentence: Sentence, language: str, output_dir: Path
-    ) -> Path:
+    def generate_sentence_audio(self, sentence: Sentence, language: str, output_dir: Path) -> Path:
         """Generate audio file for a sentence.
 
         Args:
@@ -60,9 +58,7 @@ class AudioService:
         """
         raise NotImplementedError("Audio playback will be implemented in Phase 2")
 
-    def batch_generate_audio(
-        self, sentences: list[Sentence], language: str, output_dir: Path
-    ) -> list[Path]:
+    def batch_generate_audio(self, sentences: list[Sentence], language: str, output_dir: Path) -> list[Path]:
         """Generate audio files for multiple sentences.
 
         Args:
@@ -77,6 +73,4 @@ class AudioService:
             AudioError: If generation fails
             NotImplementedError: Currently not implemented (Phase 2)
         """
-        raise NotImplementedError(
-            "Batch audio generation will be implemented in Phase 2"
-        )
+        raise NotImplementedError("Batch audio generation will be implemented in Phase 2")

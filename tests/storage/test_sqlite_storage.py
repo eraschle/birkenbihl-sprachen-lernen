@@ -4,7 +4,7 @@ Tests SQLite-based storage implementation including CRUD operations,
 DAO model mapping, and error handling.
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from uuid import uuid4
 
@@ -44,9 +44,7 @@ def sample_translation() -> Translation:
                 word_alignments=[
                     WordAlignment(source_word="Yo", target_word="Ich", position=0),
                     WordAlignment(source_word="te", target_word="dich", position=1),
-                    WordAlignment(
-                        source_word="extrañaré", target_word="vermissen-werde", position=2
-                    ),
+                    WordAlignment(source_word="extrañaré", target_word="vermissen-werde", position=2),
                 ],
             ),
             Sentence(
@@ -87,9 +85,7 @@ class TestSqliteStorageProviderInitialization:
 class TestSqliteStorageProviderSave:
     """Test save operation."""
 
-    def test_save_new_translation(
-        self, storage_provider: SqliteStorageProvider, sample_translation: Translation
-    ):
+    def test_save_new_translation(self, storage_provider: SqliteStorageProvider, sample_translation: Translation):
         """Test saving a new translation."""
         saved = storage_provider.save(sample_translation)
 
@@ -99,9 +95,7 @@ class TestSqliteStorageProviderSave:
         assert saved.target_language == sample_translation.target_language
         assert len(saved.sentences) == 2
 
-    def test_save_preserves_uuids(
-        self, storage_provider: SqliteStorageProvider, sample_translation: Translation
-    ):
+    def test_save_preserves_uuids(self, storage_provider: SqliteStorageProvider, sample_translation: Translation):
         """Test that UUIDs are preserved across save operations."""
         original_uuid = sample_translation.uuid
         original_sentence_uuids = [s.uuid for s in sample_translation.sentences]
@@ -141,9 +135,7 @@ class TestSqliteStorageProviderSave:
 class TestSqliteStorageProviderGet:
     """Test get operation."""
 
-    def test_get_existing_translation(
-        self, storage_provider: SqliteStorageProvider, sample_translation: Translation
-    ):
+    def test_get_existing_translation(self, storage_provider: SqliteStorageProvider, sample_translation: Translation):
         """Test retrieving an existing translation."""
         storage_provider.save(sample_translation)
         retrieved = storage_provider.get(sample_translation.uuid)
@@ -153,9 +145,7 @@ class TestSqliteStorageProviderGet:
         assert retrieved.title == sample_translation.title
         assert len(retrieved.sentences) == 2
 
-    def test_get_nonexistent_translation_returns_none(
-        self, storage_provider: SqliteStorageProvider
-    ):
+    def test_get_nonexistent_translation_returns_none(self, storage_provider: SqliteStorageProvider):
         """Test that getting a non-existent translation returns None."""
         nonexistent_uuid = uuid4()
         result = storage_provider.get(nonexistent_uuid)
@@ -208,9 +198,7 @@ class TestSqliteStorageProviderListAll:
                     uuid=uuid4(),
                     source_text="Hola",
                     natural_translation="Hallo",
-                    word_alignments=[
-                        WordAlignment(source_word="Hola", target_word="Hallo", position=0)
-                    ],
+                    word_alignments=[WordAlignment(source_word="Hola", target_word="Hallo", position=0)],
                 )
             ],
         )
@@ -224,9 +212,7 @@ class TestSqliteStorageProviderListAll:
                     uuid=uuid4(),
                     source_text="Hello",
                     natural_translation="Hallo",
-                    word_alignments=[
-                        WordAlignment(source_word="Hello", target_word="Hallo", position=0)
-                    ],
+                    word_alignments=[WordAlignment(source_word="Hello", target_word="Hallo", position=0)],
                 )
             ],
         )
@@ -252,13 +238,11 @@ class TestSqliteStorageProviderListAll:
                     uuid=uuid4(),
                     source_text="Uno",
                     natural_translation="Eins",
-                    word_alignments=[
-                        WordAlignment(source_word="Uno", target_word="Eins", position=0)
-                    ],
+                    word_alignments=[WordAlignment(source_word="Uno", target_word="Eins", position=0)],
                 )
             ],
-            created_at=datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone.utc),
-            updated_at=datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone.utc),
+            created_at=datetime(2024, 1, 1, 0, 0, 0, tzinfo=UTC),
+            updated_at=datetime(2024, 1, 1, 0, 0, 0, tzinfo=UTC),
         )
         translation2 = Translation(
             uuid=uuid4(),
@@ -270,13 +254,11 @@ class TestSqliteStorageProviderListAll:
                     uuid=uuid4(),
                     source_text="Dos",
                     natural_translation="Zwei",
-                    word_alignments=[
-                        WordAlignment(source_word="Dos", target_word="Zwei", position=0)
-                    ],
+                    word_alignments=[WordAlignment(source_word="Dos", target_word="Zwei", position=0)],
                 )
             ],
-            created_at=datetime(2024, 1, 2, 0, 0, 0, tzinfo=timezone.utc),
-            updated_at=datetime(2024, 1, 2, 0, 0, 0, tzinfo=timezone.utc),
+            created_at=datetime(2024, 1, 2, 0, 0, 0, tzinfo=UTC),
+            updated_at=datetime(2024, 1, 2, 0, 0, 0, tzinfo=UTC),
         )
 
         storage_provider.save(translation1)
@@ -347,9 +329,7 @@ class TestSqliteStorageProviderUpdate:
         assert updated.sentences[0].natural_translation == "Updated translation"
         assert updated.updated_at >= updated.created_at
 
-    def test_update_nonexistent_translation_raises_error(
-        self, storage_provider: SqliteStorageProvider
-    ):
+    def test_update_nonexistent_translation_raises_error(self, storage_provider: SqliteStorageProvider):
         """Test that updating a non-existent translation raises NotFoundError."""
         nonexistent_translation = Translation(
             uuid=uuid4(),
@@ -375,9 +355,7 @@ class TestSqliteStorageProviderUpdate:
         assert updated.created_at == original_created_at
         assert updated.updated_at > original_created_at
 
-    def test_update_replaces_sentences(
-        self, storage_provider: SqliteStorageProvider, sample_translation: Translation
-    ):
+    def test_update_replaces_sentences(self, storage_provider: SqliteStorageProvider, sample_translation: Translation):
         """Test that update correctly replaces sentences."""
         storage_provider.save(sample_translation)
 
@@ -403,7 +381,6 @@ class TestSqliteStorageProviderUpdate:
 class TestSqliteStorageProviderEdgeCases:
     """Test edge cases and error handling."""
 
-
     def test_save_translation_with_empty_sentences(self, storage_provider: SqliteStorageProvider):
         """Test saving a translation with no sentences."""
         translation = Translation(
@@ -417,9 +394,7 @@ class TestSqliteStorageProviderEdgeCases:
         saved = storage_provider.save(translation)
         assert len(saved.sentences) == 0
 
-    def test_save_sentence_with_empty_word_alignments(
-        self, storage_provider: SqliteStorageProvider
-    ):
+    def test_save_sentence_with_empty_word_alignments(self, storage_provider: SqliteStorageProvider):
         """Test saving a sentence with no word alignments."""
         translation = Translation(
             uuid=uuid4(),
@@ -452,9 +427,7 @@ class TestSqliteStorageProviderEdgeCases:
                         uuid=uuid4(),
                         source_text="Hola",
                         natural_translation="Hallo",
-                        word_alignments=[
-                            WordAlignment(source_word="Hola", target_word="Hallo", position=0)
-                        ],
+                        word_alignments=[WordAlignment(source_word="Hola", target_word="Hallo", position=0)],
                     )
                 ],
             )

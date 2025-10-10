@@ -694,10 +694,7 @@ target_language: de
             results.append(settings)
 
         with ThreadPoolExecutor(max_workers=num_threads) as executor:
-            futures = [
-                executor.submit(load_settings_with_barrier, settings_files[i])
-                for i in range(num_threads)
-            ]
+            futures = [executor.submit(load_settings_with_barrier, settings_files[i]) for i in range(num_threads)]
             for future in futures:
                 future.result()
 

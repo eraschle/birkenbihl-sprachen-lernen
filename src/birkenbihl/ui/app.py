@@ -58,11 +58,19 @@ def main() -> None:
     with st.sidebar:
         st.markdown("## Navigation")
 
-        if st.button("📝 Übersetzen", use_container_width=True, type="primary" if st.session_state.current_view == "Übersetzen" else "secondary"):
+        if st.button(
+            "📝 Übersetzen",
+            use_container_width=True,
+            type="primary" if st.session_state.current_view == "Übersetzen" else "secondary",
+        ):
             st.session_state.current_view = "Übersetzen"
             st.rerun()
 
-        if st.button("⚙️ Einstellungen", use_container_width=True, type="primary" if st.session_state.current_view == "Einstellungen" else "secondary"):
+        if st.button(
+            "⚙️ Einstellungen",
+            use_container_width=True,
+            type="primary" if st.session_state.current_view == "Einstellungen" else "secondary",
+        ):
             st.session_state.current_view = "Einstellungen"
             st.rerun()
 

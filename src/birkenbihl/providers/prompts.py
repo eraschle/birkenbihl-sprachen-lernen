@@ -66,7 +66,7 @@ def create_translation_prompt(sentences: list[str], source_lang: str, target_lan
     if len(sentences) == 1:
         sentences_text = sentences[0]
     else:
-        sentences_text = "\n".join(f"{i+1}. {sent}" for i, sent in enumerate(sentences))
+        sentences_text = "\n".join(f"{i + 1}. {sent}" for i, sent in enumerate(sentences))
 
     if len(sentences) == 1:
         return f"""Translate the following sentence from {source_name} to {target_name} using the Birkenbihl method.
