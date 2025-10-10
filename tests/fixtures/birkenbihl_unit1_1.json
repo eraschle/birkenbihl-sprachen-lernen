@@ -1,0 +1,175 @@
+{
+  "description": "Unit 1.1 - English to German word-by-word translations from Birkenbihl method",
+  "source_language": "en",
+  "target_language": "de",
+  "test_cases": [
+    {
+      "source_text": "Yesterday I met some new people.",
+      "expected_word_by_word": "Gestern ich traf einige neue Leute."
+    },
+    {
+      "source_text": "Most of their names were easy for me, but there was one",
+      "expected_word_by_word": "Meiste von ihren Namen waren einfach für mich, aber da war ein"
+    },
+    {
+      "source_text": "gentleman whose name is Panajotis. I found that",
+      "expected_word_by_word": "Herr dessen Name ist Panajotis. Ich fand jenen"
+    },
+    {
+      "source_text": "name a bit difficult.",
+      "expected_word_by_word": "Namen ein bisschen schwierig."
+    },
+    {
+      "source_text": "It's a Greek name. I am sure Mr. Panajotis",
+      "expected_word_by_word": "Es-ist ein griechischer Name. Ich bin sicher Herr Panajotis"
+    },
+    {
+      "source_text": "found our names equally strange at",
+      "expected_word_by_word": "fand unsere Namen gleichermassen seltsam zu"
+    },
+    {
+      "source_text": "first.",
+      "expected_word_by_word": "erst."
+    },
+    {
+      "source_text": "True. How come YOU found his name so",
+      "expected_word_by_word": "Wahr. Wie gekommen SIE fanden seinen Namen so"
+    },
+    {
+      "source_text": "easy, Mr. Sanders?",
+      "expected_word_by_word": "leicht, Herr Sanders?"
+    },
+    {
+      "source_text": "Well, for one thing I've met Greek people",
+      "expected_word_by_word": "Nun, für eine Sache ich-habe getroffen griechische Leute"
+    },
+    {
+      "source_text": "before and Panajotis is a common name",
+      "expected_word_by_word": "zuvor und Panajotis ist ein üblicher Name"
+    },
+    {
+      "source_text": "in Greece. Secondly, I always use",
+      "expected_word_by_word": "in Griechenland. Zweitens, ich immer benutze"
+    },
+    {
+      "source_text": "memory techniques to remember new names.",
+      "expected_word_by_word": "Gedächtnis Techniken zu erinnern neue Namen."
+    },
+    {
+      "source_text": "So do I. At least I try. But I",
+      "expected_word_by_word": "So tue ich. Zu- mindest ich versuche. Aber ich"
+    },
+    {
+      "source_text": "must admit I had some difficulty with the",
+      "expected_word_by_word": "muss zugeben ich hatte einige Schwierigkeit mit dem"
+    },
+    {
+      "source_text": "name Panajotis at first.",
+      "expected_word_by_word": "Name Panajotis zu- erst."
+    },
+    {
+      "source_text": "When I first heard that name I thought of",
+      "expected_word_by_word": "Als ich erstmals hörte diesen Namen ich dachte an"
+    },
+    {
+      "source_text": "the Greek god Pan…",
+      "expected_word_by_word": "den griechischen Gott Pan..."
+    },
+    {
+      "source_text": "… of course! Pan playing the Pan-flute?",
+      "expected_word_by_word": "… Natürlich! Pan spielend die Pan-Flöte?"
+    },
+    {
+      "source_text": "Right! And the last part, the «jotis» reminded",
+      "expected_word_by_word": "Richtig! Und der letzte Teil, das «jotis» erinnerte"
+    },
+    {
+      "source_text": "me of a boy in my neighbourhood,",
+      "expected_word_by_word": "mich an einen Jungen in meiner Nachbarschaft,"
+    },
+    {
+      "source_text": "whose name was «Otis».",
+      "expected_word_by_word": "dessen Name war «Otis»."
+    },
+    {
+      "source_text": "Well, knowing a boy named Otis makes it",
+      "expected_word_by_word": "Nun, kennen einen Jungen genannt Otis macht es"
+    },
+    {
+      "source_text": "easy.",
+      "expected_word_by_word": "leicht."
+    },
+    {
+      "source_text": "The more names you learn, the easier",
+      "expected_word_by_word": "Je mehr Namen man lernt, je einfacher"
+    },
+    {
+      "source_text": "new names will become.",
+      "expected_word_by_word": "neue Namen werden werden."
+    },
+    {
+      "source_text": "In other words, with each name you",
+      "expected_word_by_word": "In anderen Worten, mit jedem Namen man"
+    },
+    {
+      "source_text": "learn you improve.",
+      "expected_word_by_word": "lernt man verbessert."
+    },
+    {
+      "source_text": "Of course. It gets easier all the time.",
+      "expected_word_by_word": "Natürlich. Es wird einfacher all die Zeit."
+    },
+    {
+      "source_text": "Let's play a game. I'll pretend to be",
+      "expected_word_by_word": "Lassen-uns spielen ein Spiel. Ich-werde vorgeben zu sein"
+    },
+    {
+      "source_text": "my girl friend....",
+      "expected_word_by_word": "mein Mädchen Freund...."
+    },
+    {
+      "source_text": "... and I pretend to be a friend of",
+      "expected_word_by_word": "… und ich vorgebe zu sein ein Freund von"
+    },
+    {
+      "source_text": "mine.",
+      "expected_word_by_word": "mir."
+    },
+    {
+      "source_text": "And we are meeting for the first time, say at",
+      "expected_word_by_word": "Und wir sind treffend für das erste Mal, sagen auf"
+    },
+    {
+      "source_text": "a party.",
+      "expected_word_by_word": "einer Party."
+    },
+    {
+      "source_text": "Hello there. I am Pete Waterman.",
+      "expected_word_by_word": "Hallo da. Ich bin Pete Waterman."
+    },
+    {
+      "source_text": "Hello, Mister Waterman. Nice to meet you. My name",
+      "expected_word_by_word": "Hallo, Herr Waterman. Nett zu treffen Sie. Mein Name"
+    },
+    {
+      "source_text": "is Susan Longworth.",
+      "expected_word_by_word": "Ist Susan Longworth."
+    },
+    {
+      "source_text": "Nice, to meet you, Miss Longworth. Did I",
+      "expected_word_by_word": "Nett, zu treffen Sie, Fräulein Longworth. Tat ich"
+    },
+    {
+      "source_text": "get your name right?",
+      "expected_word_by_word": "erhalten Ihren Namen richtig?"
+    },
+    {
+      "source_text": "Yes, you did. It's «long» as in «short» and",
+      "expected_word_by_word": "Ja, Sie taten. Es-ist «lang» wie in «kurz» und"
+    },
+    {
+      "source_text": "«worth» as in «Woolworth».",
+      "expected_word_by_word": "«worth» wie in «Woolworth»."
+    }
+  ]
+}
