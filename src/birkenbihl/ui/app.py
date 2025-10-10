@@ -23,9 +23,8 @@ def configure_page() -> None:
         initial_sidebar_state="collapsed",
     )
 
-    st.title("📚 Birkenbihl Sprachlernmethode")
-    st.markdown("*Dekodieren Sie Texte nach der Vera F. Birkenbihl Methode*")
-    st.divider()
+    st.markdown("### 📚 Birkenbihl Sprachlernmethode")
+    st.caption("Dekodieren Sie Texte nach der Vera F. Birkenbihl Methode")
 
 
 def initialize_session_state() -> None:
@@ -40,20 +39,18 @@ def initialize_session_state() -> None:
 
 def render_translation_tab() -> None:
     """Render the translation tab with input and results."""
-    st.header("Übersetzung")
-
     col1, col2 = st.columns([3, 1])
 
     with col1:
         text_input = st.text_area(
             "Text eingeben",
-            height=200,
+            height=150,
             placeholder="Geben Sie hier den zu übersetzenden Text ein...",
             help="Geben Sie einen Text in Englisch oder Spanisch ein",
         )
 
     with col2:
-        st.markdown("### Einstellungen")
+        st.markdown("**Einstellungen**")
 
         language_detection = st.selectbox(
             "Spracherkennung",
@@ -119,12 +116,9 @@ def render_translation_tab() -> None:
             selected_provider = filtered_providers[selected_provider_index]
         else:
             selected_provider = None
-            st.warning(
-                "⚠️ Kein Provider konfiguriert. Bitte fügen Sie einen Provider in den Einstellungen hinzu."
-            )
+            st.warning("⚠️ Kein Provider konfiguriert")
 
-        st.divider()
-
+        st.markdown("")  # Small spacing
         translate_button = st.button(
             "🔄 Übersetzen",
             type="primary",
@@ -193,19 +187,16 @@ def render_translation_results() -> None:
     """Render translation results with formatting."""
     translation = st.session_state.translation_result
 
-    st.divider()
-    st.subheader("Ergebnisse")
-
-    st.markdown(f"**Titel:** {translation.title}")
+    st.markdown("---")
     st.markdown(
-        f"**Von:** {translation.source_language.upper()} → **Nach:** {translation.target_language.upper()}"
+        f"**{translation.title}** | "
+        f"{translation.source_language.upper()} → {translation.target_language.upper()} | "
+        f"{len(translation.sentences)} Sätze"
     )
-    st.markdown(f"**Anzahl Sätze:** {len(translation.sentences)}")
-
-    st.divider()
 
     for i, sentence in enumerate(translation.sentences, 1):
-        with st.expander(f"Satz {i}: {sentence.source_text[:50]}...", expanded=True):
+        # Only expand first sentence, collapse others for compact view
+        with st.expander(f"Satz {i}: {sentence.source_text[:50]}...", expanded=(i == 1)):
             col1, col2 = st.columns(2)
 
             with col1:
@@ -218,15 +209,15 @@ def render_translation_results() -> None:
 
             st.markdown("**Wort-für-Wort Dekodierung:**")
 
-            alignment_html = "<div style='font-size: 14px; line-height: 2.5;'>"
+            alignment_html = "<div style='font-size: 13px; line-height: 1.8;'>"
             for alignment in sentence.word_alignments:
                 alignment_html += f"""
-                <span style='display: inline-block; margin: 4px; padding: 8px 12px;
-                             background-color: #f0f2f6; border-radius: 8px;
+                <span style='display: inline-block; margin: 2px; padding: 4px 8px;
+                             background-color: #f0f2f6; border-radius: 6px;
                              border: 1px solid #ddd;'>
-                    <div style='color: #0066cc; font-weight: 600;'>{alignment.source_word}</div>
-                    <div style='color: #666; font-size: 12px;'>↓</div>
-                    <div style='color: #009900; font-weight: 600;'>{alignment.target_word}</div>
+                    <div style='color: #0066cc; font-weight: 600; font-size: 12px;'>{alignment.source_word}</div>
+                    <div style='color: #666; font-size: 10px;'>↓</div>
+                    <div style='color: #009900; font-weight: 600; font-size: 12px;'>{alignment.target_word}</div>
                 </span>
                 """
             alignment_html += "</div>"
@@ -242,20 +233,20 @@ def render_provider_card(provider: ProviderConfig, index: int) -> None:
         index: Index of provider in the list
     """
     provider_icon = "⭐ " if provider.is_default else ""
+    # Compact: Show provider type and model in title, only default expanded
     with st.expander(
-        f"{provider_icon}{provider.name} ({provider.provider_type})", expanded=provider.is_default
+        f"{provider_icon}{provider.name} | {provider.provider_type} | {provider.model}",
+        expanded=False,
     ):
         col1, col2 = st.columns([3, 1])
 
         with col1:
-            st.markdown(f"**Provider-Typ:** {provider.provider_type}")
-            st.markdown(f"**Modell:** {provider.model}")
             masked_key = (
                 provider.api_key[:8] + "..." + provider.api_key[-4:]
                 if len(provider.api_key) > 12
                 else "***"
             )
-            st.markdown(f"**API-Schlüssel:** `{masked_key}`")
+            st.caption(f"API-Schlüssel: `{masked_key}`")
             if provider.is_default:
                 st.success("✓ Standard-Provider")
 
@@ -272,7 +263,7 @@ def render_provider_card(provider: ProviderConfig, index: int) -> None:
 
 def render_add_provider_form() -> None:
     """Render form for adding a new provider configuration."""
-    st.subheader("Neuen Provider hinzufügen")
+    st.markdown("**Neuen Provider hinzufügen**")
 
     # Step 1: Select provider type
     provider_types_list = ProviderRegistry.get_provider_types()
@@ -292,63 +283,54 @@ def render_add_provider_form() -> None:
         f"{valid_metadata[pt].display_name} ({pt})" for pt in valid_metadata.keys()
     ]
 
-    selected_provider_display = st.selectbox(
-        "1️⃣ Provider-Typ wählen",
-        options=provider_type_displays,
-        help="Wählen Sie den Anbieter (OpenAI, Anthropic, Google, etc.)",
-    )
+    # Step 1 & 2 in columns
+    col1, col2 = st.columns(2)
+    with col1:
+        selected_provider_display = st.selectbox(
+            "Provider-Typ",
+            options=provider_type_displays,
+            help="Wählen Sie den Anbieter",
+        )
 
     # Extract provider_type from display
     selected_provider_type = list(valid_metadata.keys())[
         provider_type_displays.index(selected_provider_display)
     ]
     provider_metadata = valid_metadata[selected_provider_type]
-
-    st.divider()
-
-    # Step 2: Select model from available models for this provider
     available_models = provider_metadata.default_models
 
-    selected_model = st.selectbox(
-        "2️⃣ Modell wählen",
-        options=available_models,
-        help=f"Verfügbare Modelle für {provider_metadata.display_name}",
-    )
-
-    st.divider()
+    with col2:
+        selected_model = st.selectbox(
+            "Modell",
+            options=available_models,
+            help=f"Modelle für {provider_metadata.display_name}",
+        )
 
     # Step 3: Name and API key
-    st.markdown("**3️⃣ Konfiguration**")
-
     suggested_name = f"{provider_metadata.display_name} - {selected_model}"
     provider_name = st.text_input(
         "Name",
         value=suggested_name,
         placeholder="z.B. Mein GPT-4",
-        help="Ein eindeutiger Name für diesen Provider (kann angepasst werden)",
     )
 
     api_key = st.text_input(
         "API-Schlüssel",
         type="password",
         placeholder="sk-...",
-        help="Ihr API-Schlüssel für diesen Provider",
     )
 
     is_default = st.checkbox(
-        "Als Standard-Provider setzen",
+        "Als Standard setzen",
         value=len(st.session_state.settings.providers) == 0,
-        help="Dieser Provider wird standardmäßig für Übersetzungen verwendet",
     )
-
-    st.divider()
 
     # Action buttons
     col1, col2 = st.columns(2)
     with col1:
         if st.button("✓ Provider hinzufügen", type="primary", use_container_width=True):
             if not provider_name or not api_key:
-                st.error("Bitte füllen Sie alle erforderlichen Felder aus.")
+                st.error("Bitte füllen Sie alle Felder aus.")
             else:
                 add_provider(
                     provider_name, selected_provider_type, selected_model, api_key, is_default
@@ -364,20 +346,15 @@ def render_add_provider_form() -> None:
 
 def render_settings_tab() -> None:
     """Render the settings tab with provider management."""
-    st.header("Einstellungen")
-
-    st.markdown("Verwalten Sie Ihre AI-Provider-Konfigurationen für Übersetzungen.")
-    st.divider()
-
-    st.subheader("Konfigurierte Provider")
+    st.markdown("**Konfigurierte Provider**")
 
     if not st.session_state.settings.providers:
-        st.info("Noch keine Provider konfiguriert. Fügen Sie einen Provider hinzu, um zu beginnen.")
+        st.info("Noch keine Provider konfiguriert.")
     else:
         for i, provider in enumerate(st.session_state.settings.providers):
             render_provider_card(provider, i)
 
-    st.divider()
+    st.markdown("")  # Small spacing
 
     if st.session_state.show_add_provider_form:
         render_add_provider_form()
@@ -386,15 +363,14 @@ def render_settings_tab() -> None:
             st.session_state.show_add_provider_form = True
             st.rerun()
 
-    st.divider()
-    st.subheader("Allgemeine Einstellungen")
+    st.markdown("---")
+    st.markdown("**Allgemeine Einstellungen**")
 
     with st.form("general_settings_form"):
         target_language = st.selectbox(
             "Standard-Zielsprache",
             options=["de", "en", "es"],
             index=["de", "en", "es"].index(st.session_state.settings.target_language),
-            help="Wählen Sie die Standard-Zielsprache für Übersetzungen",
         )
 
         if st.form_submit_button("Speichern", type="primary", use_container_width=True):
