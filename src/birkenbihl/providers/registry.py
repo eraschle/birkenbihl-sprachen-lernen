@@ -99,7 +99,7 @@ def _create_openai_models() -> dict[str, ProviderMetadata]:
         ("heroku", "Heroku", openai_models),
         ("ollama", "Ollama (Local)", ["llama3.1", "llama3.1:70b", "mistral", "codellama"]),
         ("openrouter", "OpenRouter", openai_models),  # Supports many models
-        ("publicai", "PublicAI", ["swiss-ai/apertus-8b-instruct"]),
+        # ("publicai", "PublicAI", ["swiss-ai/apertus-8b-instruct"]),
         (
             "hugginface",
             "HuggingFace",
@@ -357,6 +357,7 @@ class ProviderRegistry:
         # Use "*" as wildcard for all models of a provider
         streaming_blacklist = {
             ("bedrock", "*"),  # All Bedrock models: streaming returns as single chunk
+            ("hugginface", "*"),  # HuggingFace Inference API may not support streaming properly
         }
 
         # Check exact matches first

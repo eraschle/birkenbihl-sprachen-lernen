@@ -19,9 +19,18 @@ from birkenbihl.ui.edit_translation import render_edit_translation_tab
 def configure_logging() -> None:
     """Configure logging for the application.
 
-    Sets up logging to stdout with colored formatting and appropriate levels.
+    Sets up logging to stdout with timestamps and appropriate levels.
+    Only runs once per session.
     """
-    # Create formatter with colors and timestamps
+    # Use session state to track if logging is configured (survives reruns)
+    if "logging_configured" not in st.session_state:
+        st.session_state.logging_configured = False
+
+    # Skip if already configured (Streamlit reruns)
+    if st.session_state.logging_configured:
+        return
+
+    # Create formatter with timestamps
     formatter = logging.Formatter(
         "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S"
@@ -34,10 +43,20 @@ def configure_logging() -> None:
     # Configure root logger
     root_logger = logging.getLogger()
     root_logger.setLevel(logging.INFO)
-    root_logger.addHandler(console_handler)
+
+    # Clear existing handlers to avoid duplicates
+    if root_logger.handlers:
+        root_logger.handlers.clear()
+
+    # Only add handler if none exist
+    if not root_logger.handlers:
+        root_logger.addHandler(console_handler)
 
     # Set specific levels for birkenbihl modules
-    logging.getLogger("birkenbihl").setLevel(logging.INFO)
+    birkenbihl_logger = logging.getLogger("birkenbihl")
+    birkenbihl_logger.setLevel(logging.INFO)
+    birkenbihl_logger.propagate = True
+
     logging.getLogger("birkenbihl.providers").setLevel(logging.DEBUG)
     logging.getLogger("birkenbihl.ui").setLevel(logging.INFO)
 
@@ -46,8 +65,13 @@ def configure_logging() -> None:
     logging.getLogger("httpcore").setLevel(logging.WARNING)
     logging.getLogger("openai").setLevel(logging.WARNING)
     logging.getLogger("anthropic").setLevel(logging.WARNING)
+    logging.getLogger("streamlit").setLevel(logging.WARNING)
 
+    st.session_state.logging_configured = True
     logging.info("Logging configured successfully")
+
+
+logger = logging.getLogger(__name__)
 
 
 def configure_page() -> None:
@@ -102,9 +126,27 @@ def initialize_session_state() -> None:
 
 def main() -> None:
     """Main entry point for Streamlit app."""
+    # Configure logging first (uses session state, so must be after Streamlit init)
     configure_logging()
+
     configure_page()
     initialize_session_state()
+
+    # Log app start only once (not on every rerun)
+    if "app_started_logged" not in st.session_state:
+        logger.info("=" * 60)
+        logger.info("Birkenbihl App started")
+        logger.info("=" * 60)
+
+        # Log current settings
+        num_providers = len(st.session_state.settings.providers)
+        logger.info("App initialized: %d provider(s) configured", num_providers)
+        if num_providers > 0:
+            default_provider = st.session_state.settings.get_default_provider()
+            if default_provider:
+                logger.info("Default provider: %s (%s)", default_provider.name, default_provider.provider_type)
+
+        st.session_state.app_started_logged = True
 
     # Sidebar navigation
     with st.sidebar:

@@ -28,6 +28,8 @@ def render_translation_tab() -> None:
     # Initialize session state for uploaded text content
     if "uploaded_text_content" not in st.session_state:
         st.session_state.uploaded_text_content = ""
+    if "last_uploaded_file" not in st.session_state:
+        st.session_state.last_uploaded_file = None
 
     col1, col2 = st.columns([3, 1])
 
@@ -57,16 +59,23 @@ def render_translation_tab() -> None:
         )
 
         if uploaded_file is not None:
-            # Read file content
-            content = uploaded_file.read().decode("utf-8")
-            st.session_state.uploaded_text_content = content
-            st.success(f"✓ Datei '{uploaded_file.name}' geladen ({len(content)} Zeichen)")
-            st.rerun()
+            # Only process if it's a new file (avoid re-logging on rerun)
+            file_id = f"{uploaded_file.name}_{uploaded_file.size}"
+            if st.session_state.last_uploaded_file != file_id:
+                # Read file content
+                content = uploaded_file.read().decode("utf-8")
+                st.session_state.uploaded_text_content = content
+                st.session_state.last_uploaded_file = file_id
+                logger.info("File uploaded: %s (%d characters)", uploaded_file.name, len(content))
+                st.success(f"✓ Datei '{uploaded_file.name}' geladen ({len(content)} Zeichen)")
+                st.rerun()
 
         # Clear button to reset the text area
         if st.session_state.uploaded_text_content:
             if st.button("🗑️ Text löschen", use_container_width=True):
                 st.session_state.uploaded_text_content = ""
+                st.session_state.last_uploaded_file = None
+                logger.info("Text cleared by user")
                 st.rerun()
 
         st.markdown("---")
@@ -153,9 +162,12 @@ def render_translation_tab() -> None:
         )
 
     if translate_button:
+        logger.info("Translation button clicked")
         if not title_input.strip():
+            logger.warning("Translation aborted: No title provided")
             st.error("Bitte geben Sie einen Titel ein.")
         elif not text_input.strip():
+            logger.warning("Translation aborted: No text provided")
             st.error("Bitte geben Sie einen Text ein.")
         else:
             model = TranslationModel(
@@ -164,17 +176,28 @@ def render_translation_tab() -> None:
                 source_language=language_detection,
                 target_language=target_lang,
             )
+            logger.info(
+                "Translation initiated: title='%s', text_length=%d chars, source=%s, target=%s, streaming=%s",
+                title_input[:50],
+                len(text_input),
+                language_detection,
+                target_lang,
+                use_streaming,
+            )
             if use_streaming:
                 # Use streaming mode with progress bar
+                logger.info("Using streaming mode")
                 try:
                     asyncio.run(translate_text_streaming(model, selected_provider))
                 except Exception as stream_error:
                     # Fallback to sync mode if streaming fails
+                    logger.error("Streaming failed: %s", str(stream_error), exc_info=True)
                     st.warning(f"Streaming fehlgeschlagen: {str(stream_error)}")
                     st.info("Verwende Standardmodus ohne Fortschrittsanzeige...")
                     translate_text(model, selected_provider)
             else:
                 # Use traditional sync mode
+                logger.info("Using sync mode")
                 translate_text(model, selected_provider)
 
     if st.session_state.translation_result:
@@ -249,7 +272,9 @@ async def translate_text_streaming(model: TranslationModel, provider: ProviderCo
         target_lang_option: Target language selection
         provider: Provider configuration to use for translation
     """
+    logger.info("Streaming function started")
     if not provider:
+        logger.warning("Streaming: No provider configured")
         st.error("Kein Provider konfiguriert. Bitte fügen Sie einen Provider in den Einstellungen hinzu.")
         return
 
@@ -261,30 +286,38 @@ async def translate_text_streaming(model: TranslationModel, provider: ProviderCo
         try:
             source_lang = languages.get_language_code_by(model.source_language)
         except KeyError:
+            logger.warning("Streaming: Unknown source language %s", model.source_language)
             source_lang = "en"
 
     # Target language must be a valid language (no "auto")
     try:
         target_lang = languages.get_language_code_by(model.target_language)
     except KeyError:
+        logger.warning("Streaming: Unknown target language %s", model.target_language)
         target_lang = "de"
 
     try:
+        logger.info("Streaming: Creating translator")
         translator = PydanticAITranslator(provider)
 
         # Handle language detection if needed
         if source_lang == "auto":
+            logger.info("Streaming: Detecting language")
             detected_lang = translator.detect_language(model.text)
             st.info(f"Erkannte Sprache: {detected_lang.upper()}")
             source_lang = detected_lang
 
         # Create progress bar
+        logger.info("Streaming: Creating progress bar")
         progress_bar = st.progress(0.0, text="Starte Übersetzung...")
 
         # Stream translation with progress updates
+        logger.info("Streaming: Starting translation stream")
         translations = translator.translate_stream(model.text, source_lang, target_lang)
+        logger.info("Streaming: Entering async loop")
         async for progress, translation in translations:
             if translation:
+                logger.debug("Streaming: Progress update %.0f%%", progress * 100)
                 # Update progress bar
                 progress_bar.progress(progress, text=f"Übersetze: {int(progress * 100)}%")
 
@@ -293,10 +326,13 @@ async def translate_text_streaming(model: TranslationModel, provider: ProviderCo
                 st.session_state.translation_result = translation
 
         # Clear progress bar
+        logger.info("Streaming: Translation complete, clearing progress bar")
         progress_bar.empty()
+        logger.info("Streaming: UI Translation successful - %d sentences", len(translation.sentences) if translation else 0)
         st.success(f"Übersetzung erfolgreich mit {provider.name}!")
 
     except Exception as e:
+        logger.error("Streaming: Translation failed - %s: %s", type(e).__name__, str(e), exc_info=True)
         st.error(f"Fehler bei der Übersetzung: {str(e)}")
         st.info("Bitte überprüfen Sie:\n- API-Schlüssel ist korrekt\n- Modellname ist gültig\n- Internetverbindung")
 

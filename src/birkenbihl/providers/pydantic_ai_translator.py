@@ -174,6 +174,7 @@ class PydanticAITranslator:
             "ollama": "pydantic_ai.providers.openai.OpenAIProvider",
             "openrouter": "pydantic_ai.providers.openai.OpenAIProvider",
             "publicai": "pydantic_ai.providers.openai.OpenAIProvider",
+            "hugginface": "pydantic_ai.providers.openai.OpenAIProvider",
             "together": "pydantic_ai.providers.openai.OpenAIProvider",
             "vercel": "pydantic_ai.providers.openai.OpenAIProvider",
             "litellm": "pydantic_ai.providers.openai.OpenAIProvider",

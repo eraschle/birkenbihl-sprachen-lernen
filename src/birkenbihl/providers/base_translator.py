@@ -5,6 +5,7 @@ Provides common translation logic shared across OpenAI, Anthropic, and other pro
 
 import datetime
 import logging
+import time
 from collections.abc import AsyncIterator
 from typing import Protocol
 
@@ -82,9 +83,35 @@ class BaseTranslator:
         logger.debug("Created translation prompt")
 
         # Run PydanticAI agent synchronously
-        logger.info("Sending translation request to AI model...")
+        logger.info("=" * 60)
+        logger.info("API REQUEST START")
+        logger.info("=" * 60)
+        logger.info("Model: %s", self._agent.model)
+        logger.info("Source Language: %s", source_lang)
+        logger.info("Target Language: %s", target_lang)
+        logger.info("Sentences to translate: %d", len(sentences))
+        logger.debug("Prompt: %s", user_prompt[:500] + "..." if len(user_prompt) > 500 else user_prompt)
+
+        start_time = time.time()
         result = self._agent.run_sync(user_prompt)
-        logger.info("Received response from AI: %d sentences", len(result.output.sentences))
+        elapsed_time = time.time() - start_time
+
+        logger.info("=" * 60)
+        logger.info("API RESPONSE RECEIVED")
+        logger.info("=" * 60)
+        logger.info("Response time: %.2f seconds", elapsed_time)
+        logger.info("Sentences received: %d", len(result.output.sentences))
+        logger.info("Response cost: %s", result.cost() if hasattr(result, 'cost') else "N/A")
+
+        # Log each translated sentence (DEBUG level)
+        for i, sent in enumerate(result.output.sentences, 1):
+            logger.debug(
+                "Sentence %d: '%s' → '%s' (%d word alignments)",
+                i,
+                sent.source_text[:50] + "..." if len(sent.source_text) > 50 else sent.source_text,
+                sent.natural_translation[:50] + "..." if len(sent.natural_translation) > 50 else sent.natural_translation,
+                len(sent.word_alignments),
+            )
 
         # Validation: If AI merged sentences, redistribute them
         if len(result.output.sentences) == 1 and len(sentences) > 1:
@@ -145,7 +172,15 @@ class BaseTranslator:
         last_sentence_count = 0
         final_translation = None
 
-        logger.debug("Initiating streaming API request...")
+        logger.info("=" * 60)
+        logger.info("STREAMING API REQUEST START")
+        logger.info("=" * 60)
+        logger.info("Model: %s", self._agent.model)
+        logger.info("Source Language: %s", source_lang)
+        logger.info("Target Language: %s", target_lang)
+        logger.info("Sentences to translate: %d", total_sentences)
+
+        start_time = time.time()
         async with self._agent.run_stream(user_prompt) as result:
             async for partial_response in result.stream_output(debounce_by=0.01):
                 current_sentence_count = len(partial_response.sentences)
@@ -170,7 +205,15 @@ class BaseTranslator:
             logger.debug("Yielding final translation result")
             yield (1.0, final_translation)
 
-        logger.info("Streaming translation completed")
+        elapsed_time = time.time() - start_time
+        logger.info("=" * 60)
+        logger.info("STREAMING API RESPONSE COMPLETE")
+        logger.info("=" * 60)
+        logger.info("Total streaming time: %.2f seconds", elapsed_time)
+        if final_translation:
+            logger.info("Total sentences: %d", len(final_translation.sentences))
+            logger.info("Total word alignments: %d", sum(len(s.word_alignments) for s in final_translation.sentences))
+            logger.info("Average time per sentence: %.2f seconds", elapsed_time / len(final_translation.sentences))
 
     def detect_language(self, text: str) -> str:
         """Detect language of given text.
