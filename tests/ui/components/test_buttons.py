@@ -1,6 +1,5 @@
 """Tests for button components."""
 
-import pytest
 
 from birkenbihl.ui.components.buttons import ActionButtonGroup, BackButton, ButtonConfig, SaveCancelButtons
 

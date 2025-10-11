@@ -75,9 +75,7 @@ class TestProviderSelector:
         assert "Anthropic Claude" in names
         assert "OpenAI GPT-3.5" in names
 
-    def test_get_default_index_with_default_provider(
-        self, context_with_providers: ProviderSelectorContext
-    ) -> None:
+    def test_get_default_index_with_default_provider(self, context_with_providers: ProviderSelectorContext) -> None:
         """Test getting default index when default provider is set."""
         selector = ProviderSelector(context_with_providers)
         index = selector._get_default_index()

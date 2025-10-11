@@ -154,7 +154,6 @@ def render_natural_edit_mode(translation: Translation, sentence: Sentence, servi
     # Use SessionCacheManager instead of direct st.session_state access
     suggestions = SessionCacheManager.get_suggestions(sentence.uuid)
     if suggestions:
-
         st.markdown("**Vorschläge:**")
         selected_suggestion = st.radio(
             "Wählen Sie eine Übersetzung:", options=suggestions, key=f"radio_suggestions_{sentence.uuid}"
@@ -202,9 +201,7 @@ def render_natural_edit_mode(translation: Translation, sentence: Sentence, servi
 # render_alignment_preview removed - now using AlignmentPreview component
 
 
-def _generate_suggestions(
-    translation: Translation, sentence: Sentence, provider: ProviderConfig, service
-) -> None:
+def _generate_suggestions(translation: Translation, sentence: Sentence, provider: ProviderConfig, service) -> None:
     """Generate translation suggestions and cache them.
 
     Helper function to keep render_natural_edit_mode() clean.

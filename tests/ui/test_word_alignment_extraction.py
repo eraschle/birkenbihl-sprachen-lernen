@@ -1,14 +1,15 @@
 """Tests for word alignment extraction in UI."""
 
-import pytest
 
-from birkenbihl.models.translation import Sentence, WordAlignment
+from birkenbihl.models.translation import WordAlignment
 
 
 def test_extract_target_words_with_special_characters():
     """Test that target words include special cases like 'um' from 'um zu'."""
     # Arrange
-    natural_translation = "Aber ich verstehe, dass deine Zeit gekommen ist, dass Gott dich gerufen hat, um an Seiner Seite zu sein."
+    natural_translation = (
+        "Aber ich verstehe, dass deine Zeit gekommen ist, dass Gott dich gerufen hat, um an Seiner Seite zu sein."
+    )
 
     # Word alignments as they might come from the AI
     alignments = [
@@ -32,6 +33,7 @@ def test_extract_target_words_with_special_characters():
 
     # Extract target words using the same logic as in the UI
     import re
+
     target_words = re.findall(r"\b\w+\b", natural_translation)
 
     # Also include all words from existing alignments
@@ -78,6 +80,7 @@ def test_no_empty_or_whitespace_alignments():
 
     # Extract target words
     import re
+
     target_words = re.findall(r"\b\w+\b", natural_translation)
 
     # Include existing alignment words (filter out whitespace)

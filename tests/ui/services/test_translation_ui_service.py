@@ -1,5 +1,6 @@
 """Tests for TranslationUIService."""
 
+from datetime import UTC
 from unittest.mock import Mock, patch
 from uuid import uuid4
 
@@ -158,10 +159,10 @@ class TestTranslationUIServiceImpl:
     @patch("birkenbihl.ui.services.translation_ui_service.JsonStorageProvider")
     def test_list_translations_sorts_by_date(self, mock_storage_cls, mock_service_cls):
         """Test that list_translations sorts by updated_at descending."""
-        from datetime import datetime, timedelta, timezone
+        from datetime import datetime, timedelta
 
         # Create translations with different dates
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         # Create mock translations with proper updated_at attribute
         trans1 = Mock(spec=Translation)

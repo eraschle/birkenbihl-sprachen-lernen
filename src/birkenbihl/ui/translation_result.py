@@ -16,10 +16,10 @@ from pydantic import BaseModel
 
 from birkenbihl.models import languages
 from birkenbihl.models.settings import ProviderConfig
-from birkenbihl.models.translation import Sentence, Translation, WordAlignment
+from birkenbihl.models.translation import Sentence, Translation
 from birkenbihl.providers.pydantic_ai_translator import PydanticAITranslator
 from birkenbihl.services.settings_service import SettingsService
-from birkenbihl.ui.components import AlignmentEditor, AlignmentPreview, BackButton, ProviderSelector
+from birkenbihl.ui.components import AlignmentEditor, AlignmentPreview, ProviderSelector
 from birkenbihl.ui.models.context import AlignmentContext, ProviderSelectorContext
 from birkenbihl.ui.services.translation_ui_service import TranslationUIServiceImpl
 from birkenbihl.ui.state.cache import SessionCacheManager
@@ -275,7 +275,6 @@ def render_natural_edit_mode(
     # Use SessionCacheManager instead of direct st.session_state access
     suggestions = SessionCacheManager.get_suggestions(sentence.uuid)
     if suggestions:
-
         st.markdown("**Vorschläge:**")
         selected_suggestion = st.radio(
             "Wählen Sie eine Übersetzung:", options=suggestions, key=f"radio_suggestions_{sentence.uuid}"
@@ -370,9 +369,7 @@ def render_alignment_edit_mode(
         service: TranslationService for updates
         is_new: True if this is a newly created translation
     """
-    context = AlignmentContext(
-        sentence=sentence, translation=translation, service=service, is_new_translation=is_new
-    )
+    context = AlignmentContext(sentence=sentence, translation=translation, service=service, is_new_translation=is_new)
     editor = AlignmentEditor(context)
     editor.render()
 
@@ -433,11 +430,18 @@ def _translate_text(model: TranslationModel, provider: ProviderConfig | None, pr
             st.error("Kein Provider konfiguriert. Bitte fügen Sie einen Provider in den Einstellungen hinzu.")
         return
 
-    source_lang = "auto" if model.source_language == "Automatisch" else languages.get_language_code_by(model.source_language)
+    source_lang = (
+        "auto" if model.source_language == "Automatisch" else languages.get_language_code_by(model.source_language)
+    )
     target_lang = languages.get_language_code_by(model.target_language)
 
-    logger.info("UI: Starting translation - provider=%s, source=%s, target=%s, title='%s'",
-                provider.name, source_lang, target_lang, model.title)
+    logger.info(
+        "UI: Starting translation - provider=%s, source=%s, target=%s, title='%s'",
+        provider.name,
+        source_lang,
+        target_lang,
+        model.title,
+    )
 
     try:
         with progress_container:
@@ -476,7 +480,9 @@ async def _translate_text_streaming(model: TranslationModel, provider: ProviderC
         st.error("Kein Provider konfiguriert. Bitte fügen Sie einen Provider in den Einstellungen hinzu.")
         return
 
-    source_lang = "auto" if model.source_language == "Automatisch" else languages.get_language_code_by(model.source_language)
+    source_lang = (
+        "auto" if model.source_language == "Automatisch" else languages.get_language_code_by(model.source_language)
+    )
     target_lang = languages.get_language_code_by(model.target_language)
 
     try:
@@ -508,7 +514,10 @@ async def _translate_text_streaming(model: TranslationModel, provider: ProviderC
                 final_translation = translation
 
         progress_bar.empty()
-        logger.info("Streaming: UI Translation successful - %d sentences", len(final_translation.sentences) if final_translation else 0)
+        logger.info(
+            "Streaming: UI Translation successful - %d sentences",
+            len(final_translation.sentences) if final_translation else 0,
+        )
 
         st.session_state.is_new_translation = True
         st.session_state.detected_language_info = detected_language_info

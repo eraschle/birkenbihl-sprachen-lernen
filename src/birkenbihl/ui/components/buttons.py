@@ -4,7 +4,6 @@ Provides standardized button groups for common UI actions.
 """
 
 from dataclasses import dataclass
-from typing import Callable
 
 import streamlit as st
 
@@ -125,9 +124,7 @@ class SaveCancelButtons(ActionButtonGroup):
                 return "save"
 
         with col2:
-            if st.button(
-                "✗ Abbrechen", key=f"{self.key}_cancel" if self.key else "cancel", use_container_width=True
-            ):
+            if st.button("✗ Abbrechen", key=f"{self.key}_cancel" if self.key else "cancel", use_container_width=True):
                 return "cancel"
 
         return None

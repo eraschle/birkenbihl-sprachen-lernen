@@ -5,7 +5,6 @@ improving code readability and maintainability.
 """
 
 from dataclasses import dataclass
-from uuid import UUID
 
 from birkenbihl.models.settings import ProviderConfig
 from birkenbihl.models.translation import Sentence, Translation

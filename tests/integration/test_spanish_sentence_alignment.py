@@ -1,7 +1,5 @@
 """Integration test for Spanish sentence alignment with edge cases."""
 
-import pytest
-from uuid import uuid4
 
 from birkenbihl.models.translation import Sentence, Translation, WordAlignment
 from birkenbihl.models.validation import validate_alignment_complete
@@ -14,7 +12,9 @@ class TestSpanishSentenceAlignment:
         """Test complete alignment for: 'Mas comprendo que llegó tu tiempo, que Dios te ha llamado para estar a Su lado.'"""
         # Arrange
         source_text = "Mas comprendo que llegó tu tiempo, que Dios te ha llamado para estar a Su lado."
-        natural_translation = "Aber ich verstehe, dass deine Zeit gekommen ist, dass Gott dich gerufen hat, um an Seiner Seite zu sein."
+        natural_translation = (
+            "Aber ich verstehe, dass deine Zeit gekommen ist, dass Gott dich gerufen hat, um an Seiner Seite zu sein."
+        )
 
         # Corrected word alignments (fixing the reported issues)
         alignments = [
@@ -59,7 +59,9 @@ class TestSpanishSentenceAlignment:
     def test_broken_alignments_before_fix(self):
         """Test that the broken alignments (before fix) are correctly identified as invalid."""
         # Arrange
-        natural_translation = "Aber ich verstehe, dass deine Zeit gekommen ist, dass Gott dich gerufen hat, um an Seiner Seite zu sein."
+        natural_translation = (
+            "Aber ich verstehe, dass deine Zeit gekommen ist, dass Gott dich gerufen hat, um an Seiner Seite zu sein."
+        )
 
         # Broken alignments (as they were before fix)
         broken_alignments = [
@@ -87,9 +89,11 @@ class TestSpanishSentenceAlignment:
         # Assert
         assert not is_valid, "Broken alignment should be invalid"
         # Error could be "zusätzliche wörter" (extra whitespace) or "fehlt" (missing words)
-        assert "zusätzliche" in error_message.lower() or "fehlt" in error_message.lower() or \
-               "nicht vollständig" in error_message.lower(), \
-            f"Error should indicate alignment issues, got: {error_message}"
+        assert (
+            "zusätzliche" in error_message.lower()
+            or "fehlt" in error_message.lower()
+            or "nicht vollständig" in error_message.lower()
+        ), f"Error should indicate alignment issues, got: {error_message}"
 
     def test_word_extraction_includes_um(self):
         """Test that 'um' is correctly extracted from natural translation."""
@@ -98,6 +102,7 @@ class TestSpanishSentenceAlignment:
 
         # Extract words using regex (same as UI)
         import re
+
         target_words = re.findall(r"\b\w+\b", natural_translation)
 
         # Assert
@@ -111,7 +116,9 @@ class TestSpanishSentenceAlignment:
         """Test creating a complete Translation object with the sentence."""
         # Arrange
         source_text = "Mas comprendo que llegó tu tiempo, que Dios te ha llamado para estar a Su lado."
-        natural_translation = "Aber ich verstehe, dass deine Zeit gekommen ist, dass Gott dich gerufen hat, um an Seiner Seite zu sein."
+        natural_translation = (
+            "Aber ich verstehe, dass deine Zeit gekommen ist, dass Gott dich gerufen hat, um an Seiner Seite zu sein."
+        )
 
         alignments = [
             WordAlignment(source_word="Mas", target_word="Aber", position=0),

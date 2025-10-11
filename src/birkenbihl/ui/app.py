@@ -10,9 +10,9 @@ import sys
 import streamlit as st
 
 from birkenbihl.services.settings_service import SettingsService
+from birkenbihl.ui.manage_translations import render_manage_translations_tab
 from birkenbihl.ui.settings import render_settings_tab
 from birkenbihl.ui.translation import render_translation_tab
-from birkenbihl.ui.manage_translations import render_manage_translations_tab
 from birkenbihl.ui.translation_result import render_translation_result_tab
 
 
@@ -31,10 +31,7 @@ def configure_logging() -> None:
         return
 
     # Create formatter with timestamps
-    formatter = logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S"
-    )
+    formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
 
     # Console handler
     console_handler = logging.StreamHandler(sys.stdout)

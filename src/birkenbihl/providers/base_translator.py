@@ -101,7 +101,7 @@ class BaseTranslator:
         logger.info("=" * 60)
         logger.info("Response time: %.2f seconds", elapsed_time)
         logger.info("Sentences received: %d", len(result.output.sentences))
-        logger.info("Response cost: %s", result.cost() if hasattr(result, 'cost') else "N/A")
+        logger.info("Response cost: %s", result.cost() if hasattr(result, "cost") else "N/A")
 
         # Log each translated sentence (DEBUG level)
         for i, sent in enumerate(result.output.sentences, 1):
@@ -109,7 +109,9 @@ class BaseTranslator:
                 "Sentence %d: '%s' → '%s' (%d word alignments)",
                 i,
                 sent.source_text[:50] + "..." if len(sent.source_text) > 50 else sent.source_text,
-                sent.natural_translation[:50] + "..." if len(sent.natural_translation) > 50 else sent.natural_translation,
+                sent.natural_translation[:50] + "..."
+                if len(sent.natural_translation) > 50
+                else sent.natural_translation,
                 len(sent.word_alignments),
             )
 
@@ -137,9 +139,11 @@ class BaseTranslator:
         # Convert AI response to domain model
         logger.debug("Converting AI response to domain model")
         translation = self._convert_to_domain_model(result.output, source_lang, target_lang)
-        logger.info("Translation complete: %d sentences, %d total word alignments",
-                   len(translation.sentences),
-                   sum(len(s.word_alignments) for s in translation.sentences))
+        logger.info(
+            "Translation complete: %d sentences, %d total word alignments",
+            len(translation.sentences),
+            sum(len(s.word_alignments) for s in translation.sentences),
+        )
         return translation
 
     async def translate_stream(
@@ -191,8 +195,12 @@ class BaseTranslator:
                     progress = current_sentence_count / total_sentences
                     progress = min(progress, 1.0)
 
-                    logger.info("Streaming progress: %d/%d sentences (%.0f%%)",
-                               current_sentence_count, total_sentences, progress * 100)
+                    logger.info(
+                        "Streaming progress: %d/%d sentences (%.0f%%)",
+                        current_sentence_count,
+                        total_sentences,
+                        progress * 100,
+                    )
 
                     # Convert partial response to domain model
                     final_translation = self._convert_to_domain_model(partial_response, source_lang, target_lang)
