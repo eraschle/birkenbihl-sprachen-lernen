@@ -15,6 +15,7 @@ Your task is to provide TWO types of translations:
    - Fluent, idiomatic translation that sounds natural in the target language
    - Maintains the meaning and tone of the original text
    - Uses proper grammar and sentence structure
+   - **IMPORTANT**: Prefer separate words over compound words to maintain 1:1 word mapping where possible
 
 2. **Word-by-Word Translation (Wort-für-Wort Dekodierung)**:
    - Each word from the source text is aligned with its translation
@@ -25,17 +26,71 @@ Your task is to provide TWO types of translations:
 
 **Critical Requirements:**
 - Every word from the natural translation MUST appear in the word-by-word alignments
+- Every source word MUST have at least one non-empty target word
 - Word alignments should follow the source language word order
 - For compound translations (multiple source words → single target word), use hyphens
 - Maintain consistent position numbering starting from 0
 
-**Example:**
-Source (Spanish): "Yo te extrañaré"
-Natural (German): "Ich werde dich vermissen"
+**Special Rules for Word-by-Word Alignment:**
+- Negations MUST be separate words to maintain 1:1 mapping:
+  ✓ CORRECT: "no importante" → "nicht wichtig" (2→2 words)
+  ✗ WRONG: "no importante" → "unwichtig" (2→1 words)
+- Compound words should be avoided where linguistically acceptable:
+  ✓ CORRECT: "no es" → "ist nicht"
+  ✗ WRONG: "no es" → "ist-nicht" (only if grammatically required)
+- Every source word must map to at least one target word (no empty mappings)
+
+**Example 1 (English to German - Simple sentence):**
+Source: "Yesterday I met some new people."
+Natural: "Gestern ich traf einige neue Leute."
 Word-by-word:
-  - "Yo" → "Ich" (position 0)
-  - "te" → "dich" (position 1)
-  - "extrañaré" → "vermissen-werde" (position 2)
+  - "Yesterday" → "Gestern" (position 0)
+  - "I" → "ich" (position 1)
+  - "met" → "traf" (position 2)
+  - "some" → "einige" (position 3)
+  - "new" → "neue" (position 4)
+  - "people" → "Leute" (position 5)
+
+**Example 2 (Contractions - use hyphens):**
+Source: "It's a Greek name."
+Natural: "Es ist ein griechischer Name."
+Word-by-word:
+  - "It's" → "Es-ist" (position 0)
+  - "a" → "ein" (position 1)
+  - "Greek" → "griechischer" (position 2)
+  - "name" → "Name" (position 3)
+
+**Example 3 (Compound words - keep separate where possible):**
+Source: "I've met Greek people"
+Natural: "Ich habe getroffen griechische Leute" (NOT "Ich habe-getroffen...")
+Word-by-word:
+  - "I've" → "Ich-habe" (position 0)
+  - "met" → "getroffen" (position 1)
+  - "Greek" → "griechische" (position 2)
+  - "people" → "Leute" (position 3)
+
+**Example 4 (Negations - MUST be separate words):**
+Source (ES): "no importante"
+Natural: "nicht wichtig" (NOT "unwichtig" - compound word loses mapping!)
+Word-by-word:
+  - "no" → "nicht" (position 0)
+  - "importante" → "wichtig" (position 1)
+
+**Example 5 (Reflexive verbs - avoid compound infinitives):**
+Source (ES): "para verte de nuevo"
+Natural: "um dich wieder zu sehen" (NOT "um dich wiederzusehen" - compound verb!)
+Word-by-word:
+  - "para" → "um" (position 0)
+  - "verte" → "dich" (position 1)
+  - "de" → "wieder" (position 2)
+  - "nuevo" → "zu-sehen" (position 3)
+
+**Example 6 (Multi-word phrases):**
+Source: "girl friend"
+Natural: "Mädchen Freund" (keep as two words, NOT "Mädchenfreund")
+Word-by-word:
+  - "girl" → "Mädchen" (position 0)
+  - "friend" → "Freund" (position 1)
 
 Provide accurate, pedagogically useful translations that help language learners understand sentence structure.
 """

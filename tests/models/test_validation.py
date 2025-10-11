@@ -1,7 +1,7 @@
 """Tests for translation validation functions."""
 
 from birkenbihl.models.translation import WordAlignment
-from birkenbihl.models.validation import validate_alignment_complete
+from birkenbihl.models.validation import validate_alignment_complete, validate_source_words_mapped
 
 
 class TestValidateAlignmentComplete:
@@ -174,3 +174,84 @@ class TestValidateAlignmentComplete:
         assert "sehr" in error.lower()
         assert "fehlende" in error.lower()
         assert "zusätzliche" in error.lower()
+
+
+class TestValidateSourceWordsMapped:
+    """Tests for validate_source_words_mapped function."""
+
+    def test_all_source_words_mapped(self):
+        """Test successful validation when all source words have targets."""
+        alignments = [
+            WordAlignment(source_word="no", target_word="nicht", position=0),
+            WordAlignment(source_word="importante", target_word="wichtig", position=1),
+        ]
+
+        is_valid, error = validate_source_words_mapped(alignments)
+
+        assert is_valid is True
+        assert error is None
+
+    def test_source_word_with_empty_target(self):
+        """Test validation fails when source word has empty target."""
+        alignments = [
+            WordAlignment(source_word="no", target_word="", position=0),
+            WordAlignment(source_word="importante", target_word="unwichtig", position=1),
+        ]
+
+        is_valid, error = validate_source_words_mapped(alignments)
+
+        assert is_valid is False
+        assert error is not None
+        assert "no" in error
+        assert "quellwörter ohne zielwort" in error.lower()
+
+    def test_source_word_with_whitespace_target(self):
+        """Test validation fails when source word has only whitespace target."""
+        alignments = [
+            WordAlignment(source_word="ha", target_word="gerufen-hat", position=0),
+            WordAlignment(source_word="llamado", target_word=" ", position=1),
+        ]
+
+        is_valid, error = validate_source_words_mapped(alignments)
+
+        assert is_valid is False
+        assert error is not None
+        assert "llamado" in error
+        assert "quellwörter ohne zielwort" in error.lower()
+
+    def test_multiple_unmapped_source_words(self):
+        """Test validation reports all unmapped source words."""
+        alignments = [
+            WordAlignment(source_word="ha", target_word="", position=0),
+            WordAlignment(source_word="llamado", target_word=" ", position=1),
+            WordAlignment(source_word="para", target_word="um", position=2),
+        ]
+
+        is_valid, error = validate_source_words_mapped(alignments)
+
+        assert is_valid is False
+        assert error is not None
+        assert "ha" in error
+        assert "llamado" in error
+        assert "quellwörter ohne zielwort" in error.lower()
+
+    def test_hyphenated_target_words_valid(self):
+        """Test that hyphenated target words are considered valid mappings."""
+        alignments = [
+            WordAlignment(source_word="I've", target_word="Ich-habe", position=0),
+            WordAlignment(source_word="met", target_word="getroffen", position=1),
+        ]
+
+        is_valid, error = validate_source_words_mapped(alignments)
+
+        assert is_valid is True
+        assert error is None
+
+    def test_empty_alignments_list(self):
+        """Test validation with empty alignments list."""
+        alignments = []
+
+        is_valid, error = validate_source_words_mapped(alignments)
+
+        assert is_valid is True
+        assert error is None

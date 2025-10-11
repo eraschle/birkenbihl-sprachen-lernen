@@ -6,14 +6,18 @@ This module provides a unified view for:
 Both flows share the same editing interface.
 """
 
+import asyncio
 import html
 import logging
 import re
 
 import streamlit as st
+from pydantic import BaseModel
 
+from birkenbihl.models import languages
+from birkenbihl.models.settings import ProviderConfig
 from birkenbihl.models.translation import Sentence, Translation, WordAlignment
-from birkenbihl.models.validation import validate_alignment_complete
+from birkenbihl.models.validation import validate_alignment_complete, validate_source_words_mapped
 from birkenbihl.providers.pydantic_ai_translator import PydanticAITranslator
 from birkenbihl.services.settings_service import SettingsService
 from birkenbihl.services.translation_service import TranslationService
@@ -22,17 +26,34 @@ from birkenbihl.storage.json_storage import JsonStorageProvider
 logger = logging.getLogger(__name__)
 
 
+class TranslationModel(BaseModel):
+    text: str
+    title: str
+    source_language: str
+    target_language: str
+
+
 def render_translation_result_tab() -> None:
     """Render translation result view with editing capabilities.
 
     This view is used for both:
     - New translations (after creation, before saving)
     - Editing existing translations
+    - Active translation (showing progress)
 
     The difference is indicated by session state flags:
+    - is_translating: True if translation is currently running
     - is_new_translation: True if this is a newly created translation
     - selected_translation_id: Set if editing an existing translation
     """
+    # Check if translation is currently running
+    is_translating = st.session_state.get("is_translating", False)
+
+    # If translating, execute the translation first
+    if is_translating and st.session_state.get("translation_pending"):
+        _execute_translation()
+        return  # Return early as _execute_translation will rerun
+
     # Determine if this is a new translation or editing existing
     is_new = st.session_state.get("is_new_translation", False)
     translation_id = st.session_state.get("selected_translation_id")
@@ -68,14 +89,19 @@ def render_translation_result_tab() -> None:
     st.markdown("---")
 
     # Render sentence editors
-    try:
-        storage = JsonStorageProvider()
-        service = TranslationService(translator=None, storage=storage)
+    storage = JsonStorageProvider()
+    service = TranslationService(translator=None, storage=storage)
 
-        for i, sentence in enumerate(translation.sentences, 1):
+    for i, sentence in enumerate(translation.sentences, 1):
+        try:
             render_sentence_editor(translation, sentence, i, service, is_new)
-    except Exception as e:
-        st.error(f"Fehler beim Rendern der Sätze: {e}")
+        except Exception as e:
+            # Show error for this specific sentence but continue with others
+            st.error(f"⚠️ Satz {i} kann nicht bearbeitet werden: {str(e)}")
+            if "default value" in str(e).lower() and "not part of the options" in str(e).lower():
+                st.info("💡 Mögliche Ursache: Einige Wörter aus der Word-by-Word-Zuordnung kommen nicht in der natürlichen Übersetzung vor. Bitte ändern Sie die natürliche Übersetzung.")
+            else:
+                st.info("💡 Tipp: Versuchen Sie die natürliche Übersetzung für diesen Satz anzupassen.")
 
 
 def render_header(translation: Translation, is_new: bool) -> None:
@@ -98,7 +124,11 @@ def render_header(translation: Translation, is_new: bool) -> None:
 
     with col2:
         if is_new:
-            if st.button("💾 Speichern", type="primary", use_container_width=True):
+            # Validate all sentences before enabling save button
+            all_valid, error_count = _validate_all_sentences(translation)
+            save_disabled = not all_valid
+
+            if st.button("💾 Speichern", type="primary", use_container_width=True, disabled=save_disabled):
                 try:
                     storage = JsonStorageProvider()
                     storage.save(translation)
@@ -114,6 +144,10 @@ def render_header(translation: Translation, is_new: bool) -> None:
                 except Exception as e:
                     logger.error("Failed to save translation: %s", str(e), exc_info=True)
                     st.error(f"Fehler beim Speichern: {e}")
+
+            # Show warning if save is disabled
+            if save_disabled:
+                st.warning(f"⚠️ {error_count} Satz{'ä' if error_count > 1 else ''}tze mit Fehlern")
         else:
             # For existing translations, "Save" is implicit (auto-save on each edit)
             st.caption("Änderungen werden automatisch gespeichert")
@@ -331,13 +365,31 @@ def render_alignment_edit_mode(
     """
     st.markdown("**Manuelle Word-by-Word Zuordnung:**")
 
+    # Extract target words from natural translation
     target_words = re.findall(r"\b\w+\b", sentence.natural_translation)
+
+    # Also include all words from existing alignments to ensure defaults are in options
+    existing_target_words = set()
+    for alignment in sentence.word_alignments:
+        # Split by hyphen and filter out empty/whitespace strings
+        words = [w.strip() for w in alignment.target_word.split("-")]
+        words = [w for w in words if w]  # Remove empty strings and whitespace
+        existing_target_words.update(words)
+
+    # Combine both sets (maintain order, no duplicates)
+    target_words_set = set(target_words)
+    for word in existing_target_words:
+        if word not in target_words_set:
+            target_words.append(word)
+            target_words_set.add(word)
+
     source_words = [a.source_word for a in sentence.word_alignments]
 
     editor_key = f"alignment_editor_{sentence.uuid}"
     if editor_key not in st.session_state:
         st.session_state[editor_key] = {
-            sw: _extract_target_words_for_source(sw, sentence.word_alignments) for sw in source_words
+            f"{idx}_{sw}": _extract_target_words_for_position(idx, sentence.word_alignments)
+            for idx, sw in enumerate(source_words)
         }
 
     st.info(f"Natürliche Übersetzung: {sentence.natural_translation}")
@@ -345,36 +397,71 @@ def render_alignment_edit_mode(
 
     st.markdown("**Zuordnung:**")
 
-    for source_word in source_words:
+    # Track invalid defaults for warning
+    invalid_defaults = []
+
+    for idx, source_word in enumerate(source_words):
         col1, col2 = st.columns([1, 2])
 
         with col1:
             st.markdown(f"**{source_word}**")
 
         with col2:
+            # Use index to make key unique even if source_word appears multiple times
+            source_key = f"{idx}_{source_word}"
+
+            # Get default values and filter out any that aren't in options
+            raw_defaults = st.session_state[editor_key].get(source_key, [])
+            valid_defaults = [d for d in raw_defaults if d in target_words]
+
+            # Track invalid defaults for warning
+            invalid = [d for d in raw_defaults if d not in target_words]
+            if invalid:
+                invalid_defaults.extend([(source_word, invalid)])
+
             selected_targets = st.multiselect(
                 "Zielwörter",
                 options=target_words,
-                default=st.session_state[editor_key].get(source_word, []),
-                key=f"multiselect_{sentence.uuid}_{source_word}",
+                default=valid_defaults,
+                key=f"multiselect_{sentence.uuid}_{source_key}",
                 label_visibility="collapsed",
             )
-            st.session_state[editor_key][source_word] = selected_targets
+            st.session_state[editor_key][source_key] = selected_targets
+
+    # Show warning if there were invalid defaults
+    if invalid_defaults:
+        warning_msg = "⚠️ Einige Wörter konnten nicht zugeordnet werden:\n"
+        for src, invalids in invalid_defaults:
+            invalid_str = ", ".join([f"'{w}'" if w.strip() else "'[Leerzeichen]'" for w in invalids])
+            warning_msg += f"\n- '{src}' → {invalid_str}"
+        warning_msg += "\n\n💡 Tipp: Ändern Sie die natürliche Übersetzung, um eine bessere Word-by-Word-Zuordnung zu ermöglichen."
+        st.warning(warning_msg)
 
     new_alignments = []
     for position, source_word in enumerate(source_words):
-        target_list = st.session_state[editor_key][source_word]
+        source_key = f"{position}_{source_word}"
+        target_list = st.session_state[editor_key][source_key]
         if target_list:
             target_word = "-".join(target_list)
             new_alignments.append(WordAlignment(source_word=source_word, target_word=target_word, position=position))
 
     st.markdown("---")
-    is_valid, error_message = validate_alignment_complete(sentence.natural_translation, new_alignments)
+
+    # Validate source words are mapped
+    source_valid, source_error = validate_source_words_mapped(new_alignments)
+    # Validate natural translation completeness
+    natural_valid, natural_error = validate_alignment_complete(sentence.natural_translation, new_alignments)
+
+    is_valid = source_valid and natural_valid
 
     if is_valid:
         st.success("✓ Zuordnung ist vollständig und gültig")
     else:
-        st.error(f"✗ Ungültige Zuordnung: {error_message}")
+        if not source_valid:
+            st.error(f"✗ {source_error}")
+            st.info("💡 Tipp: Ändern Sie die natürliche Übersetzung, sodass jedes Quellwort ein Zielwort hat. Beispiel: 'unwichtig' → 'nicht wichtig'")
+        if not natural_valid:
+            st.error(f"✗ {natural_error}")
 
     col1, col2 = st.columns(2)
     with col1:
@@ -407,20 +494,209 @@ def render_alignment_edit_mode(
             st.rerun()
 
 
-def _extract_target_words_for_source(source_word: str, alignments: list[WordAlignment]) -> list[str]:
-    """Extract target words for a given source word from alignments.
+def _execute_translation() -> None:
+    """Execute pending translation with progress display on result page."""
+    pending = st.session_state.translation_pending
+    st.session_state.translation_pending = None
+
+    try:
+        model = TranslationModel(
+            text=pending["text"],
+            title=pending["title"],
+            source_language=pending["source_language"],
+            target_language=pending["target_language"],
+        )
+
+        # Show progress header at the top
+        st.markdown(f"### ✨ Neue Übersetzung: {model.title}")
+        st.caption("Übersetzung wird erstellt...")
+
+        # Progress container at the top
+        progress_container = st.container()
+
+        logger.info(
+            "Translation initiated: title='%s', text_length=%d chars, source=%s, target=%s, streaming=%s",
+            pending["title"][:50],
+            len(pending["text"]),
+            pending["source_language"],
+            pending["target_language"],
+            pending["use_streaming"],
+        )
+
+        if pending["use_streaming"]:
+            logger.info("Using streaming mode")
+            try:
+                with progress_container:
+                    asyncio.run(_translate_text_streaming(model, pending["provider"]))
+            except Exception as stream_error:
+                logger.error("Streaming failed: %s", str(stream_error), exc_info=True)
+                with progress_container:
+                    st.error(f"❌ Streaming fehlgeschlagen: {str(stream_error)}")
+                    st.info("Versuche Standardmodus ohne Fortschrittsanzeige...")
+                _translate_text(model, pending["provider"], progress_container)
+        else:
+            logger.info("Using sync mode")
+            _translate_text(model, pending["provider"], progress_container)
+    finally:
+        st.session_state.is_translating = False
+        st.rerun()
+
+
+def _translate_text(model: TranslationModel, provider: ProviderConfig | None, progress_container) -> None:
+    """Translate text using configured provider."""
+    if not provider:
+        logger.warning("Translation attempted with no provider configured")
+        with progress_container:
+            st.error("Kein Provider konfiguriert. Bitte fügen Sie einen Provider in den Einstellungen hinzu.")
+        return
+
+    source_lang = "auto" if model.source_language == "Automatisch" else languages.get_language_code_by(model.source_language)
+    target_lang = languages.get_language_code_by(model.target_language)
+
+    logger.info("UI: Starting translation - provider=%s, source=%s, target=%s, title='%s'",
+                provider.name, source_lang, target_lang, model.title)
+
+    try:
+        with progress_container:
+            with st.spinner(f"Übersetze Text mit {provider.name}..."):
+                translator = PydanticAITranslator(provider)
+
+                detected_language_info = None
+                if source_lang == "auto":
+                    detected_lang = translator.detect_language(model.text)
+                    detected_language_info = f"✓ Erkannte Sprache: {detected_lang.upper()}"
+                    source_lang = detected_lang
+
+                translation = translator.translate(model.text, source_lang, target_lang)
+                translation.title = model.title
+
+                st.session_state.translation_result = translation
+                st.session_state.is_new_translation = True
+                st.session_state.detected_language_info = detected_language_info
+
+        logger.info("UI: Translation successful - %d sentences", len(translation.sentences))
+        with progress_container:
+            st.success(f"✓ Übersetzung erfolgreich mit {provider.name}!")
+
+    except Exception as e:
+        logger.error("UI: Translation failed - %s: %s", type(e).__name__, str(e), exc_info=True)
+        with progress_container:
+            st.error(f"❌ Fehler bei der Übersetzung: {str(e)}")
+            _show_error_details(e)
+
+
+async def _translate_text_streaming(model: TranslationModel, provider: ProviderConfig | None) -> None:
+    """Translate text using streaming with progress bar."""
+    logger.info("Streaming function started")
+    if not provider:
+        logger.warning("Streaming: No provider configured")
+        st.error("Kein Provider konfiguriert. Bitte fügen Sie einen Provider in den Einstellungen hinzu.")
+        return
+
+    source_lang = "auto" if model.source_language == "Automatisch" else languages.get_language_code_by(model.source_language)
+    target_lang = languages.get_language_code_by(model.target_language)
+
+    try:
+        logger.info("Streaming: Creating translator")
+        translator = PydanticAITranslator(provider)
+
+        detected_language_info = None
+        if source_lang == "auto":
+            logger.info("Streaming: Detecting language")
+            detected_lang = translator.detect_language(model.text)
+            detected_language_info = f"✓ Erkannte Sprache: {detected_lang.upper()}"
+            source_lang = detected_lang
+
+        logger.info("Streaming: Creating progress bar")
+        progress_bar = st.progress(0.0, text="Starte Übersetzung...")
+
+        logger.info("Streaming: Starting translation stream")
+        translations = translator.translate_stream(model.text, source_lang, target_lang)
+        logger.info("Streaming: Entering async loop")
+
+        final_translation = None
+        async for progress, translation in translations:
+            if translation:
+                logger.debug("Streaming: Progress update %.0f%%", progress * 100)
+                progress_bar.progress(progress, text=f"Übersetze: {int(progress * 100)}%")
+
+                translation.title = model.title
+                st.session_state.translation_result = translation
+                final_translation = translation
+
+        progress_bar.empty()
+        logger.info("Streaming: UI Translation successful - %d sentences", len(final_translation.sentences) if final_translation else 0)
+
+        st.session_state.is_new_translation = True
+        st.session_state.detected_language_info = detected_language_info
+
+        st.success(f"✓ Übersetzung erfolgreich mit {provider.name}!")
+
+    except Exception as e:
+        logger.error("Streaming: Translation failed - %s: %s", type(e).__name__, str(e), exc_info=True)
+        st.error(f"❌ Fehler bei der Übersetzung: {str(e)}")
+        _show_error_details(e)
+
+
+def _show_error_details(e: Exception) -> None:
+    """Show detailed error information to the user."""
+    error_details = []
+    error_str = str(e).lower()
+
+    if "api" in error_str or "key" in error_str:
+        error_details.append("- Überprüfen Sie, ob der API-Schlüssel korrekt ist")
+    if "model" in error_str:
+        error_details.append("- Überprüfen Sie, ob der Modellname gültig ist")
+    if "rate" in error_str or "quota" in error_str:
+        error_details.append("- API-Limit erreicht oder Kontingent aufgebraucht")
+    if "stream" in error_str:
+        error_details.append("- Streaming nicht verfügbar für Ihr Konto")
+
+    if error_details:
+        st.info("Mögliche Ursachen:\n" + "\n".join(error_details))
+    else:
+        st.info("Bitte überprüfen Sie:\n- API-Schlüssel ist korrekt\n- Modellname ist gültig\n- Internetverbindung")
+
+
+def _validate_all_sentences(translation: Translation) -> tuple[bool, int]:
+    """Validate all sentences in a translation.
+
+    Args:
+        translation: Translation to validate
+
+    Returns:
+        Tuple of (all_valid, error_count)
+        - all_valid: True if all sentences are valid
+        - error_count: Number of sentences with errors
+    """
+    error_count = 0
+
+    for sentence in translation.sentences:
+        # Validate source words are mapped
+        source_valid, _ = validate_source_words_mapped(sentence.word_alignments)
+        # Validate natural translation completeness
+        natural_valid, _ = validate_alignment_complete(sentence.natural_translation, sentence.word_alignments)
+
+        if not source_valid or not natural_valid:
+            error_count += 1
+
+    return (error_count == 0, error_count)
+
+
+def _extract_target_words_for_position(position: int, alignments: list[WordAlignment]) -> list[str]:
+    """Extract target words for a given position from alignments.
 
     Handles hyphenated combinations by splitting them into individual words.
     For example, "werde-vermissen" returns ["werde", "vermissen"].
 
     Args:
-        source_word: Source word to find
+        position: Position index of the word to find
         alignments: List of current alignments
 
     Returns:
         List of target words (split by hyphen if combined)
     """
     for alignment in alignments:
-        if alignment.source_word == source_word:
+        if alignment.position == position:
             return alignment.target_word.split("-")
     return []

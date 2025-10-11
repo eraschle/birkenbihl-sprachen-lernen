@@ -86,6 +86,44 @@ def _extract_words(text: str) -> list[str]:
     return [w for w in words if w]
 
 
+def validate_source_words_mapped(alignments: list[WordAlignment]) -> tuple[bool, str | None]:
+    """Validate that all source words have non-empty target words.
+
+    Checks for:
+    1. Empty or whitespace-only target words
+    2. Source words without proper mapping
+
+    Args:
+        alignments: List of WordAlignment objects
+
+    Returns:
+        Tuple of (is_valid, error_message)
+        - (True, None) if all source words have valid targets
+        - (False, "error message") if validation fails
+
+    Example:
+        # Invalid: source word with empty target
+        alignments = [
+            WordAlignment(source_word="no", target_word="", position=0),
+            WordAlignment(source_word="importante", target_word="unwichtig", position=1),
+        ]
+        Returns: (False, "Quellwort 'no' hat kein Zielwort")
+    """
+    unmapped_sources = []
+
+    for alignment in alignments:
+        # Check if target is empty or only whitespace
+        target_stripped = alignment.target_word.strip()
+        if not target_stripped:
+            unmapped_sources.append(alignment.source_word)
+
+    if unmapped_sources:
+        words_str = ", ".join(f"'{w}'" for w in unmapped_sources)
+        return (False, f"Quellwörter ohne Zielwort: {words_str}")
+
+    return (True, None)
+
+
 def _extract_alignment_words(alignments: list[WordAlignment]) -> list[str]:
     """Extract all words from alignments, splitting hyphenated combinations.
 
