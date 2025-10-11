@@ -6,6 +6,8 @@ import streamlit as st
 
 from birkenbihl.models import languages
 from birkenbihl.services.settings_service import SettingsService
+from birkenbihl.ui.components import ProviderSelector
+from birkenbihl.ui.models.context import ProviderSelectorContext
 
 logger = logging.getLogger(__name__)
 
@@ -99,36 +101,15 @@ def render_translation_tab() -> None:
             disabled=is_translating,
         )
 
-        # Provider selection (single dropdown with all configured providers)
-        providers = st.session_state.settings.providers
-        if providers:
-            # Create display names for all providers
-            provider_display_names = [f"{p.name}" for p in providers]
-
-            # Get current provider for default selection
-            current_provider = SettingsService.get_current_provider()
-            default_index = 0
-            if current_provider:
-                for idx, provider in enumerate(providers):
-                    if provider.name == current_provider.name:
-                        default_index = idx
-                        break
-
-            # Select provider (disabled during translation)
-            sel_provider_display = st.selectbox(
-                "Provider",
-                options=provider_display_names,
-                index=default_index,
-                help="Wählen Sie den Provider für die Übersetzung",
-                disabled=is_translating,
-            )
-
-            # Get the selected provider
-            selected_provider_index = provider_display_names.index(sel_provider_display)
-            selected_provider = providers[selected_provider_index]
-        else:
-            selected_provider = None
-            st.warning("⚠️ Kein Provider konfiguriert")
+        # Provider selection using ProviderSelector component
+        selector_context = ProviderSelectorContext(
+            providers=st.session_state.settings.providers,
+            default_provider=SettingsService.get_current_provider(),
+            disabled=is_translating,
+            key_suffix="translation",
+        )
+        provider_selector = ProviderSelector(selector_context)
+        selected_provider = provider_selector.render()
 
         st.markdown("")  # Small spacing
 

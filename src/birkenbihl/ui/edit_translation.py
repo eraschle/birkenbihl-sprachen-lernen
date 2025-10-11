@@ -1,35 +1,36 @@
-"""Translation editing UI for the Birkenbihl application."""
+"""Translation editing UI for the Birkenbihl application.
 
-import html
-import re
+Refactored to use Clean Code components and state management.
+"""
 
 import streamlit as st
 
+from birkenbihl.models.settings import ProviderConfig
 from birkenbihl.models.translation import Sentence, Translation, WordAlignment
-from birkenbihl.models.validation import validate_alignment_complete
 from birkenbihl.providers.pydantic_ai_translator import PydanticAITranslator
 from birkenbihl.services.settings_service import SettingsService
 from birkenbihl.services.translation_service import TranslationService
-from birkenbihl.storage.json_storage import JsonStorageProvider
+from birkenbihl.ui.components import AlignmentPreview, BackButton, ProviderSelector
+from birkenbihl.ui.models.context import ProviderSelectorContext
+from birkenbihl.ui.services.translation_ui_service import TranslationUIServiceImpl
+from birkenbihl.ui.state.cache import SessionCacheManager
+from birkenbihl.ui.state.session import SessionStateManager
 
 
 def render_edit_translation_tab() -> None:
     """Render translation editing view with sentence-by-sentence editing.
 
-    Loads the selected translation from session state and displays an editor
-    interface with two editing modes for each sentence:
-    - Mode A: Natural translation editing with provider suggestions
-    - Mode B: Manual word-by-word alignment editing
+    Refactored to use StateManager and TranslationUIService.
     """
-    translation_id = st.session_state.selected_translation_id
+    state = SessionStateManager()
+    translation_id = state.selected_translation_id
+
     if not translation_id:
         st.error("Keine Übersetzung ausgewählt")
         return
 
     try:
-        storage = JsonStorageProvider()
-        service = TranslationService(translator=None, storage=storage)
-        translation = service.get_translation(translation_id)
+        translation = TranslationUIServiceImpl.get_translation(translation_id)
 
         if not translation:
             st.error(f"Übersetzung {translation_id} nicht gefunden")
@@ -40,6 +41,7 @@ def render_edit_translation_tab() -> None:
         st.markdown("---")
         st.markdown("**Sätze bearbeiten**")
 
+        service = TranslationUIServiceImpl.get_service()
         for i, sentence in enumerate(translation.sentences, 1):
             render_sentence_editor(translation, sentence, i, service)
 
@@ -51,8 +53,7 @@ def render_edit_translation_tab() -> None:
 def render_header(translation: Translation) -> None:
     """Render translation editor header with back button.
 
-    Displays translation title, metadata (language pair, sentence count, last modified),
-    and a back button to return to the translation list.
+    Refactored to use BackButton component and StateManager.
 
     Args:
         translation: Translation being edited
@@ -67,10 +68,17 @@ def render_header(translation: Translation) -> None:
         st.caption(message)
 
     with col2:
-        if st.button("← Zurück", use_container_width=True):
-            st.session_state.current_view = "Meine Übersetzungen"
-            st.session_state.selected_translation_id = None
-            st.rerun()
+        back_button = BackButton(key="edit_translation_back")
+        if back_button.render():
+            _navigate_back()
+
+
+def _navigate_back() -> None:
+    """Navigate back to translations list."""
+    state = SessionStateManager()
+    state.current_view = "Meine Übersetzungen"
+    state.selected_translation_id = None
+    st.rerun()
 
 
 def render_sentence_editor(
@@ -127,38 +135,25 @@ def render_natural_edit_mode(translation: Translation, sentence: Sentence, servi
     """
     st.markdown("**Provider-Vorschläge generieren:**")
 
-    providers = st.session_state.settings.providers
-    if not providers:
-        st.warning("Kein Provider konfiguriert. Bitte fügen Sie einen Provider in den Einstellungen hinzu.")
+    # Use ProviderSelector component
+    selector_context = ProviderSelectorContext(
+        providers=st.session_state.settings.providers,
+        default_provider=SettingsService.get_current_provider(),
+        disabled=False,
+        key_suffix=str(sentence.uuid),
+    )
+    provider_selector = ProviderSelector(selector_context)
+    selected_provider = provider_selector.render()
+
+    if not selected_provider:
         return
 
-    provider_names = [p.name for p in providers]
-    current_provider = SettingsService.get_current_provider()
-    default_index = 0
-    if current_provider:
-        default_index = next((i for i, p in enumerate(providers) if p.name == current_provider.name), 0)
-
-    selected_provider_name = st.selectbox(
-        "Provider wählen", options=provider_names, index=default_index, key=f"provider_select_{sentence.uuid}"
-    )
-    selected_provider = next(p for p in providers if p.name == selected_provider_name)
-
-    suggestions_key = f"suggestions_{sentence.uuid}"
-
     if st.button("🔄 Vorschläge generieren", key=f"gen_suggestions_{sentence.uuid}"):
-        with st.spinner("Generiere Vorschläge..."):
-            try:
-                suggestions = service.get_sentence_suggestions(
-                    translation.uuid, sentence.uuid, selected_provider, count=3
-                )
-                st.session_state.suggestions_cache[suggestions_key] = suggestions
-                st.success(f"{len(suggestions)} Vorschläge generiert!")
-                st.rerun()
-            except Exception as e:
-                st.error(f"Fehler beim Generieren der Vorschläge: {e}")
+        _generate_suggestions(translation, sentence, selected_provider, service)
 
-    if suggestions_key in st.session_state.suggestions_cache:
-        suggestions = st.session_state.suggestions_cache[suggestions_key]
+    # Use SessionCacheManager instead of direct st.session_state access
+    suggestions = SessionCacheManager.get_suggestions(sentence.uuid)
+    if suggestions:
 
         st.markdown("**Vorschläge:**")
         selected_suggestion = st.radio(
@@ -181,7 +176,7 @@ def render_natural_edit_mode(translation: Translation, sentence: Sentence, servi
                     )
 
                     st.info(f"Neue natürliche Übersetzung: {selected_suggestion}")
-                    render_alignment_preview(preview_alignments)
+                    AlignmentPreview(preview_alignments).render()
 
                     col1, col2 = st.columns(2)
                     with col1:
@@ -191,8 +186,7 @@ def render_natural_edit_mode(translation: Translation, sentence: Sentence, servi
                                     translation.uuid, sentence.uuid, selected_suggestion, selected_provider
                                 )
                                 st.success("Übersetzung erfolgreich aktualisiert!")
-                                if suggestions_key in st.session_state.suggestions_cache:
-                                    del st.session_state.suggestions_cache[suggestions_key]
+                                SessionCacheManager.clear_suggestions(sentence.uuid)
                                 st.rerun()
                             except Exception as e:
                                 st.error(f"Fehler beim Speichern: {e}")
@@ -205,30 +199,30 @@ def render_natural_edit_mode(translation: Translation, sentence: Sentence, servi
                     st.error(f"Fehler bei der Vorschau: {e}")
 
 
-def render_alignment_preview(alignments: list[WordAlignment]) -> None:
-    """Render word alignments as preview.
+# render_alignment_preview removed - now using AlignmentPreview component
 
-    Displays word alignments in a visual format matching the main translation view,
-    with source words above target words connected by arrows.
+
+def _generate_suggestions(
+    translation: Translation, sentence: Sentence, provider: ProviderConfig, service
+) -> None:
+    """Generate translation suggestions and cache them.
+
+    Helper function to keep render_natural_edit_mode() clean.
 
     Args:
-        alignments: List of WordAlignment objects to display
+        translation: Parent translation
+        sentence: Sentence to generate suggestions for
+        provider: Provider to use
+        service: Translation service
     """
-    alignment_html = "<div style='font-size: 13px; line-height: 1.8;'>"
-    for alignment in alignments:
-        source_escaped = html.escape(alignment.source_word)
-        target_escaped = html.escape(alignment.target_word)
-        alignment_html += (
-            f"<span style='display: inline-block; margin: 2px; padding: 4px 8px; "
-            f"background-color: #f0f2f6; border-radius: 6px; border: 1px solid #ddd;'>"
-            f"<div style='color: #0066cc; font-weight: 600; font-size: 12px;'>{source_escaped}</div>"
-            f"<div style='color: #666; font-size: 10px;'>↓</div>"
-            f"<div style='color: #009900; font-weight: 600; font-size: 12px;'>{target_escaped}</div>"
-            f"</span>"
-        )
-    alignment_html += "</div>"
-
-    st.markdown(alignment_html, unsafe_allow_html=True)
+    with st.spinner("Generiere Vorschläge..."):
+        try:
+            suggestions = service.get_sentence_suggestions(translation.uuid, sentence.uuid, provider, count=3)
+            SessionCacheManager.set_suggestions(sentence.uuid, suggestions)
+            st.success(f"{len(suggestions)} Vorschläge generiert!")
+            st.rerun()
+        except Exception as e:
+            st.error(f"Fehler beim Generieren der Vorschläge: {e}")
 
 
 def render_alignment_edit_mode(translation: Translation, sentence: Sentence, service: TranslationService) -> None:
@@ -315,20 +309,4 @@ def render_alignment_edit_mode(translation: Translation, sentence: Sentence, ser
             st.rerun()
 
 
-def _extract_target_words_for_source(source_word: str, alignments: list[WordAlignment]) -> list[str]:
-    """Extract target words for a given source word from alignments.
-
-    Handles hyphenated combinations by splitting them into individual words.
-    For example, "werde-vermissen" returns ["werde", "vermissen"].
-
-    Args:
-        source_word: Source word to find
-        alignments: List of current alignments
-
-    Returns:
-        List of target words (split by hyphen if combined)
-    """
-    for alignment in alignments:
-        if alignment.source_word == source_word:
-            return alignment.target_word.split("-")
-    return []
+# _extract_target_words_for_source removed - now in ui/components/alignment.py

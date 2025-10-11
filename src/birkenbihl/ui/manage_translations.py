@@ -6,7 +6,8 @@ import streamlit as st
 
 from birkenbihl.models.translation import Translation
 from birkenbihl.services.translation_service import TranslationService
-from birkenbihl.storage.json_storage import JsonStorageProvider
+from birkenbihl.ui.services.translation_ui_service import TranslationUIServiceImpl
+from birkenbihl.ui.state.session import SessionStateManager
 
 
 def render_manage_translations_tab() -> None:
@@ -17,9 +18,7 @@ def render_manage_translations_tab() -> None:
     st.subheader("Übersetzungen verwalten")
 
     try:
-        storage_provider = JsonStorageProvider()
-        service = TranslationService(translator=None, storage=storage_provider)
-
+        service = TranslationUIServiceImpl.get_service()
         translations = service.list_all_translations()
 
         if not translations:
@@ -113,6 +112,7 @@ def open_translation_editor(translation_id: UUID) -> None:
     Args:
         translation_id: UUID of the translation to edit
     """
-    st.session_state.selected_translation_id = translation_id
-    st.session_state.current_view = "Übersetzung bearbeiten"
+    state = SessionStateManager()
+    state.selected_translation_id = translation_id
+    state.current_view = "Übersetzung bearbeiten"
     st.rerun()
