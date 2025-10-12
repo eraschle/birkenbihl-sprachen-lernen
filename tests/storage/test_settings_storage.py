@@ -1,6 +1,7 @@
 """Tests for settings storage provider."""
 
 import tempfile
+from collections.abc import Generator
 from pathlib import Path
 
 import pytest
@@ -11,7 +12,7 @@ from birkenbihl.storage.settings_storage import SettingsStorageProvider
 
 
 @pytest.fixture
-def temp_db():
+def temp_db() -> Generator[Path, None, None]:
     """Create temporary database for testing."""
     with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
         db_path = Path(f.name)
@@ -21,13 +22,13 @@ def temp_db():
 
 
 @pytest.fixture
-def storage(temp_db):
+def storage(temp_db: Path) -> SettingsStorageProvider:
     """Create settings storage provider with temporary database."""
     return SettingsStorageProvider(temp_db)
 
 
 @pytest.fixture
-def sample_settings():
+def sample_settings() -> Settings:
     """Create sample settings for testing."""
     return Settings(
         target_language="de",
@@ -52,7 +53,7 @@ def sample_settings():
 class TestSettingsStorageProvider:
     """Tests for SettingsStorageProvider."""
 
-    def test_save_new_settings(self, storage, sample_settings):
+    def test_save_new_settings(self, storage: SettingsStorageProvider, sample_settings: Settings) -> None:
         """Test saving new settings to database."""
         saved = storage.save(sample_settings)
 
@@ -62,7 +63,7 @@ class TestSettingsStorageProvider:
         assert saved.providers[0].is_default is True
         assert saved.providers[1].name == "Claude Sonnet"
 
-    def test_load_settings(self, storage, sample_settings):
+    def test_load_settings(self, storage: SettingsStorageProvider, sample_settings: Settings) -> None:
         """Test loading settings from database."""
         storage.save(sample_settings)
         loaded = storage.load()
@@ -72,12 +73,12 @@ class TestSettingsStorageProvider:
         assert loaded.providers[0].name == "OpenAI GPT-4"
         assert loaded.providers[0].api_key == "sk-test-key"
 
-    def test_load_nonexistent_settings(self, storage):
+    def test_load_nonexistent_settings(self, storage: SettingsStorageProvider) -> None:
         """Test loading when no settings exist."""
         with pytest.raises(NotFoundError):
             storage.load()
 
-    def test_update_settings(self, storage, sample_settings):
+    def test_update_settings(self, storage: SettingsStorageProvider, sample_settings: Settings) -> None:
         """Test updating existing settings."""
         storage.save(sample_settings)
 
@@ -100,12 +101,12 @@ class TestSettingsStorageProvider:
         assert len(result.providers) == 1
         assert result.providers[0].name == "Gemini Flash"
 
-    def test_update_nonexistent_settings(self, storage, sample_settings):
+    def test_update_nonexistent_settings(self, storage: SettingsStorageProvider, sample_settings: Settings) -> None:
         """Test updating when no settings exist."""
         with pytest.raises(NotFoundError):
             storage.update(sample_settings)
 
-    def test_delete_all_settings(self, storage, sample_settings):
+    def test_delete_all_settings(self, storage: SettingsStorageProvider, sample_settings: Settings) -> None:
         """Test deleting all settings."""
         storage.save(sample_settings)
         deleted = storage.delete_all()
@@ -115,12 +116,12 @@ class TestSettingsStorageProvider:
         with pytest.raises(NotFoundError):
             storage.load()
 
-    def test_delete_all_no_settings(self, storage):
+    def test_delete_all_no_settings(self, storage: SettingsStorageProvider) -> None:
         """Test deleting when no settings exist."""
         deleted = storage.delete_all()
         assert deleted is False
 
-    def test_save_overwrites_existing(self, storage, sample_settings):
+    def test_save_overwrites_existing(self, storage: SettingsStorageProvider, sample_settings: Settings) -> None:
         """Test that save overwrites existing settings."""
         storage.save(sample_settings)
 
@@ -144,7 +145,7 @@ class TestSettingsStorageProvider:
         loaded = storage.load()
         assert loaded.target_language == "fr"
 
-    def test_provider_with_base_url(self, storage):
+    def test_provider_with_base_url(self, storage: SettingsStorageProvider) -> None:
         """Test saving and loading provider with base_url."""
         settings = Settings(
             providers=[
@@ -163,7 +164,7 @@ class TestSettingsStorageProvider:
 
         assert loaded.providers[0].base_url == "https://api.publicai.co/v1"
 
-    def test_provider_streaming_flag(self, storage):
+    def test_provider_streaming_flag(self, storage: SettingsStorageProvider) -> None:
         """Test saving and loading provider with supports_streaming flag."""
         settings = Settings(
             providers=[
@@ -182,14 +183,14 @@ class TestSettingsStorageProvider:
 
         assert loaded.providers[0].supports_streaming is False
 
-    def test_context_manager(self, temp_db, sample_settings):
+    def test_context_manager(self, temp_db: Path, sample_settings: Settings) -> None:
         """Test storage provider as context manager."""
         with SettingsStorageProvider(temp_db) as storage:
             storage.save(sample_settings)
             loaded = storage.load()
             assert loaded.target_language == "de"
 
-    def test_multiple_providers_order(self, storage):
+    def test_multiple_providers_order(self, storage: SettingsStorageProvider) -> None:
         """Test that provider order is preserved."""
         settings = Settings(
             providers=[

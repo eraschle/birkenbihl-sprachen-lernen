@@ -4,6 +4,7 @@ Provides standardized button groups for common UI actions.
 """
 
 from dataclasses import dataclass
+from typing import Literal
 
 import streamlit as st
 
@@ -20,7 +21,7 @@ class ButtonConfig:
     """
 
     label: str
-    type: str = "secondary"
+    type: Literal["primary", "secondary"] = "secondary"
     icon: str = ""
     use_container_width: bool = True
 

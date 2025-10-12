@@ -1,6 +1,7 @@
 """Tests for SettingsService database integration."""
 
 import tempfile
+from collections.abc import Generator
 from pathlib import Path
 
 import pytest
@@ -12,7 +13,7 @@ from birkenbihl.storage.settings_storage import SettingsStorageProvider
 
 
 @pytest.fixture
-def temp_db():
+def temp_db() -> Generator[Path, None, None]:
     """Create temporary database for testing."""
     with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
         db_path = Path(f.name)
@@ -22,7 +23,7 @@ def temp_db():
 
 
 @pytest.fixture(autouse=True)
-def reset_singleton():
+def reset_singleton() -> Generator[None, None, None]:
     """Reset SettingsService singleton state before each test."""
     SettingsService._instance = None
     SettingsService._settings = None
@@ -36,7 +37,7 @@ def reset_singleton():
 
 
 @pytest.fixture
-def sample_settings():
+def sample_settings() -> Settings:
     """Create sample settings for testing."""
     return Settings(
         target_language="de",
@@ -62,7 +63,7 @@ def sample_settings():
 class TestSettingsServiceDatabaseIntegration:
     """Test SettingsService integration with database storage."""
 
-    def test_save_to_database(self, temp_db, sample_settings):
+    def test_save_to_database(self, temp_db: Path, sample_settings: Settings) -> None:
         """Test saving settings to database via service."""
         # Initialize storage manually for testing
         SettingsService._storage = SettingsStorageProvider(temp_db)
@@ -77,7 +78,7 @@ class TestSettingsServiceDatabaseIntegration:
         assert len(loaded.providers) == 2
         assert loaded.providers[0].name == "OpenAI GPT-4"
 
-    def test_load_from_database(self, temp_db, sample_settings):
+    def test_load_from_database(self, temp_db: Path, sample_settings: Settings) -> None:
         """Test loading settings from database via service."""
         # Prepare database with settings
         storage = SettingsStorageProvider(temp_db)
@@ -93,14 +94,14 @@ class TestSettingsServiceDatabaseIntegration:
         assert len(loaded.providers) == 2
         assert loaded.providers[0].name == "OpenAI GPT-4"
 
-    def test_load_from_empty_database_raises_error(self, temp_db):
+    def test_load_from_empty_database_raises_error(self, temp_db: Path) -> None:
         """Test loading from empty database raises NotFoundError."""
         SettingsService._storage = SettingsStorageProvider(temp_db)
 
         with pytest.raises(NotFoundError):
             SettingsService.load_settings(use_database=True)
 
-    def test_save_and_load_roundtrip(self, temp_db, sample_settings):
+    def test_save_and_load_roundtrip(self, temp_db: Path, sample_settings: Settings) -> None:
         """Test full roundtrip: save to database and load back."""
         SettingsService._storage = SettingsStorageProvider(temp_db)
 
@@ -118,7 +119,7 @@ class TestSettingsServiceDatabaseIntegration:
         assert loaded.providers[0].name == sample_settings.providers[0].name
         assert loaded.providers[0].api_key == sample_settings.providers[0].api_key
 
-    def test_update_settings_in_database(self, temp_db, sample_settings):
+    def test_update_settings_in_database(self, temp_db: Path, sample_settings: Settings) -> None:
         """Test updating settings in database."""
         SettingsService._storage = SettingsStorageProvider(temp_db)
 
@@ -148,7 +149,7 @@ class TestSettingsServiceDatabaseIntegration:
         assert len(loaded.providers) == 1
         assert loaded.providers[0].name == "Gemini Flash"
 
-    def test_current_provider_updated_after_database_load(self, temp_db, sample_settings):
+    def test_current_provider_updated_after_database_load(self, temp_db: Path, sample_settings: Settings) -> None:
         """Test that current provider is updated after loading from database."""
         SettingsService._storage = SettingsStorageProvider(temp_db)
 
@@ -167,7 +168,7 @@ class TestSettingsServiceDatabaseIntegration:
         assert current.name == "OpenAI GPT-4"
         assert current.is_default is True
 
-    def test_validate_provider_before_database_save(self, temp_db):
+    def test_validate_provider_before_database_save(self, temp_db: Path) -> None:
         """Test that provider validation occurs before database save."""
         SettingsService._storage = SettingsStorageProvider(temp_db)
 
@@ -192,7 +193,7 @@ class TestSettingsServiceDatabaseIntegration:
             storage = SettingsStorageProvider(temp_db)
             storage.load()
 
-    def test_database_persistence_across_service_resets(self, temp_db, sample_settings):
+    def test_database_persistence_across_service_resets(self, temp_db: Path, sample_settings: Settings) -> None:
         """Test that database persists settings across service resets."""
         SettingsService._storage = SettingsStorageProvider(temp_db)
 
@@ -214,7 +215,7 @@ class TestSettingsServiceDatabaseIntegration:
         assert loaded.target_language == "de"
         assert len(loaded.providers) == 2
 
-    def test_yaml_and_database_independent(self, temp_db, sample_settings, tmp_path):
+    def test_yaml_and_database_independent(self, temp_db: Path, sample_settings: Settings, tmp_path: Path) -> None:
         """Test that YAML and database storage are independent."""
         yaml_file = tmp_path / "settings.yaml"
         SettingsService._storage = SettingsStorageProvider(temp_db)

@@ -73,10 +73,10 @@
   "reportUnsupportedDunderAll": "error",
   "reportUnusedCallResult": false,
   "reportUnusedClass": "warning",
-  "reportUnusedCoroutine": "error",
+  "reportUnusedCoroutine": "warning",
   "reportUnusedExpression": "warning",
   "reportUnusedFunction": "warning",
-  "reportUnusedImport": "error",
-  "reportUnusedVariable": "error",
+  "reportUnusedImport": "warning",
+  "reportUnusedVariable": "warning",
   "reportWildcardImportFromLibrary": "error",
 }

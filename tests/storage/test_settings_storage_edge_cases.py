@@ -1,17 +1,17 @@
 """Comprehensive edge case tests for settings storage."""
 
 import tempfile
+from collections.abc import Generator
 from pathlib import Path
 
 import pytest
 
 from birkenbihl.models.settings import ProviderConfig, Settings
-from birkenbihl.storage.exceptions import NotFoundError, StorageError
 from birkenbihl.storage.settings_storage import SettingsStorageProvider
 
 
 @pytest.fixture
-def temp_db():
+def temp_db() -> Generator[Path, None, None]:
     """Create temporary database for testing."""
     with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
         db_path = Path(f.name)
@@ -21,7 +21,7 @@ def temp_db():
 
 
 @pytest.fixture
-def storage(temp_db):
+def storage(temp_db: Path) -> SettingsStorageProvider:
     """Create settings storage provider with temporary database."""
     return SettingsStorageProvider(temp_db)
 
@@ -30,7 +30,7 @@ def storage(temp_db):
 class TestSettingsStorageEdgeCases:
     """Edge case tests for settings storage."""
 
-    def test_save_empty_providers_list(self, storage):
+    def test_save_empty_providers_list(self, storage: SettingsStorageProvider) -> None:
         """Test saving settings with empty providers list."""
         settings = Settings(target_language="de", providers=[])
 
@@ -39,7 +39,7 @@ class TestSettingsStorageEdgeCases:
         assert saved.target_language == "de"
         assert len(saved.providers) == 0
 
-    def test_save_many_providers(self, storage):
+    def test_save_many_providers(self, storage: SettingsStorageProvider) -> None:
         """Test saving settings with many providers."""
         providers = [
             ProviderConfig(
@@ -53,13 +53,13 @@ class TestSettingsStorageEdgeCases:
         ]
 
         settings = Settings(target_language="de", providers=providers)
-        saved = storage.save(settings)
+        _saved = storage.save(settings)
 
-        assert len(saved.providers) == 50
-        assert saved.providers[0].name == "Provider0"
-        assert saved.providers[49].name == "Provider49"
+        assert len(_saved.providers) == 50
+        assert _saved.providers[0].name == "Provider0"
+        assert _saved.providers[49].name == "Provider49"
 
-    def test_provider_with_long_strings(self, storage):
+    def test_provider_with_long_strings(self, storage: SettingsStorageProvider) -> None:
         """Test saving provider with very long strings."""
         long_string = "x" * 10000
 
@@ -75,14 +75,14 @@ class TestSettingsStorageEdgeCases:
             ]
         )
 
-        saved = storage.save(settings)
+        _saved = storage.save(settings)
         loaded = storage.load()
 
         assert len(loaded.providers[0].name) == 10000
         assert len(loaded.providers[0].model) == 10000
         assert len(loaded.providers[0].api_key) == 10000
 
-    def test_provider_with_special_characters(self, storage):
+    def test_provider_with_special_characters(self, storage: SettingsStorageProvider) -> None:
         """Test saving provider with special characters."""
         special_chars = "äöüß™€£¥§©®→↓←↑∞≈≠≤≥±÷×√∫∂∑∏π"
 
@@ -97,13 +97,13 @@ class TestSettingsStorageEdgeCases:
             ]
         )
 
-        saved = storage.save(settings)
+        _saved = storage.save(settings)
         loaded = storage.load()
 
         assert special_chars in loaded.providers[0].name
         assert special_chars in loaded.providers[0].model
 
-    def test_provider_with_unicode_emoji(self, storage):
+    def test_provider_with_unicode_emoji(self, storage: SettingsStorageProvider) -> None:
         """Test saving provider with unicode emoji."""
         emoji_string = "🚀 Provider 🔥 with 💡 emoji 🎉"
 
@@ -118,12 +118,12 @@ class TestSettingsStorageEdgeCases:
             ]
         )
 
-        saved = storage.save(settings)
+        _saved = storage.save(settings)
         loaded = storage.load()
 
         assert loaded.providers[0].name == emoji_string
 
-    def test_provider_with_newlines_and_tabs(self, storage):
+    def test_provider_with_newlines_and_tabs(self, storage: SettingsStorageProvider) -> None:
         """Test saving provider with newlines and tabs."""
         multiline_string = "Line1\nLine2\tTabbed\rCarriageReturn"
 
@@ -138,12 +138,12 @@ class TestSettingsStorageEdgeCases:
             ]
         )
 
-        saved = storage.save(settings)
+        _saved = storage.save(settings)
         loaded = storage.load()
 
         assert loaded.providers[0].name == multiline_string
 
-    def test_provider_with_sql_injection_attempt(self, storage):
+    def test_provider_with_sql_injection_attempt(self, storage: SettingsStorageProvider) -> None:
         """Test that SQL injection attempts are safely handled."""
         malicious_string = "'; DROP TABLE provider_configs; --"
 
@@ -159,12 +159,12 @@ class TestSettingsStorageEdgeCases:
         )
 
         # Should not raise any errors
-        saved = storage.save(settings)
+        _saved = storage.save(settings)
         loaded = storage.load()
 
         assert loaded.providers[0].name == malicious_string
 
-    def test_update_rapid_succession(self, storage):
+    def test_update_rapid_succession(self, storage: SettingsStorageProvider) -> None:
         """Test multiple rapid updates to settings."""
         initial_settings = Settings(
             target_language="de",
@@ -199,7 +199,7 @@ class TestSettingsStorageEdgeCases:
         assert final.target_language == "lang9"
         assert final.providers[0].name == "Provider9"
 
-    def test_save_after_delete(self, storage):
+    def test_save_after_delete(self, storage: SettingsStorageProvider) -> None:
         """Test saving new settings after deleting all."""
         settings1 = Settings(
             providers=[
@@ -232,7 +232,7 @@ class TestSettingsStorageEdgeCases:
         assert loaded.providers[0].name == "Second"
         assert loaded.providers[0].provider_type == "anthropic"
 
-    def test_all_provider_boolean_combinations(self, storage):
+    def test_all_provider_boolean_combinations(self, storage: SettingsStorageProvider) -> None:
         """Test all combinations of boolean flags."""
         test_cases = [
             (True, True),
@@ -263,7 +263,7 @@ class TestSettingsStorageEdgeCases:
 
             storage.delete_all()
 
-    def test_provider_with_none_base_url(self, storage):
+    def test_provider_with_none_base_url(self, storage: SettingsStorageProvider) -> None:
         """Test provider with explicitly None base_url."""
         settings = Settings(
             providers=[
@@ -283,7 +283,7 @@ class TestSettingsStorageEdgeCases:
         loaded = storage.load()
         assert loaded.providers[0].base_url is None
 
-    def test_multiple_providers_with_same_name(self, storage):
+    def test_multiple_providers_with_same_name(self, storage: SettingsStorageProvider) -> None:
         """Test saving multiple providers with identical names."""
         settings = Settings(
             providers=[
@@ -308,7 +308,7 @@ class TestSettingsStorageEdgeCases:
             ]
         )
 
-        saved = storage.save(settings)
+        _saved = storage.save(settings)
         loaded = storage.load()
 
         assert len(loaded.providers) == 3
@@ -317,7 +317,7 @@ class TestSettingsStorageEdgeCases:
         assert loaded.providers[1].provider_type == "anthropic"
         assert loaded.providers[2].provider_type == "gemini"
 
-    def test_target_language_various_codes(self, storage):
+    def test_target_language_various_codes(self, storage: SettingsStorageProvider) -> None:
         """Test various language codes."""
         language_codes = ["de", "en", "es", "fr", "it", "pt", "ru", "zh", "ja", "ko"]
 
@@ -328,7 +328,7 @@ class TestSettingsStorageEdgeCases:
             assert loaded.target_language == lang_code
             storage.delete_all()
 
-    def test_timestamps_preserved_on_load(self, storage):
+    def test_timestamps_preserved_on_load(self, storage: SettingsStorageProvider) -> None:
         """Test that timestamps are preserved correctly."""
         settings = Settings(
             providers=[
@@ -341,7 +341,7 @@ class TestSettingsStorageEdgeCases:
             ]
         )
 
-        saved = storage.save(settings)
+        _saved = storage.save(settings)
 
         # Load multiple times - timestamps should remain consistent
         loaded1 = storage.load()
@@ -350,7 +350,7 @@ class TestSettingsStorageEdgeCases:
         # Both loads should return same data (no timestamp changes on read)
         assert loaded1.target_language == loaded2.target_language
 
-    def test_close_and_reopen_database(self, temp_db):
+    def test_close_and_reopen_database(self, temp_db: Path) -> None:
         """Test closing and reopening database connection."""
         settings = Settings(
             providers=[
@@ -375,7 +375,7 @@ class TestSettingsStorageEdgeCases:
 
         assert loaded.providers[0].name == "Test"
 
-    def test_provider_empty_strings(self, storage):
+    def test_provider_empty_strings(self, storage: SettingsStorageProvider) -> None:
         """Test provider with empty string values (should still work)."""
         settings = Settings(
             providers=[
@@ -389,7 +389,7 @@ class TestSettingsStorageEdgeCases:
             ]
         )
 
-        saved = storage.save(settings)
+        _saved = storage.save(settings)
         loaded = storage.load()
 
         assert loaded.providers[0].name == ""
@@ -397,7 +397,7 @@ class TestSettingsStorageEdgeCases:
         assert loaded.providers[0].api_key == ""
         assert loaded.providers[0].base_url == ""
 
-    def test_database_file_permissions(self, temp_db):
+    def test_database_file_permissions(self, temp_db: Path) -> None:
         """Test that database file is created with proper permissions."""
         storage = SettingsStorageProvider(temp_db)
 

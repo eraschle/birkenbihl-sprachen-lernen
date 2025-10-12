@@ -2,6 +2,7 @@
 
 import tempfile
 import time
+from collections.abc import Generator
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from threading import Barrier
@@ -13,7 +14,7 @@ from birkenbihl.storage.settings_storage import SettingsStorageProvider
 
 
 @pytest.fixture
-def temp_db():
+def temp_db() -> Generator[Path, None, None]:
     """Create temporary database for testing."""
     with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
         db_path = Path(f.name)
@@ -26,7 +27,7 @@ def temp_db():
 class TestSettingsStorageConcurrent:
     """Concurrent access tests for settings storage."""
 
-    def test_concurrent_reads(self, temp_db):
+    def test_concurrent_reads(self, temp_db: Path) -> None:
         """Test multiple concurrent reads."""
         settings = Settings(
             target_language="de",
@@ -45,7 +46,7 @@ class TestSettingsStorageConcurrent:
         storage.save(settings)
         storage.close()
 
-        def read_settings(thread_id):
+        def read_settings(thread_id: int) -> tuple[int, str, str]:
             storage = SettingsStorageProvider(temp_db)
             loaded = storage.load()
             storage.close()
@@ -58,18 +59,18 @@ class TestSettingsStorageConcurrent:
 
         # All reads should succeed
         assert len(results) == 20
-        for thread_id, lang, provider_name in results:
+        for _thread_id, lang, provider_name in results:
             assert lang == "de"
             assert provider_name == "Test Provider"
 
-    def test_concurrent_writes_different_connections(self, temp_db):
+    def test_concurrent_writes_different_connections(self, temp_db: Path) -> None:
         """Test concurrent writes from different connections."""
         # Initialize database
         storage = SettingsStorageProvider(temp_db)
         storage.save(Settings(target_language="initial", providers=[]))
         storage.close()
 
-        def write_settings(thread_id):
+        def write_settings(thread_id: int) -> int:
             storage = SettingsStorageProvider(temp_db)
             settings = Settings(
                 target_language=f"lang{thread_id}",
@@ -103,7 +104,7 @@ class TestSettingsStorageConcurrent:
         assert final.target_language.startswith("lang")
         assert final.providers[0].name.startswith("Provider")
 
-    def test_concurrent_read_write_mix(self, temp_db):
+    def test_concurrent_read_write_mix(self, temp_db: Path) -> None:
         """Test mixed concurrent reads and writes."""
         # Initialize database
         storage = SettingsStorageProvider(temp_db)
@@ -122,13 +123,13 @@ class TestSettingsStorageConcurrent:
         )
         storage.close()
 
-        def read_operation(thread_id):
+        def read_operation(thread_id: int) -> tuple[str, int, str]:
             storage = SettingsStorageProvider(temp_db)
             loaded = storage.load()
             storage.close()
             return ("read", thread_id, loaded.target_language)
 
-        def write_operation(thread_id):
+        def write_operation(thread_id: int) -> tuple[str, int, str]:
             storage = SettingsStorageProvider(temp_db)
             settings = Settings(
                 target_language=f"write{thread_id}",
@@ -164,7 +165,7 @@ class TestSettingsStorageConcurrent:
         assert len(reads) == 15
         assert len(writes) == 5
 
-    def test_synchronized_concurrent_updates(self, temp_db):
+    def test_synchronized_concurrent_updates(self, temp_db: Path) -> None:
         """Test synchronized concurrent updates using barrier."""
         # Initialize database
         storage = SettingsStorageProvider(temp_db)
@@ -174,7 +175,7 @@ class TestSettingsStorageConcurrent:
         num_threads = 5
         barrier = Barrier(num_threads)
 
-        def update_with_barrier(thread_id):
+        def update_with_barrier(thread_id: int) -> int:
             # Wait for all threads to be ready
             barrier.wait()
 
@@ -201,10 +202,10 @@ class TestSettingsStorageConcurrent:
         # All updates should complete
         assert len(results) == num_threads
 
-    def test_rapid_save_delete_cycle(self, temp_db):
+    def test_rapid_save_delete_cycle(self, temp_db: Path) -> None:
         """Test rapid save/delete cycles."""
 
-        def save_delete_cycle(thread_id):
+        def save_delete_cycle(thread_id: int) -> tuple[bool, int | str]:
             try:
                 storage = SettingsStorageProvider(temp_db)
 
@@ -241,7 +242,7 @@ class TestSettingsStorageConcurrent:
         successful = [r for r in results if r[0]]
         assert len(successful) > 0
 
-    def test_concurrent_context_managers(self, temp_db):
+    def test_concurrent_context_managers(self, temp_db: Path) -> None:
         """Test concurrent access using context managers."""
         # Initialize database
         with SettingsStorageProvider(temp_db) as storage:
@@ -259,7 +260,7 @@ class TestSettingsStorageConcurrent:
                 )
             )
 
-        def read_with_context(thread_id):
+        def read_with_context(thread_id: int) -> tuple[int, str]:
             with SettingsStorageProvider(temp_db) as storage:
                 loaded = storage.load()
                 return (thread_id, loaded.target_language)
@@ -270,10 +271,10 @@ class TestSettingsStorageConcurrent:
 
         assert len(results) == 20
 
-    def test_long_running_connections(self, temp_db):
+    def test_long_running_connections(self, temp_db: Path) -> None:
         """Test long-running database connections."""
 
-        def long_running_operation(thread_id):
+        def long_running_operation(thread_id: int) -> tuple[bool, int | str]:
             try:
                 storage = SettingsStorageProvider(temp_db)
 
@@ -309,14 +310,14 @@ class TestSettingsStorageConcurrent:
         successful = [r for r in results if r[0]]
         assert len(successful) > 0
 
-    def test_concurrent_updates_preserve_data_integrity(self, temp_db):
+    def test_concurrent_updates_preserve_data_integrity(self, temp_db: Path) -> None:
         """Test that concurrent updates maintain data integrity."""
         # Initialize with known state
         storage = SettingsStorageProvider(temp_db)
         storage.save(Settings(target_language="initial", providers=[]))
         storage.close()
 
-        def update_operation(thread_id):
+        def update_operation(thread_id: int) -> tuple[bool, int | str]:
             try:
                 storage = SettingsStorageProvider(temp_db)
                 settings = Settings(
@@ -360,7 +361,7 @@ class TestSettingsStorageConcurrent:
             assert provider.name.startswith("Provider")
             assert provider.provider_type in ["openai", "anthropic"]
 
-    def test_read_during_write(self, temp_db):
+    def test_read_during_write(self, temp_db: Path) -> None:
         """Test reading while another thread is writing."""
         # Initialize database
         storage = SettingsStorageProvider(temp_db)
@@ -379,7 +380,7 @@ class TestSettingsStorageConcurrent:
         )
         storage.close()
 
-        def slow_write():
+        def slow_write() -> str:
             storage = SettingsStorageProvider(temp_db)
             for i in range(5):
                 settings = Settings(
@@ -398,7 +399,7 @@ class TestSettingsStorageConcurrent:
             storage.close()
             return "write_done"
 
-        def fast_read(thread_id):
+        def fast_read(thread_id: int) -> str:
             storage = SettingsStorageProvider(temp_db)
             loaded = storage.load()
             storage.close()

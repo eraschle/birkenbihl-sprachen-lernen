@@ -1,6 +1,7 @@
 """Stress tests for settings storage provider."""
 
 import tempfile
+from collections.abc import Generator
 from pathlib import Path
 
 import pytest
@@ -10,7 +11,7 @@ from birkenbihl.storage.settings_storage import SettingsStorageProvider
 
 
 @pytest.fixture
-def temp_db():
+def temp_db() -> Generator[Path, None, None]:
     """Create temporary database for testing."""
     with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
         db_path = Path(f.name)
@@ -20,7 +21,7 @@ def temp_db():
 
 
 @pytest.fixture
-def storage(temp_db):
+def storage(temp_db: Path) -> SettingsStorageProvider:
     """Create settings storage provider with temporary database."""
     return SettingsStorageProvider(temp_db)
 
@@ -30,7 +31,7 @@ def storage(temp_db):
 class TestSettingsStorageStress:
     """Stress tests for settings storage."""
 
-    def test_save_load_cycle_1000_times(self, storage):
+    def test_save_load_cycle_1000_times(self, storage: SettingsStorageProvider) -> None:
         """Test 1000 save/load cycles."""
         for i in range(1000):
             settings = Settings(
@@ -51,7 +52,7 @@ class TestSettingsStorageStress:
             assert loaded.target_language == f"lang{i % 10}"
             assert loaded.providers[0].name == f"Provider{i}"
 
-    def test_large_provider_list_100_providers(self, storage):
+    def test_large_provider_list_100_providers(self, storage: SettingsStorageProvider) -> None:
         """Test saving 100 providers."""
         providers = [
             ProviderConfig(
@@ -68,7 +69,7 @@ class TestSettingsStorageStress:
 
         settings = Settings(target_language="de", providers=providers)
 
-        saved = storage.save(settings)
+        _saved = storage.save(settings)
         loaded = storage.load()
 
         assert len(loaded.providers) == 100
@@ -80,7 +81,7 @@ class TestSettingsStorageStress:
         assert loaded.providers[50].name == "Provider50"
         assert loaded.providers[75].name == "Provider75"
 
-    def test_rapid_updates_500_times(self, storage):
+    def test_rapid_updates_500_times(self, storage: SettingsStorageProvider) -> None:
         """Test 500 rapid updates."""
         # Initial save
         storage.save(Settings(target_language="initial", providers=[]))
@@ -105,7 +106,7 @@ class TestSettingsStorageStress:
         assert final.target_language == "update499"
         assert final.providers[0].name == "UpdatedProvider499"
 
-    def test_save_delete_cycle_500_times(self, storage):
+    def test_save_delete_cycle_500_times(self, storage: SettingsStorageProvider) -> None:
         """Test 500 save/delete cycles."""
         for i in range(500):
             settings = Settings(
@@ -120,7 +121,7 @@ class TestSettingsStorageStress:
                 ],
             )
 
-            storage.save(settings)
+            _saved = storage.save(settings)
 
             # Delete every other iteration
             if i % 2 == 0:
@@ -132,7 +133,7 @@ class TestSettingsStorageStress:
         final = storage.load()
         assert final.providers[0].name == "Provider499"
 
-    def test_very_large_api_keys(self, storage):
+    def test_very_large_api_keys(self, storage: SettingsStorageProvider) -> None:
         """Test with very large API key strings."""
         large_key = "x" * 100000  # 100KB API key
 
@@ -147,13 +148,13 @@ class TestSettingsStorageStress:
             ]
         )
 
-        saved = storage.save(settings)
+        _saved = storage.save(settings)
         loaded = storage.load()
 
         assert len(loaded.providers[0].api_key) == 100000
         assert loaded.providers[0].api_key == large_key
 
-    def test_many_sequential_connections(self, temp_db):
+    def test_many_sequential_connections(self, temp_db: Path) -> None:
         """Test many sequential database connections."""
         for i in range(200):
             storage = SettingsStorageProvider(temp_db)
@@ -176,7 +177,7 @@ class TestSettingsStorageStress:
 
             assert loaded.providers[0].name == f"Provider{i}"
 
-    def test_context_manager_many_times(self, temp_db):
+    def test_context_manager_many_times(self, temp_db: Path) -> None:
         """Test context manager usage many times."""
         for i in range(100):
             with SettingsStorageProvider(temp_db) as storage:
@@ -197,7 +198,7 @@ class TestSettingsStorageStress:
 
                 assert loaded.target_language == f"lang{i}"
 
-    def test_growing_provider_list(self, storage):
+    def test_growing_provider_list(self, storage: SettingsStorageProvider) -> None:
         """Test progressively growing provider list."""
         # Start with empty
         storage.save(Settings(target_language="de", providers=[]))
@@ -222,10 +223,10 @@ class TestSettingsStorageStress:
         assert len(final.providers) == 50
 
         # Verify all providers are present
-        for i in range(50):
-            assert final.providers[i].name == f"Provider{i}"
+        for _i in range(50):
+            assert final.providers[_i].name == f"Provider{_i}"
 
-    def test_shrinking_provider_list(self, storage):
+    def test_shrinking_provider_list(self, storage: SettingsStorageProvider) -> None:
         """Test progressively shrinking provider list."""
         # Start with 50 providers
         initial_providers = [
@@ -241,7 +242,7 @@ class TestSettingsStorageStress:
         storage.save(Settings(target_language="de", providers=initial_providers))
 
         # Remove providers one by one
-        for i in range(49):  # Leave one provider
+        for _i in range(49):  # Leave one provider
             loaded = storage.load()
             updated = Settings(target_language=loaded.target_language, providers=loaded.providers[1:])
             storage.save(updated)
@@ -251,7 +252,7 @@ class TestSettingsStorageStress:
         assert len(final.providers) == 1
         assert final.providers[0].name == "Provider49"
 
-    def test_alternating_target_languages_1000_times(self, storage):
+    def test_alternating_target_languages_1000_times(self, storage: SettingsStorageProvider) -> None:
         """Test alternating between different target languages 1000 times."""
         languages = ["de", "en", "es", "fr", "it"]
 
@@ -275,7 +276,7 @@ class TestSettingsStorageStress:
 
             assert loaded.target_language == lang
 
-    def test_database_size_with_large_dataset(self, temp_db, storage):
+    def test_database_size_with_large_dataset(self, temp_db: Path, storage: SettingsStorageProvider) -> None:
         """Test database size with large dataset."""
         # Save large settings
         large_providers = [
@@ -303,7 +304,7 @@ class TestSettingsStorageStress:
         # But should be larger than empty (> 10KB)
         assert db_size > 10 * 1024
 
-    def test_mixed_operations_stress(self, storage):
+    def test_mixed_operations_stress(self, storage: SettingsStorageProvider) -> None:
         """Test mixed save/load/update/delete operations."""
         operations = ["save", "load", "update", "delete"]
 
@@ -353,7 +354,7 @@ class TestSettingsStorageStress:
             elif op == "delete":
                 storage.delete_all()
 
-    def test_maximum_provider_name_length(self, storage):
+    def test_maximum_provider_name_length(self, storage: SettingsStorageProvider) -> None:
         """Test with maximum reasonable provider name length."""
         # Very long but realistic provider name
         long_name = "x" * 1000
@@ -369,7 +370,7 @@ class TestSettingsStorageStress:
             ]
         )
 
-        saved = storage.save(settings)
+        _saved = storage.save(settings)
         loaded = storage.load()
 
         assert len(loaded.providers[0].name) == 1000

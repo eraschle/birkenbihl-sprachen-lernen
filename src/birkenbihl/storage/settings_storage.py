@@ -178,6 +178,7 @@ class SettingsStorageProvider:
         settings_dao.providers = [
             ProviderConfigDAO(
                 name=provider.name,
+                settings_id=settings_dao.id or 0,
                 provider_type=provider.provider_type,
                 model=provider.model,
                 api_key=provider.api_key,

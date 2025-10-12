@@ -1,6 +1,7 @@
 """Integration tests for complete settings workflows."""
 
 import tempfile
+from collections.abc import Generator
 from pathlib import Path
 
 import pytest
@@ -12,7 +13,7 @@ from birkenbihl.storage.settings_storage import SettingsStorageProvider
 
 
 @pytest.fixture
-def temp_db():
+def temp_db() -> Generator[Path, None, None]:
     """Create temporary database for testing."""
     with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
         db_path = Path(f.name)
@@ -22,14 +23,14 @@ def temp_db():
 
 
 @pytest.fixture
-def temp_yaml(tmp_path):
+def temp_yaml(tmp_path: Path) -> Path:
     """Create temporary YAML file for testing."""
     yaml_file = tmp_path / "test_settings.yaml"
     return yaml_file
 
 
 @pytest.fixture(autouse=True)
-def reset_singleton():
+def reset_singleton() -> Generator[None, None, None]:
     """Reset SettingsService singleton state before each test."""
     SettingsService._instance = None
     SettingsService._settings = None
@@ -46,7 +47,7 @@ def reset_singleton():
 class TestSettingsWorkflowIntegration:
     """Integration tests for complete settings workflows."""
 
-    def test_yaml_to_database_migration(self, temp_yaml, temp_db):
+    def test_yaml_to_database_migration(self, temp_yaml: Path, temp_db: Path) -> None:
         """Test migrating settings from YAML to database."""
         # Create YAML settings
         yaml_settings = {
@@ -90,7 +91,7 @@ class TestSettingsWorkflowIntegration:
         assert loaded_from_db.providers[0].name == "OpenAI GPT-4"
         assert loaded_from_db.providers[1].name == "Claude Sonnet"
 
-    def test_database_to_yaml_export(self, temp_db, temp_yaml):
+    def test_database_to_yaml_export(self, temp_db: Path, temp_yaml: Path) -> None:
         """Test exporting settings from database to YAML."""
         # Create settings in database
         SettingsService._storage = SettingsStorageProvider(temp_db)
@@ -124,7 +125,7 @@ class TestSettingsWorkflowIntegration:
         assert len(yaml_data["providers"]) == 1
         assert yaml_data["providers"][0]["name"] == "Gemini Flash"
 
-    def test_complete_user_workflow_add_provider(self, temp_db):
+    def test_complete_user_workflow_add_provider(self, temp_db: Path) -> None:
         """Test complete workflow: load settings, add provider, save back."""
         SettingsService._storage = SettingsStorageProvider(temp_db)
 
@@ -170,7 +171,7 @@ class TestSettingsWorkflowIntegration:
         assert final.providers[0].name == "OpenAI GPT-4"
         assert final.providers[1].name == "Claude Sonnet"
 
-    def test_complete_user_workflow_change_default_provider(self, temp_db):
+    def test_complete_user_workflow_change_default_provider(self, temp_db: Path) -> None:
         """Test workflow: change default provider."""
         SettingsService._storage = SettingsStorageProvider(temp_db)
 
@@ -229,9 +230,10 @@ class TestSettingsWorkflowIntegration:
 
         # Verify SettingsService recognizes new default
         default_provider = SettingsService.get_default_provider()
+        assert default_provider is not None
         assert default_provider.name == "Provider B"
 
-    def test_complete_user_workflow_remove_provider(self, temp_db):
+    def test_complete_user_workflow_remove_provider(self, temp_db: Path) -> None:
         """Test workflow: remove a provider."""
         SettingsService._storage = SettingsStorageProvider(temp_db)
 
@@ -263,7 +265,7 @@ class TestSettingsWorkflowIntegration:
         assert final.providers[0].name == "Provider 1"
         assert final.providers[1].name == "Provider 3"
 
-    def test_complete_user_workflow_change_language(self, temp_db):
+    def test_complete_user_workflow_change_language(self, temp_db: Path) -> None:
         """Test workflow: change target language."""
         SettingsService._storage = SettingsStorageProvider(temp_db)
 
@@ -295,7 +297,7 @@ class TestSettingsWorkflowIntegration:
         assert final.target_language == "es"
         assert len(final.providers) == 1
 
-    def test_complete_user_workflow_update_api_key(self, temp_db):
+    def test_complete_user_workflow_update_api_key(self, temp_db: Path) -> None:
         """Test workflow: update API key for a provider."""
         SettingsService._storage = SettingsStorageProvider(temp_db)
 
@@ -339,7 +341,7 @@ class TestSettingsWorkflowIntegration:
 
         assert final.providers[0].api_key == "new-key"
 
-    def test_multi_step_configuration_workflow(self, temp_db):
+    def test_multi_step_configuration_workflow(self, temp_db: Path) -> None:
         """Test multi-step configuration workflow."""
         SettingsService._storage = SettingsStorageProvider(temp_db)
 
@@ -392,7 +394,7 @@ class TestSettingsWorkflowIntegration:
         assert final.providers[0].name == "Provider 1"
         assert final.providers[1].name == "Provider 2"
 
-    def test_settings_persistence_across_sessions(self, temp_db):
+    def test_settings_persistence_across_sessions(self, temp_db: Path) -> None:
         """Test that settings persist across different 'sessions'."""
         # Session 1: Create and save settings
         SettingsService._storage = SettingsStorageProvider(temp_db)
@@ -426,7 +428,7 @@ class TestSettingsWorkflowIntegration:
         assert loaded.providers[0].name == "Persistent Provider"
         assert loaded.providers[0].api_key == "persistent-key"
 
-    def test_error_recovery_workflow(self, temp_db):
+    def test_error_recovery_workflow(self, temp_db: Path) -> None:
         """Test recovery from errors during workflow."""
         SettingsService._storage = SettingsStorageProvider(temp_db)
 

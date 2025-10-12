@@ -328,27 +328,32 @@ class TestRenderAlignmentEditMode:
             assert "Fehlende Wörter: dich" in error_text
 
 
-class TestRenderAlignmentPreview:
-    """Test cases for render_alignment_preview function."""
+class TestAlignmentPreview:
+    """Test cases for AlignmentPreview component."""
 
-    def test_render_alignment_preview(self, mock_streamlit: MagicMock):
-        """Test alignment preview HTML rendering."""
+    def test_alignment_preview_render(self):
+        """Test alignment preview HTML rendering via component."""
+        from birkenbihl.ui.components import AlignmentPreview
+
         alignments = [
             WordAlignment(source_word="Yo", target_word="Ich", position=0),
             WordAlignment(source_word="te", target_word="dich", position=1),
             WordAlignment(source_word="extrañaré", target_word="werde-vermissen", position=2),
         ]
 
-        et.render_alignment_preview(alignments)
+        # Mock streamlit for the component
+        with patch("birkenbihl.ui.components.alignment.st") as mock_st:
+            preview = AlignmentPreview(alignments)
+            preview.render()
 
-        # Check markdown called with HTML
-        mock_streamlit.markdown.assert_called_once()
-        html_content = mock_streamlit.markdown.call_args[0][0]
-        assert "Yo" in html_content
-        assert "Ich" in html_content
-        assert "werde-vermissen" in html_content
-        unsafe_allow_html = mock_streamlit.markdown.call_args[1].get("unsafe_allow_html", False)
-        assert unsafe_allow_html is True
+            # Check markdown called with HTML
+            mock_st.markdown.assert_called_once()
+            html_content = mock_st.markdown.call_args[0][0]
+            assert "Yo" in html_content
+            assert "Ich" in html_content
+            assert "werde-vermissen" in html_content
+            unsafe_allow_html = mock_st.markdown.call_args[1].get("unsafe_allow_html", False)
+            assert unsafe_allow_html is True
 
 
 class TestValidationErrors:
