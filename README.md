@@ -11,7 +11,10 @@ Eine Python-Anwendung zur Digitalisierung der Vera F. Birkenbihl Sprachlernmetho
 - **Multi-Provider Support**: OpenAI und Anthropic Claude
 - **Konfigurierbare Provider**: Mehrere AI-Provider in settings.yaml
 - **CLI Interface**: Vollständige Kommandozeilen-Schnittstelle
-- **Streamlit GUI**: Moderne Web-UI mit Provider-Verwaltung
+- **Native GUI**: Desktop-Anwendung mit PySide6 (Qt6)
+  - Translation View: Neue Übersetzungen erstellen
+  - Editor View: Übersetzungen bearbeiten und verfeinern
+  - Settings View: Provider-Verwaltung
 - **JSON Storage**: Persistente Speicherung von Übersetzungen
 
 ## Installation
@@ -61,13 +64,18 @@ birkenbihl list
 birkenbihl show <id>
 ```
 
-### GUI (Streamlit)
+### GUI (Native Desktop App)
 
 ```bash
 birkenbihl-gui
 ```
 
-Die App öffnet sich im Browser unter `http://localhost:8501`.
+Startet die native Qt-Desktop-Anwendung mit drei Hauptansichten:
+- **Translation View**: Neue Übersetzungen mit Provider-Auswahl
+- **Editor View**: Bestehende Übersetzungen bearbeiten
+- **Settings View**: Provider konfigurieren
+
+Siehe `RUNNING_GUI.md` für Details.
 
 ## Logging
 
@@ -75,7 +83,7 @@ Die App verwendet Python's `logging` Modul für detaillierte Prozess-Logs:
 
 ### Log-Ausgaben anzeigen
 
-**GUI (Streamlit):**
+**GUI (Native Desktop):**
 ```bash
 # Logs werden auf stdout ausgegeben
 birkenbihl-gui
