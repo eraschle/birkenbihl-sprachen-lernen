@@ -1,20 +1,19 @@
 """Translation editor view."""
 
 from PySide6.QtWidgets import (
-    QWidget,
     QHBoxLayout,
-    QVBoxLayout,
-    QListWidget,
-    QStackedWidget,
-    QPushButton,
     QLabel,
+    QListWidget,
+    QPushButton,
+    QStackedWidget,
     QTextEdit,
+    QVBoxLayout,
+    QWidget,
 )
 
 from birkenbihl.gui.models.editor_viewmodel import TranslationEditorViewModel
-from birkenbihl.gui.widgets.alignment_preview import AlignmentPreview
 from birkenbihl.gui.widgets.alignment_editor import AlignmentEditor
-from birkenbihl.gui.widgets.sentence_card import SentenceCard
+from birkenbihl.gui.widgets.alignment_preview import AlignmentPreview
 from birkenbihl.models.settings import Settings
 
 

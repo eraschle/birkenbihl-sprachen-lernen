@@ -1,10 +1,9 @@
 """Tests for TranslationCreationViewModel."""
 
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 from uuid import uuid4
 
 import pytest
-from PySide6.QtCore import QTimer
 
 from birkenbihl.gui.models.translation_viewmodel import TranslationCreationViewModel
 from birkenbihl.models.languages import Language

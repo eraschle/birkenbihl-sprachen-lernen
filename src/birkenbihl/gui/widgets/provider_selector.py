@@ -1,7 +1,7 @@
 """Provider selection widget."""
 
 from PySide6.QtCore import Signal
-from PySide6.QtWidgets import QComboBox, QWidget, QVBoxLayout, QLabel
+from PySide6.QtWidgets import QComboBox, QLabel, QVBoxLayout, QWidget
 
 from birkenbihl.models.settings import ProviderConfig
 

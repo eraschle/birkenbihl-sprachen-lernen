@@ -1,7 +1,6 @@
 """Commands for translation operations."""
 
-from birkenbihl.gui.commands.base import Command, CommandResult
-from birkenbihl.models.translation import Translation
+from birkenbihl.gui.commands.base import CommandResult
 from birkenbihl.services.translation_service import TranslationService
 
 
@@ -40,12 +39,7 @@ class CreateTranslationCommand:
         Returns:
             True if all required fields are present
         """
-        return (
-            bool(self._text)
-            and bool(self._source_lang)
-            and bool(self._target_lang)
-            and bool(self._title)
-        )
+        return bool(self._text) and bool(self._source_lang) and bool(self._target_lang) and bool(self._title)
 
     def execute(self) -> CommandResult:
         """Execute translation creation.

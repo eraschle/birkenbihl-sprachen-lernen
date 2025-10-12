@@ -242,7 +242,7 @@ class TestSettingsStorageStress:
         storage.save(Settings(target_language="de", providers=initial_providers))
 
         # Remove providers one by one
-        for _i in range(49):  # Leave one provider
+        for idx in range(49):  # Leave one provider
             loaded = storage.load()
             updated = Settings(target_language=loaded.target_language, providers=loaded.providers[1:])
             storage.save(updated)

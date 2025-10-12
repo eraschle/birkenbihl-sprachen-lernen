@@ -1,9 +1,8 @@
 """Language selection widget."""
 
 from PySide6.QtCore import Signal
-from PySide6.QtWidgets import QComboBox, QWidget, QVBoxLayout, QLabel
+from PySide6.QtWidgets import QComboBox, QLabel, QVBoxLayout, QWidget
 
-from birkenbihl.models.languages import Language
 from birkenbihl.services.language_service import SUPPORTED_LANGUAGES
 
 

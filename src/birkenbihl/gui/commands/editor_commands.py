@@ -1,7 +1,8 @@
 """Commands for editor operations."""
 
 from uuid import UUID
-from birkenbihl.gui.commands.base import Command, CommandResult
+
+from birkenbihl.gui.commands.base import CommandResult
 from birkenbihl.models.settings import ProviderConfig
 from birkenbihl.models.translation import WordAlignment
 from birkenbihl.services.translation_service import TranslationService

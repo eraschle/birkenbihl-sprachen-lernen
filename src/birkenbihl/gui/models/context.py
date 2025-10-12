@@ -1,7 +1,6 @@
 """Context objects for passing data to components (Parameter Object pattern)."""
 
 from dataclasses import dataclass
-from uuid import UUID
 
 from birkenbihl.models.settings import ProviderConfig
 from birkenbihl.models.translation import Sentence, Translation

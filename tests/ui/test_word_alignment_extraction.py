@@ -1,6 +1,5 @@
 """Tests for word alignment extraction in UI."""
 
-
 from birkenbihl.models.translation import WordAlignment
 
 

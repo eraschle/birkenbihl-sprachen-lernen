@@ -1,12 +1,10 @@
 """Main window for Birkenbihl GUI application."""
 
-from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QMainWindow,
-    QStackedWidget,
     QMenuBar,
-    QMenu,
     QMessageBox,
+    QStackedWidget,
 )
 
 from birkenbihl.gui.models.editor_viewmodel import TranslationEditorViewModel
@@ -15,7 +13,6 @@ from birkenbihl.gui.models.translation_viewmodel import TranslationCreationViewM
 from birkenbihl.gui.views.editor_view import EditorView
 from birkenbihl.gui.views.settings_view import SettingsView
 from birkenbihl.gui.views.translation_view import TranslationView
-from birkenbihl.models.settings import Settings
 from birkenbihl.services.settings_service import SettingsService
 from birkenbihl.services.translation_service import TranslationService
 
@@ -125,9 +122,7 @@ class MainWindow(QMainWindow):
         QMessageBox.about(
             self,
             "Über Birkenbihl",
-            "Birkenbihl Sprachtrainer\n\n"
-            "Digitale Umsetzung der Vera F. Birkenbihl Sprachlernmethode.\n\n"
-            "Version 1.0",
+            "Birkenbihl Sprachtrainer\n\nDigitale Umsetzung der Vera F. Birkenbihl Sprachlernmethode.\n\nVersion 1.0",
         )
 
     def _apply_geometry(self) -> None:

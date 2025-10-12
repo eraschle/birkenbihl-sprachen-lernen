@@ -54,12 +54,12 @@ class TestSettingsStorageConcurrent:
 
         # Perform 20 concurrent reads
         with ThreadPoolExecutor(max_workers=10) as executor:
-            futures = [executor.submit(read_settings, i) for i in range(20)]
+            futures = [executor.submit(read_settings, idx) for idx in range(20)]
             results = [future.result() for future in as_completed(futures)]
 
         # All reads should succeed
         assert len(results) == 20
-        for _thread_id, lang, provider_name in results:
+        for thread_id, lang, provider_name in results:
             assert lang == "de"
             assert provider_name == "Test Provider"
 
@@ -89,7 +89,7 @@ class TestSettingsStorageConcurrent:
 
         # Perform 10 concurrent writes
         with ThreadPoolExecutor(max_workers=5) as executor:
-            futures = [executor.submit(write_settings, i) for i in range(10)]
+            futures = [executor.submit(write_settings, idx) for idx in range(10)]
             results = [future.result() for future in as_completed(futures)]
 
         # All writes should complete
@@ -149,10 +149,10 @@ class TestSettingsStorageConcurrent:
         # Mix of 15 reads and 5 writes
         with ThreadPoolExecutor(max_workers=10) as executor:
             futures = []
-            for i in range(15):
-                futures.append(executor.submit(read_operation, i))
-            for i in range(5):
-                futures.append(executor.submit(write_operation, i))
+            for idx in range(15):
+                futures.append(executor.submit(read_operation, idx))
+            for idx in range(5):
+                futures.append(executor.submit(write_operation, idx))
 
             results = [future.result() for future in as_completed(futures)]
 
@@ -196,7 +196,7 @@ class TestSettingsStorageConcurrent:
             return thread_id
 
         with ThreadPoolExecutor(max_workers=num_threads) as executor:
-            futures = [executor.submit(update_with_barrier, i) for i in range(num_threads)]
+            futures = [executor.submit(update_with_barrier, idx) for idx in range(num_threads)]
             results = [future.result() for future in as_completed(futures)]
 
         # All updates should complete
@@ -209,12 +209,12 @@ class TestSettingsStorageConcurrent:
             try:
                 storage = SettingsStorageProvider(temp_db)
 
-                for i in range(5):
+                for idx in range(5):
                     settings = Settings(
-                        target_language=f"lang{thread_id}_{i}",
+                        target_language=f"lang{thread_id}_{idx}",
                         providers=[
                             ProviderConfig(
-                                name=f"Provider{thread_id}_{i}",
+                                name=f"Provider{thread_id}_{idx}",
                                 provider_type="openai",
                                 model="gpt-4o",
                                 api_key=f"key{thread_id}",
@@ -223,7 +223,7 @@ class TestSettingsStorageConcurrent:
                     )
                     storage.save(settings)
 
-                    if i % 2 == 0:
+                    if idx % 2 == 0:
                         storage.delete_all()
 
                     # Small delay to avoid database locking issues
@@ -235,7 +235,7 @@ class TestSettingsStorageConcurrent:
                 return (False, str(e))
 
         with ThreadPoolExecutor(max_workers=2) as executor:
-            futures = [executor.submit(save_delete_cycle, i) for i in range(2)]
+            futures = [executor.submit(save_delete_cycle, idx) for idx in range(2)]
             results = [future.result() for future in as_completed(futures)]
 
         # At least some operations should succeed
@@ -266,7 +266,7 @@ class TestSettingsStorageConcurrent:
                 return (thread_id, loaded.target_language)
 
         with ThreadPoolExecutor(max_workers=10) as executor:
-            futures = [executor.submit(read_with_context, i) for i in range(20)]
+            futures = [executor.submit(read_with_context, idx) for idx in range(20)]
             results = [future.result() for future in as_completed(futures)]
 
         assert len(results) == 20
@@ -278,9 +278,9 @@ class TestSettingsStorageConcurrent:
             try:
                 storage = SettingsStorageProvider(temp_db)
 
-                for i in range(10):
+                for idx in range(10):
                     settings = Settings(
-                        target_language=f"lang{thread_id}_{i}",
+                        target_language=f"lang{thread_id}_{idx}",
                         providers=[
                             ProviderConfig(
                                 name=f"Provider{thread_id}",
@@ -292,7 +292,7 @@ class TestSettingsStorageConcurrent:
                     )
                     storage.save(settings)
                     loaded = storage.load()
-                    assert loaded.target_language == f"lang{thread_id}_{i}"
+                    assert loaded.target_language == f"lang{thread_id}_{idx}"
 
                     # Small delay to simulate real work
                     time.sleep(0.02)
@@ -303,7 +303,7 @@ class TestSettingsStorageConcurrent:
                 return (False, str(e))
 
         with ThreadPoolExecutor(max_workers=2) as executor:
-            futures = [executor.submit(long_running_operation, i) for i in range(2)]
+            futures = [executor.submit(long_running_operation, idx) for idx in range(2)]
             results = [future.result() for future in as_completed(futures)]
 
         # At least some operations should succeed
@@ -324,12 +324,12 @@ class TestSettingsStorageConcurrent:
                     target_language=f"lang{thread_id}",
                     providers=[
                         ProviderConfig(
-                            name=f"Provider{thread_id}_{i}",
-                            provider_type="openai" if i % 2 == 0 else "anthropic",
-                            model=f"model{i}",
-                            api_key=f"key{i}",
+                            name=f"Provider{thread_id}_{idx}",
+                            provider_type="openai" if idx % 2 == 0 else "anthropic",
+                            model=f"model{idx}",
+                            api_key=f"key{idx}",
                         )
-                        for i in range(5)
+                        for idx in range(5)
                     ],
                 )
                 storage.update(settings)
@@ -339,7 +339,7 @@ class TestSettingsStorageConcurrent:
                 return (False, str(e))
 
         with ThreadPoolExecutor(max_workers=3) as executor:
-            futures = [executor.submit(update_operation, i) for i in range(5)]
+            futures = [executor.submit(update_operation, idx) for idx in range(5)]
             results = [future.result() for future in as_completed(futures)]
 
         # At least some operations should succeed
@@ -382,15 +382,15 @@ class TestSettingsStorageConcurrent:
 
         def slow_write() -> str:
             storage = SettingsStorageProvider(temp_db)
-            for i in range(5):
+            for idx in range(5):
                 settings = Settings(
-                    target_language=f"writing{i}",
+                    target_language=f"writing{idx}",
                     providers=[
                         ProviderConfig(
-                            name=f"Writer{i}",
+                            name=f"Writer{idx}",
                             provider_type="openai",
                             model="gpt-4o",
-                            api_key=f"key{i}",
+                            api_key=f"key{idx}",
                         )
                     ],
                 )
@@ -410,7 +410,7 @@ class TestSettingsStorageConcurrent:
             write_future = executor.submit(slow_write)
 
             # Start multiple fast readers
-            read_futures = [executor.submit(fast_read, i) for i in range(10)]
+            read_futures = [executor.submit(fast_read, idx) for idx in range(10)]
 
             # Collect results
             write_result = write_future.result()

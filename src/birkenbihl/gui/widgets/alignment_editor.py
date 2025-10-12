@@ -2,14 +2,14 @@
 
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
+    QComboBox,
+    QFrame,
     QHBoxLayout,
     QLabel,
-    QComboBox,
     QPushButton,
     QScrollArea,
-    QFrame,
+    QVBoxLayout,
+    QWidget,
 )
 
 from birkenbihl.models.translation import Sentence, WordAlignment
@@ -149,9 +149,7 @@ class AlignmentEditor(QWidget):
                     combo.setCurrentIndex(i)
                     break
 
-        combo.currentIndexChanged.connect(
-            lambda: self._on_mapping_changed(source_word, combo)
-        )
+        combo.currentIndexChanged.connect(lambda: self._on_mapping_changed(source_word, combo))
 
         layout.addWidget(label)
         layout.addWidget(combo, 1)
@@ -178,9 +176,7 @@ class AlignmentEditor(QWidget):
         if not self._sentence:
             return
 
-        is_valid, error = validate_alignment_complete(
-            self._sentence.natural_translation, alignments
-        )
+        is_valid, error = validate_alignment_complete(self._sentence.natural_translation, alignments)
 
         if is_valid:
             self._show_success("Validierung erfolgreich!")

@@ -1,6 +1,6 @@
 """Word alignment preview widget."""
 
-from PySide6.QtWidgets import QWidget, QTextBrowser, QVBoxLayout
+from PySide6.QtWidgets import QTextBrowser, QVBoxLayout, QWidget
 
 from birkenbihl.models.translation import WordAlignment
 

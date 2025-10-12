@@ -14,9 +14,7 @@ def configure_logging() -> None:
     Sets up logging to stdout with colored formatting and appropriate levels.
     """
     # Create formatter with colors and timestamps
-    formatter = logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
-    )
+    formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
 
     # Console handler
     console_handler = logging.StreamHandler(sys.stdout)

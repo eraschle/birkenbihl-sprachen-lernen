@@ -131,7 +131,9 @@ class SettingsService:
         return None
 
     @classmethod
-    def save_settings(cls, settings: Settings, settings_file: str | Path = "settings.yaml", use_database: bool = False) -> None:
+    def save_settings(
+        cls, settings: Settings, settings_file: str | Path = "settings.yaml", use_database: bool = False
+    ) -> None:
         """Save settings to specified settings file or database.
 
         Updates current settings and persists to file or database.

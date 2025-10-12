@@ -10,7 +10,6 @@ from birkenbihl.gui.commands.translation_commands import (
     CreateTranslationCommand,
 )
 from birkenbihl.models.languages import Language
-from birkenbihl.models.settings import ProviderConfig
 from birkenbihl.models.translation import Sentence, Translation, WordAlignment
 
 

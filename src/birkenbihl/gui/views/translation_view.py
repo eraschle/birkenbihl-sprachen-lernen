@@ -1,20 +1,20 @@
 """Translation creation view."""
 
 from PySide6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QLineEdit,
-    QTextEdit,
-    QPushButton,
-    QLabel,
     QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
 )
 
 from birkenbihl.gui.models.translation_viewmodel import TranslationCreationViewModel
-from birkenbihl.gui.widgets.provider_selector import ProviderSelector
 from birkenbihl.gui.widgets.language_selector import LanguageSelector
 from birkenbihl.gui.widgets.progress_widget import ProgressWidget
+from birkenbihl.gui.widgets.provider_selector import ProviderSelector
 from birkenbihl.models.settings import Settings
 
 

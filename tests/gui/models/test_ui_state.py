@@ -1,12 +1,11 @@
 """Tests for UI State dataclasses."""
 
 from uuid import uuid4
-import pytest
 
 from birkenbihl.gui.models.ui_state import (
+    SettingsViewState,
     TranslationCreationState,
     TranslationEditorState,
-    SettingsViewState,
 )
 from birkenbihl.models.settings import ProviderConfig
 
@@ -28,9 +27,7 @@ class TestTranslationCreationState:
 
     def test_custom_values(self):
         """Test state with custom values."""
-        provider = ProviderConfig(
-            name="Test", provider_type="openai", model="gpt-4", api_key="test"
-        )
+        provider = ProviderConfig(name="Test", provider_type="openai", model="gpt-4", api_key="test")
 
         state = TranslationCreationState(
             title="Test Title",
@@ -98,12 +95,8 @@ class TestSettingsViewState:
     def test_custom_values(self):
         """Test state with custom values."""
         providers = [
-            ProviderConfig(
-                name="Provider1", provider_type="openai", model="gpt-4", api_key="key1"
-            ),
-            ProviderConfig(
-                name="Provider2", provider_type="anthropic", model="claude-3", api_key="key2"
-            ),
+            ProviderConfig(name="Provider1", provider_type="openai", model="gpt-4", api_key="key1"),
+            ProviderConfig(name="Provider2", provider_type="anthropic", model="claude-3", api_key="key2"),
         ]
 
         state = SettingsViewState(

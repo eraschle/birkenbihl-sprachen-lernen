@@ -2,11 +2,9 @@
 
 import pytest
 from PySide6.QtCore import QObject, Signal
-from PySide6.QtWidgets import QWidget, QApplication
+from PySide6.QtWidgets import QWidget
 
-from birkenbihl.gui.commands.base import Command, CommandResult
-from birkenbihl.gui.models.base import ViewModel
-from birkenbihl.gui.views.base import View
+from birkenbihl.gui.commands.base import CommandResult
 
 
 # Test Command Protocol Implementation

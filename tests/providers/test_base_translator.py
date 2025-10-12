@@ -310,7 +310,9 @@ class TestBirkenbilFormatValidation:
         mock_agent.run_sync.return_value = mock_result
 
         # Act
-        result = base_translator.translate("Fueron tantos bellos y malos momentos", get_language_by("es"), get_language_by("de"))
+        result = base_translator.translate(
+            "Fueron tantos bellos y malos momentos", get_language_by("es"), get_language_by("de")
+        )
 
         # Assert: Compound word uses hyphen
         alignments = result.sentences[0].word_alignments

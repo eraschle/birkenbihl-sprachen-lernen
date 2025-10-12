@@ -1,11 +1,12 @@
 """ViewModel for translation editing."""
 
 from uuid import UUID
+
 from PySide6.QtCore import QObject, Signal
 
 from birkenbihl.gui.models.ui_state import TranslationEditorState
 from birkenbihl.models.settings import ProviderConfig
-from birkenbihl.models.translation import Translation, WordAlignment
+from birkenbihl.models.translation import WordAlignment
 from birkenbihl.services.translation_service import TranslationService
 
 

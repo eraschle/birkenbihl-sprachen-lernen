@@ -1,7 +1,8 @@
 """Async/threading utilities for running long operations in background."""
 
-from typing import Callable
-from PySide6.QtCore import QThread, Signal, QMutex, QMutexLocker
+from collections.abc import Callable
+
+from PySide6.QtCore import QMutex, QMutexLocker, QThread, Signal
 
 
 class AsyncWorker(QThread):

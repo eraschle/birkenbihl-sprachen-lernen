@@ -1,6 +1,6 @@
 """Commands for settings operations."""
 
-from birkenbihl.gui.commands.base import Command, CommandResult
+from birkenbihl.gui.commands.base import CommandResult
 from birkenbihl.models.settings import ProviderConfig, Settings
 from birkenbihl.services.settings_service import SettingsService
 

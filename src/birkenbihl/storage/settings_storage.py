@@ -125,7 +125,7 @@ class SettingsStorageProvider:
         except Exception as e:
             raise StorageError(f"Failed to delete settings: {e}") from e
 
-    def _update_internal(self, session: Session, settings_id: int, settings: Settings) -> Settings:
+    def _update_internal(self, session: Session, settings_id: int | None, settings: Settings) -> Settings:
         """Update settings within existing session.
 
         Args:

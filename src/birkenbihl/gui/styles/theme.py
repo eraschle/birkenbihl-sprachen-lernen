@@ -1,6 +1,7 @@
 """Theme management for the GUI."""
 
 from pathlib import Path
+
 from PySide6.QtWidgets import QApplication
 
 

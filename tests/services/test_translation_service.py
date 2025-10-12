@@ -15,8 +15,8 @@ from birkenbihl.models import dateutils
 from birkenbihl.models.settings import ProviderConfig
 from birkenbihl.models.translation import Sentence, Translation, WordAlignment
 from birkenbihl.protocols import IStorageProvider, ITranslationProvider
-from birkenbihl.services.translation_service import TranslationService
 from birkenbihl.services.language_service import get_language_by
+from birkenbihl.services.translation_service import TranslationService
 from birkenbihl.storage.exceptions import NotFoundError
 
 

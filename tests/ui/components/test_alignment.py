@@ -5,8 +5,8 @@ from unittest.mock import Mock
 import pytest
 
 from birkenbihl.models.translation import Sentence, Translation, WordAlignment
-from birkenbihl.services.translation_service import TranslationService
 from birkenbihl.services import language_service as ls
+from birkenbihl.services.translation_service import TranslationService
 from birkenbihl.ui.components.alignment import (
     AlignmentEditor,
     AlignmentPreview,

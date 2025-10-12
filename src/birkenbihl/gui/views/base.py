@@ -1,7 +1,6 @@
 """Base protocol for Views in MVVM architecture."""
 
 from typing import Protocol
-from PySide6.QtWidgets import QWidget
 
 
 class View(Protocol):
