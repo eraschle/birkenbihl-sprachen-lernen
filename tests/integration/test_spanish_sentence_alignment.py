@@ -1,8 +1,8 @@
 """Integration test for Spanish sentence alignment with edge cases."""
 
-
 from birkenbihl.models.translation import Sentence, Translation, WordAlignment
 from birkenbihl.models.validation import validate_alignment_complete
+from birkenbihl.services.language_service import get_language_by
 
 
 class TestSpanishSentenceAlignment:
@@ -11,7 +11,6 @@ class TestSpanishSentenceAlignment:
     def test_full_sentence_alignment(self):
         """Test complete alignment for: 'Mas comprendo que llegó tu tiempo, que Dios te ha llamado para estar a Su lado.'"""
         # Arrange
-        source_text = "Mas comprendo que llegó tu tiempo, que Dios te ha llamado para estar a Su lado."
         natural_translation = (
             "Aber ich verstehe, dass deine Zeit gekommen ist, dass Gott dich gerufen hat, um an Seiner Seite zu sein."
         )
@@ -85,6 +84,7 @@ class TestSpanishSentenceAlignment:
 
         # Act
         is_valid, error_message = validate_alignment_complete(natural_translation, broken_alignments)
+        assert error_message
 
         # Assert
         assert not is_valid, "Broken alignment should be invalid"
@@ -147,8 +147,8 @@ class TestSpanishSentenceAlignment:
 
         translation = Translation(
             title="Spanish Test Sentence",
-            source_language="es",
-            target_language="de",
+            source_language=get_language_by("es"),
+            target_language=get_language_by("de"),
             sentences=[sentence],
         )
 

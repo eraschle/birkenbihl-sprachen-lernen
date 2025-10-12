@@ -170,8 +170,8 @@ class SqliteStorageProvider:
         translation_dao = TranslationDAO(
             id=translation.uuid,
             title=translation.title,
-            source_language=translation.source_language,
-            target_language=translation.target_language,
+            source_language=translation.source_language.code,
+            target_language=translation.target_language.code,
             created_at=translation.created_at,
             updated_at=translation.updated_at,
         )
@@ -207,11 +207,13 @@ class SqliteStorageProvider:
         Returns:
             Domain Translation model
         """
+        from birkenbihl.services.language_service import get_language_by
+
         return Translation(
             uuid=translation_dao.id,
             title=translation_dao.title,
-            source_language=translation_dao.source_language,
-            target_language=translation_dao.target_language,
+            source_language=get_language_by(translation_dao.source_language),
+            target_language=get_language_by(translation_dao.target_language),
             created_at=translation_dao.created_at,
             updated_at=translation_dao.updated_at,
             sentences=[
@@ -237,7 +239,7 @@ class SqliteStorageProvider:
         """Context manager entry."""
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, *_):
         """Context manager exit - ensures engine is closed."""
         self.close()
         return False

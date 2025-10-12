@@ -14,7 +14,9 @@ def configure_logging() -> None:
     Sets up logging to stdout with colored formatting and appropriate levels.
     """
     # Create formatter with colors and timestamps
-    formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
+    formatter = logging.Formatter(
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
+    )
 
     # Console handler
     console_handler = logging.StreamHandler(sys.stdout)
@@ -56,27 +58,27 @@ def main() -> None:
     cli()
 
 
-def main_gui() -> None:
-    """Entry point for GUI mode using Streamlit.
+def main_gui() -> int:
+    """Entry point for GUI mode using PySide6.
 
-    Launches the Streamlit web interface for the Birkenbihl application.
+    Launches the native Qt desktop GUI for the Birkenbihl application.
     Use with: birkenbihl-gui
-    """
-    import subprocess
-    from pathlib import Path
 
+    Returns:
+        Exit code (0 for success, 1 for error)
+    """
     configure_logging()
-    app_path = Path(__file__).parent / "ui" / "app.py"
+
     try:
-        subprocess.run(
-            ["streamlit", "run", str(app_path)],
-            check=True,
-        )
-    except ImportError:
-        print("Error: Streamlit not installed. Install with: uv sync")
+        from birkenbihl.gui.main import main as gui_main
+
+        return gui_main()
+    except ImportError as e:
+        print("Error: PySide6 not installed. Install with: uv sync")
+        print(f"Details: {e}")
         sys.exit(1)
-    except subprocess.CalledProcessError as e:
-        print(f"Error launching Streamlit: {e}")
+    except Exception as e:
+        print(f"Error launching GUI: {e}")
         sys.exit(1)
 
 

@@ -5,9 +5,10 @@ from pathlib import Path
 import streamlit as st
 from pydantic import BaseModel
 
-from birkenbihl.models import languages
+from birkenbihl.models.languages import Language
 from birkenbihl.models.settings import ProviderConfig
 from birkenbihl.providers.registry import ProviderRegistry
+from birkenbihl.services import language_service as ls
 from birkenbihl.services.settings_service import SettingsService
 
 
@@ -56,12 +57,12 @@ def render_settings_tab() -> None:
 
     with st.form("general_settings_form"):
         # Show language names but save ISO codes
-        lang_names = languages.get_german_names()
+        lang_names = [lang.name_de for lang in ls.get_languages()]
 
         # Find current language index
         current_code = st.session_state.settings.target_language
         try:
-            current_lang_name = languages.get_german_name(current_code)
+            current_lang_name = ls.get_language_by(current_code).name_de
             current_index = lang_names.index(current_lang_name)
         except (KeyError, ValueError):
             current_index = lang_names.index("Deutsch")  # Default to German
@@ -74,12 +75,12 @@ def render_settings_tab() -> None:
 
         # Convert back to ISO code for saving
         try:
-            selected_lang_code = languages.get_language_code_by(selected_lang_name)
+            selected_language = ls.get_language_by(name_or_code=selected_lang_name)
         except KeyError:
-            selected_lang_code = "de"
+            selected_language = ls.get_language_by(name_or_code="de")
 
         if st.form_submit_button("Speichern", type="primary", use_container_width=True):
-            save_general_settings(selected_lang_code)
+            save_general_settings(selected_language)
 
 
 def render_provider_card(provider: ProviderConfig, index: int) -> None:
@@ -421,14 +422,14 @@ def set_provider_as_default(index: int) -> None:
         st.error(f"Fehler beim Setzen des Standard-Providers: {e}")
 
 
-def save_general_settings(target_lang: str) -> None:
+def save_general_settings(target_lang: Language) -> None:
     """Save general settings to YAML file.
 
     Args:
         target_lang: Default target language
     """
     try:
-        st.session_state.settings.target_language = target_lang
+        st.session_state.settings.target_language = target_lang.code
 
         settings_file = Path.cwd() / "settings.yaml"
         SettingsService.save_settings(st.session_state.settings, settings_file)

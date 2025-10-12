@@ -6,6 +6,7 @@ import pytest
 
 from birkenbihl.models.translation import Sentence, Translation, WordAlignment
 from birkenbihl.services.translation_service import TranslationService
+from birkenbihl.services import language_service as ls
 from birkenbihl.ui.components.alignment import (
     AlignmentEditor,
     AlignmentPreview,
@@ -39,8 +40,8 @@ def sample_translation(sample_sentence: Sentence) -> Translation:
     """Create a sample translation for testing."""
     return Translation(
         title="Test Translation",
-        source_language="es",
-        target_language="de",
+        source_language=ls.get_language_by(name_or_code="es"),
+        target_language=ls.get_language_by(name_or_code="de"),
         sentences=[sample_sentence],
     )
 
@@ -57,7 +58,10 @@ def alignment_context(
 ) -> AlignmentContext:
     """Create an alignment context for testing."""
     return AlignmentContext(
-        sentence=sample_sentence, translation=sample_translation, service=mock_service, is_new_translation=True
+        sentence=sample_sentence,
+        translation=sample_translation,
+        service=mock_service,
+        is_new_translation=True,
     )
 
 
@@ -151,10 +155,20 @@ class TestAlignmentEditor:
             ],
         )
 
-        translation = Translation(title="Test", source_language="es", target_language="de", sentences=[sentence])
+        source_language = ls.get_language_by("es")
+        target_language = ls.get_language_by("de")
+        translation = Translation(
+            title="Test",
+            source_language=source_language,
+            target_language=target_language,
+            sentences=[sentence],
+        )
 
         context = AlignmentContext(
-            sentence=sentence, translation=translation, service=Mock(spec=TranslationService), is_new_translation=True
+            sentence=sentence,
+            translation=translation,
+            service=Mock(spec=TranslationService),
+            is_new_translation=True,
         )
 
         editor = AlignmentEditor(context)

@@ -16,6 +16,7 @@ import pytest
 from birkenbihl.models.settings import ProviderConfig
 from birkenbihl.models.translation import WordAlignment
 from birkenbihl.providers.pydantic_ai_translator import PydanticAITranslator
+from birkenbihl.services.language_service import get_language_by
 from birkenbihl.services.translation_service import TranslationService
 from birkenbihl.storage.sqlite_storage import SqliteStorageProvider
 
@@ -55,7 +56,9 @@ class TestFullWorkflowEditNaturalTranslation:
         """
         # Step 1: Create translation
         original_text = "Yo te extrañaré"
-        translation = translation_service_with_storage.translate_and_save(original_text, "es", "de", "Test Translation")
+        translation = translation_service_with_storage.translate_and_save(
+            original_text, get_language_by("es"), get_language_by("de"), "Test Translation"
+        )
 
         assert translation is not None
         assert len(translation.sentences) == 1
@@ -113,9 +116,7 @@ class TestFullWorkflowEditNaturalTranslation:
 class TestFullWorkflowEditAlignmentManually:
     """Integration test for manually editing word-by-word alignment workflow."""
 
-    def test_full_workflow_edit_alignment_manually(
-        self, translation_service_with_storage: TranslationService, openai_provider_config: ProviderConfig
-    ):
+    def test_full_workflow_edit_alignment_manually(self, translation_service_with_storage: TranslationService):
         """Test complete workflow: create → create manual alignments → validate → update → verify saved.
 
         Workflow:
@@ -127,7 +128,9 @@ class TestFullWorkflowEditAlignmentManually:
         """
         # Step 1: Create translation
         original_text = "Hello world"
-        translation = translation_service_with_storage.translate_and_save(original_text, "en", "de", "Manual Edit Test")
+        translation = translation_service_with_storage.translate_and_save(
+            original_text, get_language_by("en"), get_language_by("de"), "Manual Edit Test"
+        )
 
         assert translation is not None
         assert len(translation.sentences) == 1
@@ -186,7 +189,9 @@ class TestDeleteTranslation:
         """
         # Step 1: Create translation
         original_text = "Test deletion"
-        translation = translation_service_with_storage.translate_and_save(original_text, "en", "de", "To Be Deleted")
+        translation = translation_service_with_storage.translate_and_save(
+            original_text, get_language_by("en"), get_language_by("de"), "To Be Deleted"
+        )
 
         assert translation is not None
         translation_id = translation.uuid
@@ -227,7 +232,7 @@ class TestMultipleEditsWorkflow:
         # Step 1: Create translation
         original_text = "Yo te extrañaré"
         translation = translation_service_with_storage.translate_and_save(
-            original_text, "es", "de", "Multiple Edits Test"
+            original_text, get_language_by("es"), get_language_by("de"), "Multiple Edits Test"
         )
 
         sentence_uuid = translation.sentences[0].uuid

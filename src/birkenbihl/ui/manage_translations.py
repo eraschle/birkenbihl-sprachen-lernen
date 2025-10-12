@@ -41,17 +41,19 @@ def render_translation_card(translation: Translation, service: TranslationServic
         translation: The translation to display
         service: Translation service for delete operations
     """
+    source_lang = translation.source_language.code.upper()
+    target_lang = translation.target_language.code.upper()
 
     message = f"**{translation.title or 'Ohne Titel'}** | "
-    message += f"{translation.source_language.upper()} → {translation.target_language.upper()} | "
+    message += f"{source_lang} → {target_lang} | "
     message += f"{len(translation.sentences)} Satz/Sätze"
     with st.expander(message):
         col1, col2 = st.columns([3, 1])
 
         with col1:
-            st.write(f"**Erstellt:** {translation.created_at.strftime('%d.%m.%Y %H:%M')}")
+            st.write(f"**Erstellt:** {translation.created_str()}")
             if translation.updated_at and translation.updated_at != translation.created_at:
-                st.write(f"**Aktualisiert:** {translation.updated_at.strftime('%d.%m.%Y %H:%M')}")
+                st.write(f"**Aktualisiert:** {translation.updated_str()}")
 
         with col2:
             if st.button("✏️ Bearbeiten", key=f"edit_{translation.uuid}", use_container_width=True):

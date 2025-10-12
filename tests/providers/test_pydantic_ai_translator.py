@@ -9,6 +9,7 @@ import pytest
 from birkenbihl.models.settings import ProviderConfig
 from birkenbihl.models.translation import Translation
 from birkenbihl.providers.pydantic_ai_translator import PydanticAITranslator
+from birkenbihl.services.language_service import get_language_by
 
 
 @pytest.mark.unit
@@ -43,12 +44,12 @@ class TestPydanticAITranslatorOpenAIIntegration:
         translator = PydanticAITranslator(openai_provider_config)
 
         # Act
-        result = translator.translate("Hello world", "en", "de")
+        result = translator.translate("Hello world", get_language_by("en"), get_language_by("de"))
 
         # Assert
         assert isinstance(result, Translation)
-        assert result.source_language == "en"
-        assert result.target_language == "de"
+        assert result.source_language.code == "en"
+        assert result.target_language.code == "de"
         assert len(result.sentences) >= 1
 
         sentence = result.sentences[0]
@@ -65,7 +66,7 @@ class TestPydanticAITranslatorOpenAIIntegration:
         result = translator.detect_language("Hola mundo")
 
         # Assert
-        assert result == "es"
+        assert result.code == "es"
 
 
 @pytest.mark.integration
@@ -79,12 +80,12 @@ class TestPydanticAITranslatorAnthropicIntegration:
         translator = PydanticAITranslator(anthropic_provider_config)
 
         # Act
-        result = translator.translate("Hello world", "en", "de")
+        result = translator.translate("Hello world", get_language_by("en"), get_language_by("de"))
 
         # Assert
         assert isinstance(result, Translation)
-        assert result.source_language == "en"
-        assert result.target_language == "de"
+        assert result.source_language.code == "en"
+        assert result.target_language.code == "de"
         assert len(result.sentences) >= 1
 
         sentence = result.sentences[0]
@@ -101,7 +102,7 @@ class TestPydanticAITranslatorAnthropicIntegration:
         result = translator.detect_language("Hello world, how are you?")
 
         # Assert
-        assert result == "en"
+        assert result.code == "en"
 
     def test_spanish_translation_with_anthropic(self, anthropic_provider_config: ProviderConfig):
         """Test Spanish to German translation using Anthropic."""
@@ -109,11 +110,11 @@ class TestPydanticAITranslatorAnthropicIntegration:
         translator = PydanticAITranslator(anthropic_provider_config)
 
         # Act
-        result = translator.translate("Yo te extrañaré", "es", "de")
+        result = translator.translate("Yo te extrañaré", get_language_by("es"), get_language_by("de"))
 
         # Assert
-        assert result.source_language == "es"
-        assert result.target_language == "de"
+        assert result.source_language.code == "es"
+        assert result.target_language.code == "de"
         assert len(result.sentences) == 1
 
         sentence = result.sentences[0]
@@ -137,15 +138,15 @@ class TestPydanticAITranslatorMultiProviderCompatibility:
         anthropic_translator = PydanticAITranslator(anthropic_provider_config)
 
         # Act
-        openai_result = openai_translator.translate(text, "en", "de")
-        anthropic_result = anthropic_translator.translate(text, "en", "de")
+        openai_result = openai_translator.translate(text, get_language_by("en"), get_language_by("de"))
+        anthropic_result = anthropic_translator.translate(text, get_language_by("en"), get_language_by("de"))
 
         # Assert: Both should have same structure
         assert isinstance(openai_result, Translation)
         assert isinstance(anthropic_result, Translation)
 
-        assert openai_result.source_language == anthropic_result.source_language == "en"
-        assert openai_result.target_language == anthropic_result.target_language == "de"
+        assert openai_result.source_language.code == anthropic_result.source_language.code == "en"
+        assert openai_result.target_language.code == anthropic_result.target_language.code == "de"
 
         # Both should have sentences
         assert len(openai_result.sentences) >= 1
@@ -174,8 +175,8 @@ class TestPydanticAITranslatorMultiProviderCompatibility:
             openai_lang = openai_translator.detect_language(text)
             anthropic_lang = anthropic_translator.detect_language(text)
 
-            assert openai_lang == expected_lang
-            assert anthropic_lang == expected_lang
+            assert openai_lang.code == expected_lang
+            assert anthropic_lang.code == expected_lang
 
 
 @pytest.mark.integration
@@ -189,7 +190,7 @@ class TestPydanticAITranslatorBirkenbilhCompliance:
         translator = PydanticAITranslator(openai_provider_config)
 
         # Act
-        result = translator.translate("Hello world", "en", "de")
+        result = translator.translate("Hello world", get_language_by("en"), get_language_by("de"))
 
         # Assert
         sentence = result.sentences[0]
@@ -207,7 +208,7 @@ class TestPydanticAITranslatorBirkenbilhCompliance:
         translator = PydanticAITranslator(anthropic_provider_config)
 
         # Act
-        result = translator.translate("Hello world", "en", "de")
+        result = translator.translate("Hello world", get_language_by("en"), get_language_by("de"))
 
         # Assert
         sentence = result.sentences[0]
@@ -220,12 +221,12 @@ class TestPydanticAITranslatorBirkenbilhCompliance:
         translator = PydanticAITranslator(openai_provider_config)
 
         # Act
-        result = translator.translate("Hello world", "en", "de")
+        result = translator.translate("Hello world", get_language_by("en"), get_language_by("de"))
 
         # Assert
         assert result.uuid is not None
-        assert result.source_language == "en"
-        assert result.target_language == "de"
+        assert result.source_language.code == "en"
+        assert result.target_language.code == "de"
         assert result.created_at is not None
         assert result.updated_at is not None
 
@@ -246,7 +247,9 @@ class TestPydanticAITranslatorEditingFeatures:
         source_text = "Yo te extrañaré"
 
         # Act
-        alternatives = translator.generate_alternatives(source_text, "es", "de", count=3)
+        alternatives = translator.generate_alternatives(
+            source_text, get_language_by("es"), get_language_by("de"), count=3
+        )
 
         # Assert
         assert isinstance(alternatives, list)
@@ -263,7 +266,9 @@ class TestPydanticAITranslatorEditingFeatures:
         source_text = "Hello world"
 
         # Act
-        alternatives = translator.generate_alternatives(source_text, "en", "de", count=5)
+        alternatives = translator.generate_alternatives(
+            source_text, get_language_by("en"), get_language_by("de"), count=5
+        )
 
         # Assert
         assert len(alternatives) == 5
@@ -278,7 +283,9 @@ class TestPydanticAITranslatorEditingFeatures:
         natural_translation = "Ich werde dich vermissen"
 
         # Act
-        alignments = translator.regenerate_alignment(source_text, natural_translation, "es", "de")
+        alignments = translator.regenerate_alignment(
+            source_text, natural_translation, get_language_by("es"), get_language_by("de")
+        )
 
         # Assert
         assert isinstance(alignments, list)
@@ -298,7 +305,9 @@ class TestPydanticAITranslatorEditingFeatures:
         natural_translation = "Hallo Welt"
 
         # Act
-        alignments = translator.regenerate_alignment(source_text, natural_translation, "en", "de")
+        alignments = translator.regenerate_alignment(
+            source_text, natural_translation, get_language_by("en"), get_language_by("de")
+        )
 
         # Assert
         # Extract all target words from alignments (handle hyphenated combinations)

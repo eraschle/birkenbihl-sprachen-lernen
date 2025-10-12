@@ -16,6 +16,7 @@ from birkenbihl.providers.models import (
     TranslationResponse,
     WordAlignmentResponse,
 )
+from birkenbihl.services.language_service import get_language_by
 
 
 @pytest.fixture
@@ -79,12 +80,12 @@ class TestBaseTranslator:
         mock_agent.run_sync.return_value = mock_result
 
         # Act
-        result = base_translator.translate("Hello world", "en", "de")
+        result = base_translator.translate("Hello world", get_language_by("en"), get_language_by("de"))
 
         # Assert: Verify domain model structure
         assert isinstance(result, Translation)
-        assert result.source_language == "en"
-        assert result.target_language == "de"
+        assert result.source_language.code == "en"
+        assert result.target_language.code == "de"
         assert len(result.sentences) == 1
         assert isinstance(result.uuid, UUID)
         assert isinstance(result.created_at, datetime)
@@ -134,7 +135,7 @@ class TestBaseTranslator:
         mock_agent.run_sync.return_value = mock_result
 
         # Act
-        result = base_translator.translate("Hello world. How are you", "en", "de")
+        result = base_translator.translate("Hello world. How are you", get_language_by("en"), get_language_by("de"))
 
         # Assert
         assert len(result.sentences) == 2
@@ -163,7 +164,7 @@ class TestBaseTranslator:
         mock_agent.run_sync.return_value = mock_result
 
         # Act
-        result = base_translator.translate("Yo te extrañaré", "es", "de")
+        result = base_translator.translate("Yo te extrañaré", get_language_by("es"), get_language_by("de"))
 
         # Assert
         sentence = result.sentences[0]
@@ -182,7 +183,7 @@ class TestBaseTranslator:
 
             result = base_translator.detect_language("Hello world")
 
-            assert result == "en"
+            assert result.code == "en"
             mock_detect.assert_called_once_with("Hello world")
 
     def test_detect_language_spanish(self, base_translator: BaseTranslator):
@@ -192,7 +193,7 @@ class TestBaseTranslator:
 
             result = base_translator.detect_language("Hola mundo")
 
-            assert result == "es"
+            assert result.code == "es"
 
     def test_detect_language_german(self, base_translator: BaseTranslator):
         """Test language detection for German text."""
@@ -201,7 +202,7 @@ class TestBaseTranslator:
 
             result = base_translator.detect_language("Hallo Welt")
 
-            assert result == "de"
+            assert result.code == "de"
 
     def test_convert_to_domain_model_preserves_uuids(self, base_translator: BaseTranslator):
         """Test that converting to domain model generates unique UUIDs."""
@@ -219,8 +220,8 @@ class TestBaseTranslator:
         )
 
         # Act: Convert twice
-        result1 = base_translator._convert_to_domain_model(response, "en", "de")
-        result2 = base_translator._convert_to_domain_model(response, "en", "de")
+        result1 = base_translator._convert_to_domain_model(response, get_language_by("en"), get_language_by("de"))
+        result2 = base_translator._convert_to_domain_model(response, get_language_by("en"), get_language_by("de"))
 
         # Assert: Each conversion creates unique UUIDs
         assert result1.uuid != result2.uuid
@@ -242,7 +243,7 @@ class TestBaseTranslator:
         )
 
         # Act
-        result = base_translator._convert_to_domain_model(response, "en", "de")
+        result = base_translator._convert_to_domain_model(response, get_language_by("en"), get_language_by("de"))
 
         # Assert
         assert isinstance(result.created_at, datetime)
@@ -278,7 +279,7 @@ class TestBirkenbilFormatValidation:
         mock_agent.run_sync.return_value = mock_result
 
         # Act
-        result = base_translator.translate("Lo que parecía no importante", "es", "de")
+        result = base_translator.translate("Lo que parecía no importante", get_language_by("es"), get_language_by("de"))
 
         # Assert: Positions are sequential and start at 0
         alignments = result.sentences[0].word_alignments
@@ -309,7 +310,7 @@ class TestBirkenbilFormatValidation:
         mock_agent.run_sync.return_value = mock_result
 
         # Act
-        result = base_translator.translate("Fueron tantos bellos y malos momentos", "es", "de")
+        result = base_translator.translate("Fueron tantos bellos y malos momentos", get_language_by("es"), get_language_by("de"))
 
         # Assert: Compound word uses hyphen
         alignments = result.sentences[0].word_alignments

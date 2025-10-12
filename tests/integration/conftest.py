@@ -7,7 +7,9 @@ from pathlib import Path
 import pytest
 from dotenv import load_dotenv
 
+from birkenbihl.models.languages import Language
 from birkenbihl.models.settings import ProviderConfig
+from birkenbihl.services.language_service import get_language_by
 
 
 @pytest.fixture
@@ -52,18 +54,18 @@ def anthropic_config():
     )
 
 
-def get_source_language(test_data: dict[str, object]) -> str:
+def get_source_language(test_data: dict[str, object]) -> Language:
     source_lang = test_data["source_language"]
 
     assert isinstance(source_lang, str)
-    return source_lang
+    return get_language_by(source_lang)
 
 
-def get_target_language(test_data: dict[str, object]) -> str:
+def get_target_language(test_data: dict[str, object]) -> Language:
     target_lang = test_data["target_language"]
 
     assert isinstance(target_lang, str)
-    return target_lang
+    return get_language_by(target_lang)
 
 
 def get_test_cases(test_data: dict[str, object], start: int = 0, count: int = 5) -> list[dict[str, object]]:

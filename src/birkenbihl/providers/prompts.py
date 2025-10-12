@@ -4,7 +4,7 @@ These prompts are used by all translation providers to ensure consistent
 behavior across OpenAI, Anthropic, and other models.
 """
 
-from birkenbihl.models.languages import get_english_name
+from birkenbihl.models.languages import Language
 
 BIRKENBIHL_SYSTEM_PROMPT = """You are a language translation expert specializing in the Vera F. Birkenbihl \
 language learning method.
@@ -96,7 +96,9 @@ Provide accurate, pedagogically useful translations that help language learners 
 """
 
 
-def create_translation_prompt(sentences: list[str], source_lang: str, target_lang: str) -> str:
+def create_translation_prompt(
+    sentences: list[str], source_lang: Language, target_lang: Language, count: int | None = None
+) -> str:
     """Create user prompt for translation request.
 
     Args:
@@ -107,8 +109,12 @@ def create_translation_prompt(sentences: list[str], source_lang: str, target_lan
     Returns:
         Formatted prompt for the AI model
     """
-    source_name = get_english_name(source_lang)
-    target_name = get_english_name(target_lang)
+    src_name = source_lang.name_en
+    trg_name = target_lang.name_en
+
+    alternative_prompt = "."
+    if count and count > 1:
+        alternative_prompt = f" and {count} alternative translations."
 
     # Format sentences as numbered list
     if len(sentences) == 1:
@@ -116,78 +122,148 @@ def create_translation_prompt(sentences: list[str], source_lang: str, target_lan
     else:
         sentences_text = "\n".join(f"{i + 1}. {sent}" for i, sent in enumerate(sentences))
 
-    if len(sentences) == 1:
-        return f"""Translate the following sentence from {source_name} to {target_name} using the Birkenbihl method.
+    return f"""Translate the following sentence(s) from {src_name} to {trg_name} using the Birkenbihl method.
 
-Source sentence:
-{sentences_text}
-
-Provide:
-1. Natural translation in {target_name}
-2. Word-by-word alignment showing how each source word maps to the target language
-"""
-    else:
-        return f"""Translate ALL {len(sentences)} sentences from {source_name} to {target_name} using the \
-Birkenbihl method.
-
-Source sentences:
-{sentences_text}
-
-CRITICAL: You must translate ALL {len(sentences)} sentences listed above.
 Provide for EACH sentence separately:
-1. Natural translation in {target_name}
-2. Word-by-word alignment showing how each source word maps to the target language
+1. A natural and fluent translation in {trg_name}{alternative_prompt}
+2. Maintain the original meaning
+3. Vary in formality, word choice, or structure
+4. You must translate ALL {len(sentences)} sentences.
+
+Source sentence(s):
+{sentences_text}
 
 Your response must contain exactly {len(sentences)} sentence translations - one for each source sentence.
 """
 
 
-def create_alternatives_prompt(source_text: str, source_lang: str, target_lang: str, count: int) -> str:
-    """Create prompt for generating alternative natural translations.
+def create_word_by_word_prompt(
+    source_words: list[str], target_words: list[str], source_lang: Language, target_lang: Language
+) -> str:
+    """Create prompt for generating word-by-word translations.
 
     Args:
-        source_text: Source sentence to translate
+        source_words: List of words from the source sentence
+        target_words: List of words from the natural translation
         source_lang: Source language code
         target_lang: Target language code
+
+    Returns:
+        Formatted prompt for generating word-by-word translations
+    """
+    source_name = source_lang.name_en
+    target_name = target_lang.name_en
+
+    # Format word lists with indices for clarity
+    source_list = ", ".join(f'"{word}"' for word in source_words)
+    target_list = ", ".join(f'"{word}"' for word in target_words)
+
+    return f"""Create a word-by-word alignment for the Birkenbihl method.
+
+**Given:**
+- Source words ({source_name}): '{source_list}'
+- Target words from natural translation ({target_name}): '{target_list}'
+
+**Your task:**
+Map each source word to one or more target words, creating a word-by-word alignment.
+
+**How the alignment works:**
+1. **Position**: Sequential index (0, 1, 2, ...) following source word order
+2. **Source word**: One word from the source sentence
+3. **Target word**: Translation from the natural translation
+   - Use single target word when possible: "yesterday" → "gestern"
+   - Use hyphenated compound when multiple target words form one concept: "I've" → "Ich-habe"
+   - **IMPORTANT**: Every target word MUST be used exactly once in alignments
+
+**Critical rules:**
+✓ Every source word MUST have at least one target word (no empty mappings)
+✓ Every target word MUST appear in exactly one alignment
+✓ Negations stay separate: "no importante" → "nicht" + "wichtig" (NOT "unwichtig")
+✓ Use hyphens only when target words form inseparable unit: "It's" → "Es-ist"
+✓ Position numbers must be sequential: 0, 1, 2, 3, ...
+
+**Example 1 (Simple 1:1 mapping):**
+Source: ["Yesterday", "I", "met", "new", "people"]
+Target: ["Gestern", "ich", "traf", "neue", "Leute"]
+
+Alignments:
+- Position 0: "Yesterday" → "Gestern"
+- Position 1: "I" → "ich"
+- Position 2: "met" → "traf"
+- Position 3: "new" → "neue"
+- Position 4: "people" → "Leute"
+
+**Example 2 (Complex: word order changes + compounds + split words):**
+Source (Spanish): ["Yo", "te", "extrañaré", "mucho"]
+Target (German): ["Ich", "werde", "dich", "sehr", "vermissen"]
+
+Alignments:
+- Position 0: "Yo" → "Ich"
+- Position 1: "te" → "dich" (moved from position 2 in target to align with source position)
+- Position 2: "extrañaré" → "werde-vermissen" (future tense split across positions 1+4 in target)
+- Position 3: "mucho" → "sehr"
+
+**Example 3 (Negation + reflexive verb):**
+Source (Spanish): ["No", "es", "importante", "verte", "aquí"]
+Target (German): ["Es", "ist", "nicht", "wichtig", "dich", "hier", "zu", "sehen"]
+
+Alignments:
+- Position 0: "No" → "nicht" (negation moved to position 2 in target)
+- Position 1: "es" → "Es-ist" (compound: positions 0+1 in target)
+- Position 2: "importante" → "wichtig"
+- Position 3: "verte" → "dich-zu-sehen" (reflexive verb split: positions 4+6+7 in target)
+- Position 4: "aquí" → "hier"
+
+Note: In complex examples, target words may appear in different order than in natural translation.
+The alignment follows SOURCE order, but uses target words from wherever they appear.
+
+Generate the word-by-word alignment following these rules."""
+
+
+def create_alternatives_prompt(source_text: str, source_lang: Language, target_lang: Language, count: int) -> str:
+    """Create prompt for generating alternative translations.
+
+    Args:
+        source_text: Original text to translate
+        source_lang: Source language
+        target_lang: Target language
         count: Number of alternatives to generate
 
     Returns:
         Formatted prompt for generating alternatives
     """
-    source_name = get_english_name(source_lang)
-    target_name = get_english_name(target_lang)
+    source_name = source_lang.name_en
+    target_name = target_lang.name_en
 
-    return f"""Generate {count} different natural translations for the following {source_name} sentence \
-into {target_name}.
+    return f"""Generate {count} alternative natural translations for the following text.
 
-Source sentence:
+Source text ({source_name}):
 {source_text}
 
-Provide {count} alternative translations that:
-1. Are all natural and fluent in {target_name}
-2. Maintain the original meaning
-3. Vary in formality, word choice, or structure
-4. Are all equally valid translations
+Provide {count} different translations in {target_name} that:
+1. Maintain the original meaning
+2. Vary in formality, word choice, or structure
+3. Are all fluent and natural-sounding
 
-Return only the list of alternatives, no explanations needed."""
+Return only the alternative translations."""
 
 
 def create_regenerate_alignment_prompt(
-    source_text: str, natural_translation: str, source_lang: str, target_lang: str
+    source_text: str, natural_translation: str, source_lang: Language, target_lang: Language
 ) -> str:
     """Create prompt for regenerating word-by-word alignment.
 
     Args:
         source_text: Original source sentence
         natural_translation: Natural translation chosen by user
-        source_lang: Source language code
-        target_lang: Target language code
+        source_lang: Source language
+        target_lang: Target language
 
     Returns:
         Formatted prompt for alignment generation
     """
-    source_name = get_english_name(source_lang)
-    target_name = get_english_name(target_lang)
+    source_name = source_lang.name_en
+    target_name = target_lang.name_en
 
     return f"""Create a word-by-word alignment for the Birkenbihl method based on the given natural translation.
 

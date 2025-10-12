@@ -4,7 +4,7 @@ import logging
 
 import streamlit as st
 
-from birkenbihl.models import languages
+from birkenbihl.services import language_service as ls
 from birkenbihl.services.settings_service import SettingsService
 from birkenbihl.ui.components import ProviderSelector
 from birkenbihl.ui.models.context import ProviderSelectorContext
@@ -76,7 +76,7 @@ def render_translation_tab() -> None:
         st.markdown("---")
 
         # Source language options: "Automatisch" + all languages (disabled during translation)
-        source_lang_options = ["Automatisch"] + languages.get_german_names()
+        source_lang_options = [lang.name_de for lang in ls.get_languages()]
         language_detection = st.selectbox(
             "Quellsprache",
             options=source_lang_options,
@@ -86,12 +86,9 @@ def render_translation_tab() -> None:
         )
 
         # Target language options: all languages, default to German (disabled during translation)
-        target_lang_options = languages.get_german_names()
-        try:
-            default_target_lang = languages.get_german_name(st.session_state.settings.target_language)
-        except KeyError:
-            default_target_lang = "Deutsch"
-        default_target_index = target_lang_options.index(default_target_lang)
+        target_lang_options = [lang.name_de for lang in ls.get_languages()]
+        default_target_lang = ls.get_language_by("de")
+        default_target_index = target_lang_options.index(default_target_lang.name_de)
 
         target_lang = st.selectbox(
             "Zielsprache",

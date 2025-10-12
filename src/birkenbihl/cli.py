@@ -10,6 +10,7 @@ from rich.table import Table
 
 from birkenbihl.app import get_service
 from birkenbihl.models.translation import Translation
+from birkenbihl.services import language_service as ls
 from birkenbihl.services.settings_service import SettingsService
 
 console = Console()
@@ -113,10 +114,12 @@ def translate(
         with console.status("[bold green]Translating...", spinner="dots"):
             service = get_service(storage)
 
+            target_language = ls.get_language_by(target)
             if source:
-                result = service.translate_and_save(text, source, target, title)
+                source_language = ls.get_language_by(source)
+                result = service.translate_and_save(text, source_language, target_language, title)
             else:
-                result = service.auto_detect_and_translate(text, target, title)
+                result = service.auto_detect_and_translate(text, target_language, title)
 
         console.print("[bold green]✓[/bold green] Translation completed!")
         display_translation(result)

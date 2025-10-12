@@ -5,21 +5,13 @@ from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
-
 from birkenbihl.models.settings import ProviderConfig
 from birkenbihl.models.translation import Sentence, Translation, WordAlignment
-from birkenbihl.ui.edit_translation import (
-    _extract_target_words_for_source,
-    render_alignment_edit_mode,
-    render_alignment_preview,
-    render_edit_translation_tab,
-    render_header,
-    render_natural_edit_mode,
-    render_sentence_editor,
-)
+from birkenbihl.services import language_service as ls
+from birkenbihl.ui import edit_translation as et
 
 
-class SessionState(dict):
+class SessionState(dict[str, object]):
     """Simple dict subclass that supports both dict and attribute access."""
 
     def __getattr__(self, key: str):
@@ -100,8 +92,8 @@ def sample_translation(sample_sentence: Sentence):
     return Translation(
         uuid=uuid4(),
         title="Test Translation",
-        source_language="es",
-        target_language="de",
+        source_language=ls.get_language_by(name_or_code="es"),
+        target_language=ls.get_language_by(name_or_code="de"),
         sentences=[sample_sentence],
         created_at=datetime(2024, 1, 1, 12, 0, 0),
         updated_at=datetime(2024, 1, 2, 12, 0, 0),
@@ -115,7 +107,7 @@ class TestRenderEditTranslationTab:
         """Test error when no translation is selected."""
         mock_streamlit.session_state["selected_translation_id"] = None
 
-        render_edit_translation_tab()
+        et.render_edit_translation_tab()
 
         mock_streamlit.error.assert_called_once_with("Keine Übersetzung ausgewählt")
 
@@ -128,7 +120,7 @@ class TestRenderEditTranslationTab:
             patch("birkenbihl.ui.edit_translation.JsonStorageProvider"),
             patch("birkenbihl.ui.edit_translation.TranslationService", return_value=mock_service),
         ):
-            render_edit_translation_tab()
+            et.render_edit_translation_tab()
 
             mock_streamlit.error.assert_called()
             error_text = str(mock_streamlit.error.call_args)
@@ -145,7 +137,7 @@ class TestRenderEditTranslationTab:
             patch("birkenbihl.ui.edit_translation.render_header") as mock_header,
             patch("birkenbihl.ui.edit_translation.render_sentence_editor") as mock_sentence_editor,
         ):
-            render_edit_translation_tab()
+            et.render_edit_translation_tab()
 
             mock_header.assert_called_once_with(sample_translation)
             mock_sentence_editor.assert_called_once()
@@ -156,7 +148,7 @@ class TestRenderHeader:
 
     def test_render_header_basic(self, mock_streamlit: MagicMock, sample_translation: Translation):
         """Test header rendering with title and metadata."""
-        render_header(sample_translation)
+        et.render_header(sample_translation)
 
         # Check title rendering
         mock_streamlit.markdown.assert_called()
@@ -175,7 +167,7 @@ class TestRenderHeader:
         mock_streamlit.button.return_value = False
         mock_streamlit.session_state = {"current_view": "Übersetzung bearbeiten"}
 
-        render_header(sample_translation)
+        et.render_header(sample_translation)
 
         mock_streamlit.button.assert_called_once()
         assert "Zurück" in str(mock_streamlit.button.call_args)
@@ -194,7 +186,7 @@ class TestRenderSentenceEditor:
             patch("birkenbihl.ui.edit_translation.render_natural_edit_mode"),
             patch("birkenbihl.ui.edit_translation.render_alignment_edit_mode"),
         ):
-            render_sentence_editor(sample_translation, sample_sentence, 1, mock_service)
+            et.render_sentence_editor(sample_translation, sample_sentence, 1, mock_service)
 
             # Check expander created
             mock_streamlit.expander.assert_called_once()
@@ -220,7 +212,7 @@ class TestRenderNaturalEditMode:
         mock_service = MagicMock()
         mock_streamlit.session_state["settings"] = MagicMock(providers=[])
 
-        render_natural_edit_mode(sample_translation, sample_sentence, mock_service)
+        et.render_natural_edit_mode(sample_translation, sample_sentence, mock_service)
 
         mock_streamlit.warning.assert_called_once()
         warning_text = str(mock_streamlit.warning.call_args)
@@ -243,7 +235,7 @@ class TestRenderNaturalEditMode:
         with patch("birkenbihl.ui.edit_translation.SettingsService") as mock_settings_service:
             mock_settings_service.get_current_provider.return_value = sample_provider_config
 
-            render_natural_edit_mode(sample_translation, sample_sentence, mock_service)
+            et.render_natural_edit_mode(sample_translation, sample_sentence, mock_service)
 
             # Check selectbox for provider
             mock_streamlit.selectbox.assert_called()
@@ -274,7 +266,7 @@ class TestRenderNaturalEditMode:
         with patch("birkenbihl.ui.edit_translation.SettingsService") as mock_settings_service:
             mock_settings_service.get_current_provider.return_value = sample_provider_config
 
-            render_natural_edit_mode(sample_translation, sample_sentence, mock_service)
+            et.render_natural_edit_mode(sample_translation, sample_sentence, mock_service)
 
             # In a real scenario, this would trigger the suggestion generation
             # For unit test, we verify the service method would be called
@@ -293,7 +285,7 @@ class TestRenderAlignmentEditMode:
         with patch("birkenbihl.ui.edit_translation.validate_alignment_complete") as mock_validate:
             mock_validate.return_value = (True, None)
 
-            render_alignment_edit_mode(sample_translation, sample_sentence, mock_service)
+            et.render_alignment_edit_mode(sample_translation, sample_sentence, mock_service)
 
             # Check natural translation displayed
             mock_streamlit.info.assert_called()
@@ -312,7 +304,7 @@ class TestRenderAlignmentEditMode:
         with patch("birkenbihl.ui.edit_translation.validate_alignment_complete") as mock_validate:
             mock_validate.return_value = (True, None)
 
-            render_alignment_edit_mode(sample_translation, sample_sentence, mock_service)
+            et.render_alignment_edit_mode(sample_translation, sample_sentence, mock_service)
 
             # Check success message shown
             success_calls = [call for call in mock_streamlit.success.call_args_list]
@@ -327,7 +319,7 @@ class TestRenderAlignmentEditMode:
         with patch("birkenbihl.ui.edit_translation.validate_alignment_complete") as mock_validate:
             mock_validate.return_value = (False, "Fehlende Wörter: dich")
 
-            render_alignment_edit_mode(sample_translation, sample_sentence, mock_service)
+            et.render_alignment_edit_mode(sample_translation, sample_sentence, mock_service)
 
             # Check error message shown
             mock_streamlit.error.assert_called()
@@ -347,7 +339,7 @@ class TestRenderAlignmentPreview:
             WordAlignment(source_word="extrañaré", target_word="werde-vermissen", position=2),
         ]
 
-        render_alignment_preview(alignments)
+        et.render_alignment_preview(alignments)
 
         # Check markdown called with HTML
         mock_streamlit.markdown.assert_called_once()
@@ -357,38 +349,6 @@ class TestRenderAlignmentPreview:
         assert "werde-vermissen" in html_content
         unsafe_allow_html = mock_streamlit.markdown.call_args[1].get("unsafe_allow_html", False)
         assert unsafe_allow_html is True
-
-
-class TestExtractTargetWordsForSource:
-    """Test cases for _extract_target_words_for_source helper function."""
-
-    def test_extract_single_word(self):
-        """Test extracting single target word."""
-        alignments = [
-            WordAlignment(source_word="Yo", target_word="Ich", position=0),
-            WordAlignment(source_word="te", target_word="dich", position=1),
-        ]
-
-        result = _extract_target_words_for_source("Yo", alignments)
-        assert result == ["Ich"]
-
-    def test_extract_hyphenated_words(self):
-        """Test extracting hyphenated target words."""
-        alignments = [
-            WordAlignment(source_word="extrañaré", target_word="werde-vermissen", position=0),
-        ]
-
-        result = _extract_target_words_for_source("extrañaré", alignments)
-        assert result == ["werde", "vermissen"]
-
-    def test_extract_nonexistent_word(self):
-        """Test extracting non-existent source word."""
-        alignments = [
-            WordAlignment(source_word="Yo", target_word="Ich", position=0),
-        ]
-
-        result = _extract_target_words_for_source("missing", alignments)
-        assert result == []
 
 
 class TestValidationErrors:
@@ -413,7 +373,7 @@ class TestValidationErrors:
         with patch("birkenbihl.ui.edit_translation.validate_alignment_complete") as mock_validate:
             mock_validate.return_value = (False, "Fehlende Wörter: dich")
 
-            render_alignment_edit_mode(sample_translation, incomplete_sentence, mock_service)
+            et.render_alignment_edit_mode(sample_translation, incomplete_sentence, mock_service)
 
             # Verify error displayed
             mock_streamlit.error.assert_called()

@@ -1,12 +1,13 @@
 """Tests for TranslationUIService."""
 
 from datetime import UTC
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 from uuid import uuid4
 
 import pytest
 
 from birkenbihl.models.translation import Sentence, Translation
+from birkenbihl.services import language_service as ls
 from birkenbihl.ui.services.translation_ui_service import TranslationUIServiceImpl
 
 
@@ -24,8 +25,8 @@ def sample_translation() -> Translation:
     sentence = Sentence(source_text="Hello", natural_translation="Hallo", word_alignments=[])
     return Translation(
         title="Test Translation",
-        source_language="en",
-        target_language="de",
+        source_language=ls.get_language_by(name_or_code="es"),
+        target_language=ls.get_language_by(name_or_code="de"),
         sentences=[sentence],
     )
 
@@ -96,7 +97,9 @@ class TestTranslationUIServiceImpl:
 
     @patch("birkenbihl.ui.services.translation_ui_service.TranslationService")
     @patch("birkenbihl.ui.services.translation_ui_service.JsonStorageProvider")
-    def test_get_translation_calls_service(self, mock_storage_cls, mock_service_cls, sample_translation: Translation):
+    def test_get_translation_calls_service(
+        self, mock_storage_cls: MagicMock, mock_service_cls: MagicMock, sample_translation: Translation
+    ):
         """Test that get_translation delegates to service."""
         # Setup mocks
         mock_storage = Mock()
@@ -118,7 +121,9 @@ class TestTranslationUIServiceImpl:
 
     @patch("birkenbihl.ui.services.translation_ui_service.TranslationService")
     @patch("birkenbihl.ui.services.translation_ui_service.JsonStorageProvider")
-    def test_get_translation_returns_none_for_nonexistent(self, mock_storage_cls, mock_service_cls):
+    def test_get_translation_returns_none_for_nonexistent(
+        self, mock_storage_cls: MagicMock, mock_service_cls: MagicMock
+    ):
         """Test that get_translation returns None for nonexistent translation."""
         # Setup mocks
         mock_storage = Mock()
@@ -139,7 +144,7 @@ class TestTranslationUIServiceImpl:
 
     @patch("birkenbihl.ui.services.translation_ui_service.TranslationService")
     @patch("birkenbihl.ui.services.translation_ui_service.JsonStorageProvider")
-    def test_get_translation_raises_on_error(self, mock_storage_cls, mock_service_cls):
+    def test_get_translation_raises_on_error(self, mock_storage_cls: MagicMock, mock_service_cls: MagicMock):
         """Test that get_translation raises exception on error."""
         # Setup mocks
         mock_storage = Mock()
@@ -157,7 +162,7 @@ class TestTranslationUIServiceImpl:
 
     @patch("birkenbihl.ui.services.translation_ui_service.TranslationService")
     @patch("birkenbihl.ui.services.translation_ui_service.JsonStorageProvider")
-    def test_list_translations_sorts_by_date(self, mock_storage_cls, mock_service_cls):
+    def test_list_translations_sorts_by_date(self, mock_storage_cls: MagicMock, mock_service_cls: MagicMock):
         """Test that list_translations sorts by updated_at descending."""
         from datetime import datetime, timedelta
 
@@ -199,7 +204,7 @@ class TestTranslationUIServiceImpl:
 
     @patch("birkenbihl.ui.services.translation_ui_service.TranslationService")
     @patch("birkenbihl.ui.services.translation_ui_service.JsonStorageProvider")
-    def test_list_translations_raises_on_error(self, mock_storage_cls, mock_service_cls):
+    def test_list_translations_raises_on_error(self, mock_storage_cls: MagicMock, mock_service_cls: MagicMock):
         """Test that list_translations raises exception on error."""
         # Setup mocks
         mock_storage = Mock()

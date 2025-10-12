@@ -11,6 +11,7 @@ from uuid import uuid4
 import pytest
 
 from birkenbihl.models.translation import Sentence, Translation, WordAlignment
+from birkenbihl.services.language_service import get_language_by
 from birkenbihl.storage import NotFoundError, SqliteStorageProvider
 
 
@@ -34,8 +35,8 @@ def sample_translation() -> Translation:
     return Translation(
         uuid=uuid4(),
         title="Spanish Lesson 1",
-        source_language="es",
-        target_language="de",
+        source_language=get_language_by("es"),
+        target_language=get_language_by("de"),
         sentences=[
             Sentence(
                 uuid=uuid4(),
@@ -191,8 +192,8 @@ class TestSqliteStorageProviderListAll:
         translation1 = Translation(
             uuid=uuid4(),
             title="Translation 1",
-            source_language="es",
-            target_language="de",
+            source_language=get_language_by("es"),
+            target_language=get_language_by("de"),
             sentences=[
                 Sentence(
                     uuid=uuid4(),
@@ -205,8 +206,8 @@ class TestSqliteStorageProviderListAll:
         translation2 = Translation(
             uuid=uuid4(),
             title="Translation 2",
-            source_language="en",
-            target_language="de",
+            source_language=get_language_by("es"),
+            target_language=get_language_by("de"),
             sentences=[
                 Sentence(
                     uuid=uuid4(),
@@ -231,8 +232,8 @@ class TestSqliteStorageProviderListAll:
         translation1 = Translation(
             uuid=uuid4(),
             title="First",
-            source_language="es",
-            target_language="de",
+            source_language=get_language_by("es"),
+            target_language=get_language_by("de"),
             sentences=[
                 Sentence(
                     uuid=uuid4(),
@@ -247,8 +248,8 @@ class TestSqliteStorageProviderListAll:
         translation2 = Translation(
             uuid=uuid4(),
             title="Second",
-            source_language="es",
-            target_language="de",
+            source_language=get_language_by("es"),
+            target_language=get_language_by("de"),
             sentences=[
                 Sentence(
                     uuid=uuid4(),
@@ -334,8 +335,8 @@ class TestSqliteStorageProviderUpdate:
         nonexistent_translation = Translation(
             uuid=uuid4(),
             title="Does not exist",
-            source_language="es",
-            target_language="de",
+            source_language=get_language_by("es"),
+            target_language=get_language_by("de"),
             sentences=[],
         )
 
@@ -386,8 +387,8 @@ class TestSqliteStorageProviderEdgeCases:
         translation = Translation(
             uuid=uuid4(),
             title="Empty",
-            source_language="es",
-            target_language="de",
+            source_language=get_language_by("es"),
+            target_language=get_language_by("de"),
             sentences=[],
         )
 
@@ -399,8 +400,8 @@ class TestSqliteStorageProviderEdgeCases:
         translation = Translation(
             uuid=uuid4(),
             title="No alignments",
-            source_language="es",
-            target_language="de",
+            source_language=get_language_by("es"),
+            target_language=get_language_by("de"),
             sentences=[
                 Sentence(
                     uuid=uuid4(),
@@ -420,8 +421,8 @@ class TestSqliteStorageProviderEdgeCases:
             translation = Translation(
                 uuid=uuid4(),
                 title="Test",
-                source_language="es",
-                target_language="de",
+                source_language=get_language_by("es"),
+                target_language=get_language_by("de"),
                 sentences=[
                     Sentence(
                         uuid=uuid4(),

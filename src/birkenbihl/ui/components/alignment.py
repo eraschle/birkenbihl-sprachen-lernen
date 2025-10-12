@@ -53,14 +53,13 @@ class AlignmentPreview:
             source_escaped = html.escape(alignment.source_word)
             target_escaped = html.escape(alignment.target_word)
 
-            html_parts.append(
-                f"<span style='display: inline-block; margin: 2px; padding: 4px 8px; "
-                f"background-color: #f0f2f6; border-radius: 6px; border: 1px solid #ddd;'>"
-                f"<div style='color: #0066cc; font-weight: 600; font-size: 12px;'>{source_escaped}</div>"
-                f"<div style='color: #666; font-size: 10px;'>↓</div>"
-                f"<div style='color: #009900; font-weight: 600; font-size: 12px;'>{target_escaped}</div>"
-                f"</span>"
-            )
+            message = "<span style='display: inline-block; margin: 2px; padding: 4px 8px; "
+            message += "background-color: #f0f2f6; border-radius: 6px; border: 1px solid #ddd;'>"
+            message += f"<div style='color: #0066cc; font-weight: 600; font-size: 12px;'>{source_escaped}</div>"
+            message += "<div style='color: #666; font-size: 10px;'>↓</div>"
+            message += f"<div style='color: #009900; font-weight: 600; font-size: 12px;'>{target_escaped}</div>"
+            message += "</span>"
+            html_parts.append(message)
 
         html_parts.append("</div>")
         return "".join(html_parts)
@@ -235,10 +234,9 @@ class AlignmentEditor:
         else:
             if not source_valid:
                 st.error(f"✗ {source_error}")
-                st.info(
-                    "💡 Tipp: Ändern Sie die natürliche Übersetzung, sodass jedes Quellwort ein Zielwort hat. "
-                    "Beispiel: 'unwichtig' → 'nicht wichtig'"
-                )
+                message = "💡 Tipp: Ändern Sie die natürliche Übersetzung, sodass jedes Quellwort ein Zielwort hat. "
+                message += "Beispiel: 'unwichtig' → 'nicht wichtig'"
+                st.info(message)
             if not natural_valid:
                 st.error(f"✗ {natural_error}")
 

@@ -13,6 +13,7 @@ from langdetect import detector_factory
 from pydantic_ai import Agent
 from pydantic_ai.models import Model
 
+from birkenbihl.models.languages import Language
 from birkenbihl.models.translation import Sentence, Translation, WordAlignment
 from birkenbihl.providers import text_utils
 from birkenbihl.providers.models import (
@@ -59,7 +60,9 @@ class BaseTranslator:
             system_prompt=BIRKENBIHL_SYSTEM_PROMPT,
         )
 
-    def translate(self, text: str, source_lang: str, target_lang: str) -> Translation:
+    def translate(
+        self, text: str, source_lang: Language, target_lang: Language, title: str | None = None
+    ) -> Translation:
         """Translate text using Birkenbihl method.
 
         Args:
@@ -101,7 +104,7 @@ class BaseTranslator:
         logger.info("=" * 60)
         logger.info("Response time: %.2f seconds", elapsed_time)
         logger.info("Sentences received: %d", len(result.output.sentences))
-        logger.info("Response cost: %s", result.cost() if hasattr(result, "cost") else "N/A")
+        # logger.info("Response cost: %s", result.cost() if hasattr(result, "cost") else "N/A")
 
         # Log each translated sentence (DEBUG level)
         for i, sent in enumerate(result.output.sentences, 1):
@@ -138,7 +141,7 @@ class BaseTranslator:
 
         # Convert AI response to domain model
         logger.debug("Converting AI response to domain model")
-        translation = self._convert_to_domain_model(result.output, source_lang, target_lang)
+        translation = self._convert_to_domain_model(result.output, source_lang, target_lang, title=title)
         logger.info(
             "Translation complete: %d sentences, %d total word alignments",
             len(translation.sentences),
@@ -147,7 +150,7 @@ class BaseTranslator:
         return translation
 
     async def translate_stream(
-        self, text: str, source_lang: str, target_lang: str
+        self, text: str, source_lang: Language, target_lang: Language
     ) -> AsyncIterator[tuple[float, Translation | None]]:
         """Translate text using Birkenbihl method with streaming progress.
 
@@ -223,20 +226,24 @@ class BaseTranslator:
             logger.info("Total word alignments: %d", sum(len(s.word_alignments) for s in final_translation.sentences))
             logger.info("Average time per sentence: %.2f seconds", elapsed_time / len(final_translation.sentences))
 
-    def detect_language(self, text: str) -> str:
+    def detect_language(self, text: str) -> Language:
         """Detect language of given text.
 
         Args:
             text: Text to analyze
 
         Returns:
-            Language code (en, es, de, etc.)
+            Language object
 
         Raises:
             langdetect.LangDetectException: If detection fails
+            KeyError: If detected language is not supported
         """
+        from birkenbihl.services.language_service import get_language_by
+
         # Use langdetect library for language detection
-        return detector_factory.detect(text)
+        code = detector_factory.detect(text)
+        return get_language_by(code)
 
     def _create_word_alignments(self, response: IWordAlignmentResponse) -> list[WordAlignment]:
         """Create WordAlignment models from AI response model."""
@@ -263,7 +270,7 @@ class BaseTranslator:
         return sentences
 
     def _convert_to_domain_model(
-        self, response: TranslationResponse, source_lang: str, target_lang: str
+        self, response: TranslationResponse, source_lang: Language, target_lang: Language, title: str | None = None
     ) -> Translation:
         """Convert AI response model to domain Translation model.
 
@@ -279,12 +286,12 @@ class BaseTranslator:
         now = datetime.datetime.now(datetime.UTC)
 
         # Generate default title from first sentence and timestamp
-        first_text = response.sentences[0].source_text if response.sentences else "Übersetzung"
+        first_text = title if title else "Übersetzung"
         # Truncate to 50 chars max
-        default_title = first_text[:50] + ("..." if len(first_text) > 50 else "")
+        title = first_text[:50] + ("..." if len(first_text) > 50 else "")
 
         return Translation(
-            title=default_title,
+            title=title,
             source_language=source_lang,
             target_language=target_lang,
             sentences=self._create_sentences(response),
@@ -295,16 +302,16 @@ class BaseTranslator:
     def generate_alternatives(
         self,
         source_text: str,
-        source_lang: str,
-        target_lang: str,
+        source_lang: Language,
+        target_lang: Language,
         count: int = 3,
     ) -> list[str]:
         """Generate alternative natural translations for a sentence.
 
         Args:
             source_text: Original sentence to translate
-            source_lang: Source language code (en, es)
-            target_lang: Target language code (de)
+            source_lang: Source language
+            target_lang: Target language
             count: Number of alternative translations to generate (default: 3)
 
         Returns:
@@ -328,16 +335,16 @@ class BaseTranslator:
         self,
         source_text: str,
         natural_translation: str,
-        source_lang: str,
-        target_lang: str,
+        source_lang: Language,
+        target_lang: Language,
     ) -> list[WordAlignment]:
         """Generate word-by-word alignment based on given natural translation.
 
         Args:
             source_text: Original sentence
             natural_translation: Natural translation (chosen by user)
-            source_lang: Source language code
-            target_lang: Target language code
+            source_lang: Source language
+            target_lang: Target language
 
         Returns:
             List of WordAlignment objects mapping source words to target words

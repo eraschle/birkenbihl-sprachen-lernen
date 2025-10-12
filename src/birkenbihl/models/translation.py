@@ -6,6 +6,7 @@ from uuid import UUID, uuid4
 from pydantic import BaseModel, Field
 
 from birkenbihl.models import dateutils
+from birkenbihl.models.languages import Language
 
 
 class WordAlignment(BaseModel):
@@ -47,9 +48,15 @@ class Translation(BaseModel):
 
     uuid: UUID = Field(default_factory=uuid4)
     title: str  # Document name for organization
-    source_language: str  # ISO 639-1 code: en, es, etc.
-    target_language: str  # ISO 639-1 code: de
+    source_language: Language
+    target_language: Language
     sentences: list[Sentence]
 
     created_at: datetime = Field(default_factory=dateutils.create_now)
     updated_at: datetime = Field(default_factory=dateutils.create_now)
+
+    def updated_str(self, format_str: str = "%d.%m.%Y %H:%M") -> str:
+        return self.updated_at.strftime(format=format_str)
+
+    def created_str(self, format_str: str = "%d.%m.%Y %H:%M") -> str:
+        return self.created_at.strftime(format=format_str)

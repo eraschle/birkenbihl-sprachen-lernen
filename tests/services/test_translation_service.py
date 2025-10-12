@@ -16,6 +16,7 @@ from birkenbihl.models.settings import ProviderConfig
 from birkenbihl.models.translation import Sentence, Translation, WordAlignment
 from birkenbihl.protocols import IStorageProvider, ITranslationProvider
 from birkenbihl.services.translation_service import TranslationService
+from birkenbihl.services.language_service import get_language_by
 from birkenbihl.storage.exceptions import NotFoundError
 
 
@@ -70,8 +71,8 @@ def sample_translation() -> Translation:
     return Translation(
         uuid=translation_id,
         title="Test Translation",
-        source_language="es",
-        target_language="de",
+        source_language=get_language_by("es"),
+        target_language=get_language_by("de"),
         sentences=[sentence],
         created_at=dateutils.create_now(),
         updated_at=dateutils.create_now(),

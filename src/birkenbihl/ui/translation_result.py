@@ -13,15 +13,31 @@ import logging
 
 import streamlit as st
 from pydantic import BaseModel
+from streamlit.delta_generator import DeltaGenerator
 
-from birkenbihl.models import languages
 from birkenbihl.models.settings import ProviderConfig
 from birkenbihl.models.translation import Sentence, Translation
+from birkenbihl.models.validation import (
+    validate_alignment_complete,
+    validate_source_words_mapped,
+)
 from birkenbihl.providers.pydantic_ai_translator import PydanticAITranslator
+from birkenbihl.services import language_service as ls
 from birkenbihl.services.settings_service import SettingsService
-from birkenbihl.ui.components import AlignmentEditor, AlignmentPreview, ProviderSelector
-from birkenbihl.ui.models.context import AlignmentContext, ProviderSelectorContext
-from birkenbihl.ui.services.translation_ui_service import TranslationUIServiceImpl
+from birkenbihl.services.translation_service import TranslationService
+from birkenbihl.storage.json_storage import JsonStorageProvider
+from birkenbihl.ui.components import (
+    AlignmentEditor,
+    AlignmentPreview,
+    ProviderSelector,
+)
+from birkenbihl.ui.models.context import (
+    AlignmentContext,
+    ProviderSelectorContext,
+)
+from birkenbihl.ui.services.translation_ui_service import (
+    TranslationUIServiceImpl,
+)
 from birkenbihl.ui.state.cache import SessionCacheManager
 from birkenbihl.ui.state.session import SessionStateManager
 
@@ -121,10 +137,9 @@ def _handle_sentence_editor_error(sentence_index: int, error: Exception) -> None
 
     error_msg = str(error).lower()
     if "default value" in error_msg and "not part of the options" in error_msg:
-        st.info(
-            "💡 Mögliche Ursache: Einige Wörter aus der Word-by-Word-Zuordnung kommen nicht "
-            "in der natürlichen Übersetzung vor. Bitte ändern Sie die natürliche Übersetzung."
-        )
+        message = "💡 Mögliche Ursache: Einige Wörter aus der Word-by-Word-Zuordnung kommen nicht"
+        message = f"{message} in der natürlichen Übersetzung vor. Bitte ändern Sie die natürliche Übersetzung."
+        st.info(message)
     else:
         st.info("💡 Tipp: Versuchen Sie die natürliche Übersetzung für diesen Satz anzupassen.")
 
@@ -141,7 +156,9 @@ def render_header(translation: Translation, is_new: bool) -> None:
     with col1:
         title_prefix = "✨ Neue Übersetzung" if is_new else "✏️ Übersetzung bearbeiten"
         st.markdown(f"### {title_prefix}: {translation.title}")
-        message = f"{translation.source_language.upper()} → {translation.target_language.upper()} | "
+        source_code = translation.source_language.code.upper()
+        target_code = translation.target_language.code.upper()
+        message = f"{source_code} → {target_code} | "
         message += f"{len(translation.sentences)} Sätze"
         if not is_new:
             message += f" | Zuletzt geändert: {translation.updated_at.strftime('%d.%m.%Y %H:%M')}"
@@ -422,7 +439,9 @@ def _execute_translation() -> None:
         st.rerun()
 
 
-def _translate_text(model: TranslationModel, provider: ProviderConfig | None, progress_container) -> None:
+def _translate_text(
+    model: TranslationModel, provider: ProviderConfig | None, progress_container: DeltaGenerator
+) -> None:
     """Translate text using configured provider."""
     if not provider:
         logger.warning("Translation attempted with no provider configured")
@@ -430,10 +449,8 @@ def _translate_text(model: TranslationModel, provider: ProviderConfig | None, pr
             st.error("Kein Provider konfiguriert. Bitte fügen Sie einen Provider in den Einstellungen hinzu.")
         return
 
-    source_lang = (
-        "auto" if model.source_language == "Automatisch" else languages.get_language_code_by(model.source_language)
-    )
-    target_lang = languages.get_language_code_by(model.target_language)
+    source_lang = ls.get_language_by(model.source_language)
+    target_lang = ls.get_language_by(model.target_language)
 
     logger.info(
         "UI: Starting translation - provider=%s, source=%s, target=%s, title='%s'",
@@ -449,14 +466,12 @@ def _translate_text(model: TranslationModel, provider: ProviderConfig | None, pr
                 translator = PydanticAITranslator(provider)
 
                 detected_language_info = None
-                if source_lang == "auto":
+                if ls.is_auto_detect(source_lang.code):
                     detected_lang = translator.detect_language(model.text)
-                    detected_language_info = f"✓ Erkannte Sprache: {detected_lang.upper()}"
+                    detected_language_info = f"✓ Erkannte Sprache: {detected_lang.code.upper()}"
                     source_lang = detected_lang
 
-                translation = translator.translate(model.text, source_lang, target_lang)
-                translation.title = model.title
-
+                translation = translator.translate(model.text, source_lang, target_lang, model.title)
                 st.session_state.translation_result = translation
                 st.session_state.is_new_translation = True
                 st.session_state.detected_language_info = detected_language_info
@@ -480,10 +495,8 @@ async def _translate_text_streaming(model: TranslationModel, provider: ProviderC
         st.error("Kein Provider konfiguriert. Bitte fügen Sie einen Provider in den Einstellungen hinzu.")
         return
 
-    source_lang = (
-        "auto" if model.source_language == "Automatisch" else languages.get_language_code_by(model.source_language)
-    )
-    target_lang = languages.get_language_code_by(model.target_language)
+    source_lang = "auto" if ls.is_auto_detect(name_or_code="Automatisch") else ls.get_language_by(model.source_language)
+    target_lang = ls.get_language_by(model.target_language)
 
     try:
         logger.info("Streaming: Creating translator")
@@ -493,7 +506,7 @@ async def _translate_text_streaming(model: TranslationModel, provider: ProviderC
         if source_lang == "auto":
             logger.info("Streaming: Detecting language")
             detected_lang = translator.detect_language(model.text)
-            detected_language_info = f"✓ Erkannte Sprache: {detected_lang.upper()}"
+            detected_language_info = f"✓ Erkannte Sprache: {detected_lang.code.upper()}"
             source_lang = detected_lang
 
         logger.info("Streaming: Creating progress bar")

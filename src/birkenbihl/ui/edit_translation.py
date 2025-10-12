@@ -3,11 +3,15 @@
 Refactored to use Clean Code components and state management.
 """
 
+import re
+
 import streamlit as st
 
 from birkenbihl.models.settings import ProviderConfig
 from birkenbihl.models.translation import Sentence, Translation, WordAlignment
+from birkenbihl.models.validation import validate_alignment_complete
 from birkenbihl.providers.pydantic_ai_translator import PydanticAITranslator
+from birkenbihl.services import translation_service as ts
 from birkenbihl.services.settings_service import SettingsService
 from birkenbihl.services.translation_service import TranslationService
 from birkenbihl.ui.components import AlignmentPreview, BackButton, ProviderSelector
@@ -62,9 +66,11 @@ def render_header(translation: Translation) -> None:
 
     with col1:
         st.markdown(f"### ✏️ {translation.title}")
-        message = f"{translation.source_language.upper()} → {translation.target_language.upper()} | "
+        source_code = translation.source_language.code.upper()
+        target_code = translation.target_language.code.upper()
+        message = f"{source_code} → {target_code} | "
         message += f"{len(translation.sentences)} Sätze | "
-        message += f"Zuletzt geändert: {translation.updated_at.strftime('%d.%m.%Y %H:%M')}"
+        message += f"Zuletzt geändert: {translation.updated_str()}"
         st.caption(message)
 
     with col2:
@@ -201,7 +207,9 @@ def render_natural_edit_mode(translation: Translation, sentence: Sentence, servi
 # render_alignment_preview removed - now using AlignmentPreview component
 
 
-def _generate_suggestions(translation: Translation, sentence: Sentence, provider: ProviderConfig, service) -> None:
+def _generate_suggestions(
+    translation: Translation, sentence: Sentence, provider: ProviderConfig, service: ts.TranslationService
+) -> None:
     """Generate translation suggestions and cache them.
 
     Helper function to keep render_natural_edit_mode() clean.
@@ -304,6 +312,3 @@ def render_alignment_edit_mode(translation: Translation, sentence: Sentence, ser
         if st.button("🔄 Zurücksetzen", key=f"reset_alignment_{sentence.uuid}", use_container_width=True):
             del st.session_state[editor_key]
             st.rerun()
-
-
-# _extract_target_words_for_source removed - now in ui/components/alignment.py

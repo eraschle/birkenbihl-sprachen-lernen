@@ -10,6 +10,7 @@ from typing import Any
 
 from pydantic_ai.models import Model
 
+from birkenbihl.models.languages import Language
 from birkenbihl.models.settings import ProviderConfig
 from birkenbihl.models.translation import Translation, WordAlignment
 from birkenbihl.providers.base_translator import BaseTranslator
@@ -243,13 +244,15 @@ class PydanticAITranslator:
         # Instantiate with API key
         return provider_class(api_key=config.api_key)
 
-    def translate(self, text: str, source_lang: str, target_lang: str) -> Translation:
+    def translate(
+        self, text: str, source_lang: Language, target_lang: Language, title: str | None = None
+    ) -> Translation:
         """Translate text using Birkenbihl method.
 
         Args:
             text: Text to translate
-            source_lang: Source language code (en, es)
-            target_lang: Target language code (de)
+            source_lang: Source language
+            target_lang: Target language
 
         Returns:
             Translation with natural and word-by-word translations
@@ -263,19 +266,19 @@ class PydanticAITranslator:
             target_lang,
             len(text),
         )
-        result = self._translator.translate(text, source_lang, target_lang)
+        result = self._translator.translate(text, source_lang, target_lang, title=title)
         logger.info("Translation completed: %d sentences generated", len(result.sentences))
         return result
 
     async def translate_stream(
-        self, text: str, source_lang: str, target_lang: str
+        self, text: str, source_lang: Language, target_lang: Language
     ) -> AsyncIterator[tuple[float, Translation | None]]:
         """Translate text using Birkenbihl method with streaming progress.
 
         Args:
             text: Text to translate
-            source_lang: Source language code (en, es)
-            target_lang: Target language code (de)
+            source_lang: Source language
+            target_lang: Target language
 
         Yields:
             Tuple of (progress: float, translation: Translation | None)
@@ -288,14 +291,14 @@ class PydanticAITranslator:
         async for progress, translation in self._translator.translate_stream(text, source_lang, target_lang):
             yield progress, translation
 
-    def detect_language(self, text: str) -> str:
+    def detect_language(self, text: str) -> Language:
         """Detect language of given text.
 
         Args:
             text: Text to analyze
 
         Returns:
-            Language code (en, es, de)
+            Language instance
         """
         logger.debug("Detecting language for text: %d chars", len(text))
         detected = self._translator.detect_language(text)
@@ -305,16 +308,16 @@ class PydanticAITranslator:
     def generate_alternatives(
         self,
         source_text: str,
-        source_lang: str,
-        target_lang: str,
+        source_lang: Language,
+        target_lang: Language,
         count: int = 3,
     ) -> list[str]:
         """Generate alternative natural translations for a sentence.
 
         Args:
             source_text: Original sentence to translate
-            source_lang: Source language code (en, es)
-            target_lang: Target language code (de)
+            source_lang: Source language
+            target_lang: Target language
             count: Number of alternative translations to generate (default: 3)
 
         Returns:
@@ -329,16 +332,16 @@ class PydanticAITranslator:
         self,
         source_text: str,
         natural_translation: str,
-        source_lang: str,
-        target_lang: str,
+        source_lang: Language,
+        target_lang: Language,
     ) -> list[WordAlignment]:
         """Generate word-by-word alignment based on given natural translation.
 
         Args:
             source_text: Original sentence
             natural_translation: Natural translation (chosen by user)
-            source_lang: Source language code
-            target_lang: Target language code
+            source_lang: Source language
+            target_lang: Target language
 
         Returns:
             List of WordAlignment objects mapping source words to target words

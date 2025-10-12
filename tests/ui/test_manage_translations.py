@@ -8,6 +8,7 @@ from uuid import uuid4
 import pytest
 
 from birkenbihl.models.translation import Sentence, Translation, WordAlignment
+from birkenbihl.services import language_service as ls
 from birkenbihl.ui.manage_translations import (
     delete_translation_with_confirmation,
     open_translation_editor,
@@ -16,7 +17,7 @@ from birkenbihl.ui.manage_translations import (
 )
 
 
-class SessionState(dict):
+class SessionState(dict[str, object]):
     """Simple dict subclass that supports both dict and attribute access."""
 
     def __getattr__(self, key: str):
@@ -60,8 +61,8 @@ def sample_translation() -> Translation:
     return Translation(
         uuid=translation_id,
         title="Test Translation",
-        source_language="es",
-        target_language="de",
+        source_language=ls.get_language_by(name_or_code="es"),
+        target_language=ls.get_language_by(name_or_code="de"),
         sentences=[
             Sentence(
                 uuid=sentence_id,
@@ -144,8 +145,8 @@ class TestRenderTranslationCard:
         translation = Translation(
             uuid=uuid4(),
             title="",  # Empty title (falsy value)
-            source_language="en",
-            target_language="de",
+            source_language=ls.get_language_by(name_or_code="es"),
+            target_language=ls.get_language_by(name_or_code="de"),
             sentences=[],
             created_at=datetime(2024, 1, 1),
             updated_at=datetime(2024, 1, 1),

@@ -1,5 +1,7 @@
 """Service for managing application settings and provider configurations."""
 
+import os
+import sys
 from pathlib import Path
 from threading import Lock
 
@@ -30,66 +32,34 @@ class SettingsService:
         if SettingsService._instance is not None:
             raise RuntimeError("Use get_instance() to get singleton instance")
 
-    @staticmethod
-    def _load_settings_from_file(settings_file: str | Path) -> Settings:
-        """Load settings from specified YAML file.
-
-        Reads YAML configuration file and constructs Settings instance.
-        Returns default Settings if file does not exist.
-
-        Args:
-            settings_file: Path to YAML settings file
-
-        Returns:
-            Settings instance populated from YAML or defaults
-        """
-        config_path = Path(settings_file)
-        if not config_path.exists():
-            return Settings()
-
-        with config_path.open("r") as file:
-            data = yaml.safe_load(file) or {}
-
-        providers_data = data.get("providers", [])
-        providers = [ProviderConfig(**provider) for provider in providers_data]
-        target_language = data.get("target_language", "de")
-
-        return Settings(providers=providers, target_language=target_language)
-
-    @staticmethod
-    def _save_settings_to_file(settings: Settings, settings_file: str | Path) -> None:
-        """Save settings to specified YAML file.
-
-        Converts Settings instance to dictionary and writes to YAML file.
-        Creates parent directories if they do not exist.
-
-        Args:
-            settings: Settings instance to persist
-            settings_file: Path to YAML settings file
-        """
-        config_path = Path(settings_file)
-        config_path.parent.mkdir(parents=True, exist_ok=True)
-
-        data = settings.model_dump()
-
-        with config_path.open("w") as file:
-            yaml.safe_dump(data, file, default_flow_style=False, sort_keys=False)
+    @classmethod
+    def _ensure_exists(cls, path: Path) -> Path:
+        if path.exists():
+            return path
+        dir_path = path
+        if path.is_file():
+            dir_path = path.parent
+        if not dir_path.exists():
+            dir_path.mkdir()
+        return path
 
     @classmethod
-    def get_instance(cls) -> "SettingsService":
-        """Get or create singleton instance of SettingsService.
+    def _get_config_root_path(cls) -> Path:
+        birkenbihl_path = None
+        if sys.platform != "win32":
+            appdata_path = Path(os.getenv("APPDATA", os.environ["USERPROFILE"]))
+            birkenbihl_path = appdata_path / "birkenbihl"
+        elif sys.platform != "linux":
+            birkenbihl_path = Path.home() / ".birkenbihl"
+        else:
+            raise NotImplementedError(f"Platform not supported {sys.plattform}")
+        return cls._ensure_exists(birkenbihl_path)
 
-        Thread-safe singleton creation. Returns existing instance if available.
-
-        Returns:
-            Singleton SettingsService instance
-        """
-        if cls._instance is None:
-            with cls._lock:
-                if cls._instance is None:
-                    instance = cls.__new__(cls)
-                    cls._instance = instance
-        return cls._instance
+    @classmethod
+    def _get_setting_path(cls, file_path_or_name: str | Path) -> Path:
+        if isinstance(file_path_or_name, str):
+            return cls._get_config_root_path() / file_path_or_name
+        return file_path_or_name
 
     @classmethod
     def get_settings(cls) -> Settings:
@@ -102,11 +72,7 @@ class SettingsService:
             Current Settings instance
         """
         if cls._settings is None:
-            with cls._lock:
-                if cls._settings is None:
-                    cls._settings = cls._load_settings_from_file("settings.yaml")
-                    if cls._current_provider is None:
-                        cls._current_provider = cls._settings.get_default_provider()
+            raise RuntimeError("Settings not loaded")
         return cls._settings
 
     @classmethod
@@ -124,7 +90,8 @@ class SettingsService:
             Loaded Settings instance
         """
         with cls._lock:
-            cls._settings = cls._load_settings_from_file(settings_file)
+            settings_path = cls._get_setting_path(settings_file)
+            cls._settings = cls._load_settings_from_file(settings_path)
             cls._current_provider = cls._settings.get_default_provider()
         return cls._settings
 
@@ -229,3 +196,64 @@ class SettingsService:
         """
         with cls._lock:
             cls._current_provider = cls.get_settings().get_default_provider()
+
+    @staticmethod
+    def _load_settings_from_file(settings_path: str | Path) -> Settings:
+        """Load settings from specified YAML file.
+
+        Reads YAML configuration file and constructs Settings instance.
+        Returns default Settings if file does not exist.
+
+        Args:
+            settings_file: Path to YAML settings file
+
+        Returns:
+            Settings instance populated from YAML or defaults
+        """
+        config_path = Path(settings_path)
+        if not config_path.exists():
+            return Settings()
+
+        with config_path.open("r") as file:
+            data = yaml.safe_load(file) or {}
+
+        providers_data = data.get("providers", [])
+        providers = [ProviderConfig(**provider) for provider in providers_data]
+        target_language = data.get("target_language", "de")
+
+        return Settings(providers=providers, target_language=target_language)
+
+    @staticmethod
+    def _save_settings_to_file(settings: Settings, settings_file: str | Path) -> None:
+        """Save settings to specified YAML file.
+
+        Converts Settings instance to dictionary and writes to YAML file.
+        Creates parent directories if they do not exist.
+
+        Args:
+            settings: Settings instance to persist
+            settings_file: Path to YAML settings file
+        """
+        config_path = Path(settings_file)
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+
+        data = settings.model_dump()
+
+        with config_path.open("w") as file:
+            yaml.safe_dump(data, file, default_flow_style=False, sort_keys=False)
+
+    @classmethod
+    def get_instance(cls) -> "SettingsService":
+        """Get or create singleton instance of SettingsService.
+
+        Thread-safe singleton creation. Returns existing instance if available.
+
+        Returns:
+            Singleton SettingsService instance
+        """
+        if cls._instance is None:
+            with cls._lock:
+                if cls._instance is None:
+                    instance = cls.__new__(cls)
+                    cls._instance = instance
+        return cls._instance

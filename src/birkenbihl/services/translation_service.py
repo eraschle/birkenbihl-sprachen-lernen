@@ -3,6 +3,7 @@
 from uuid import UUID
 
 from birkenbihl.models import dateutils
+from birkenbihl.models.languages import Language
 from birkenbihl.models.settings import ProviderConfig
 from birkenbihl.models.translation import Translation, WordAlignment
 from birkenbihl.models.validation import validate_alignment_complete
@@ -30,13 +31,13 @@ class TranslationService:
         self._translator = translator
         self._storage = storage
 
-    def translate_and_save(self, text: str, source_lang: str, target_lang: str, title: str) -> Translation:
+    def translate_and_save(self, text: str, source_lang: Language, target_lang: Language, title: str) -> Translation:
         """Translate text using Birkenbihl method and save to storage.
 
         Args:
             text: Text to translate (can contain multiple sentences)
-            source_lang: Source language code (en, es)
-            target_lang: Target language code (de)
+            source_lang_code: Source language object
+            target_lang_code: Target language object
             title: Document title
 
         Returns:
@@ -51,14 +52,8 @@ class TranslationService:
             raise ValueError("Translator required for translate_and_save operation")
 
         # Get translation from AI provider
-        result = self._translator.translate(text, source_lang, target_lang)
-
-        # Create Translation domain model
-        translation = Translation(
-            title=title,
-            source_language=source_lang,
-            target_language=target_lang,
-            sentences=result.sentences,  # Assuming provider returns compatible format
+        translation = self._translator.translate(
+            text=text, source_lang=source_lang, target_lang=target_lang, title=title
         )
 
         # Persist to storage
@@ -108,12 +103,12 @@ class TranslationService:
         """
         return self._storage.update(translation)
 
-    def auto_detect_and_translate(self, text: str, target_lang: str, title: str) -> Translation:
+    def auto_detect_and_translate(self, text: str, target_lang: Language, title: str) -> Translation:
         """Auto-detect source language and translate.
 
         Args:
             text: Text to translate
-            target_lang: Target language code
+            target_lang_code: Target language
             title: Document title
 
         Returns:
@@ -127,7 +122,12 @@ class TranslationService:
             raise ValueError("Translator required for auto_detect_and_translate operation")
 
         source_lang = self._translator.detect_language(text)
-        return self.translate_and_save(text, source_lang, target_lang, title)
+        return self.translate_and_save(
+            text=text,
+            source_lang=source_lang,
+            target_lang=target_lang,
+            title=title,
+        )
 
     def get_sentence_suggestions(
         self,

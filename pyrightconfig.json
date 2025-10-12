@@ -15,7 +15,8 @@
     "venv",
     "build",
     "dist",
-    "*.egg-info"
+    "*.egg-info",
+    "**/*/gui"
   ],
   "ignore": [],
   "pythonVersion": "3.13",
