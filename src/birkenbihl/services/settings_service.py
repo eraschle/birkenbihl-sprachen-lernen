@@ -8,6 +8,7 @@ from threading import Lock
 import yaml
 
 from birkenbihl.models.settings import ProviderConfig, Settings
+from birkenbihl.storage.settings_storage import SettingsStorageProvider
 
 
 class SettingsService:
@@ -22,6 +23,7 @@ class SettingsService:
     _instance: "SettingsService | None" = None
     _settings: Settings | None = None
     _current_provider: ProviderConfig | None = None
+    _storage: SettingsStorageProvider | None = None
     _lock: Lock = Lock()
 
     def __init__(self):
@@ -76,8 +78,8 @@ class SettingsService:
         return cls._settings
 
     @classmethod
-    def load_settings(cls, settings_file: str | Path = "settings.yaml") -> Settings:
-        """Load settings from specified settings file.
+    def load_settings(cls, settings_file: str | Path = "settings.yaml", use_database: bool = False) -> Settings:
+        """Load settings from specified settings file or database.
 
         Replaces current settings with newly loaded configuration.
         Updates current provider to new default provider.
@@ -85,13 +87,19 @@ class SettingsService:
 
         Args:
             settings_file: Path to settings file (defaults to settings.yaml in current directory)
+            use_database: If True, load from database instead of YAML file
 
         Returns:
             Loaded Settings instance
         """
         with cls._lock:
-            settings_path = cls._get_setting_path(settings_file)
-            cls._settings = cls._load_settings_from_file(settings_path)
+            if use_database:
+                if cls._storage is None:
+                    cls._storage = SettingsStorageProvider(cls._get_config_root_path() / "birkenbihl.db")
+                cls._settings = cls._storage.load()
+            else:
+                settings_path = cls._get_setting_path(settings_file)
+                cls._settings = cls._load_settings_from_file(settings_path)
             cls._current_provider = cls._settings.get_default_provider()
         return cls._settings
 
@@ -123,15 +131,16 @@ class SettingsService:
         return None
 
     @classmethod
-    def save_settings(cls, settings: Settings, settings_file: str | Path = "settings.yaml") -> None:
-        """Save settings to specified settings file.
+    def save_settings(cls, settings: Settings, settings_file: str | Path = "settings.yaml", use_database: bool = False) -> None:
+        """Save settings to specified settings file or database.
 
-        Updates current settings and persists to file.
+        Updates current settings and persists to file or database.
         Thread-safe operation prevents race conditions during save.
 
         Args:
             settings: Settings instance to save
             settings_file: Path to settings file (defaults to settings.yaml in current directory)
+            use_database: If True, save to database instead of YAML file
 
         Raises:
             ValueError: If any provider configuration is invalid
@@ -143,7 +152,12 @@ class SettingsService:
                 raise ValueError(error)
 
         with cls._lock:
-            cls._save_settings_to_file(settings, settings_file)
+            if use_database:
+                if cls._storage is None:
+                    cls._storage = SettingsStorageProvider(cls._get_config_root_path() / "birkenbihl.db")
+                cls._storage.save(settings)
+            else:
+                cls._save_settings_to_file(settings, settings_file)
             cls._settings = settings
 
     @classmethod

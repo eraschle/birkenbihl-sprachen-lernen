@@ -5,6 +5,9 @@
 .env
 **/*.db
 *.el
+settings.yaml
+**zuweisung
+
 ### Python ###
 # Byte-compiled / optimized / DLL files
 __pycache__/
