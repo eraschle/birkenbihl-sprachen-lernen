@@ -70,7 +70,7 @@ class TestSettingsStorageEdgeCases:
                     provider_type="openai",
                     model=long_string,
                     api_key=long_string,
-                    base_url=f"https://{long_string}.com",
+                    api_url=f"https://{long_string}.com",
                 )
             ]
         )
@@ -272,16 +272,16 @@ class TestSettingsStorageEdgeCases:
                     provider_type="openai",
                     model="gpt-4o",
                     api_key="test-key",
-                    base_url=None,
+                    api_url=None,
                 )
             ]
         )
 
         saved = storage.save(settings)
-        assert saved.providers[0].base_url is None
+        assert saved.providers[0].api_url is None
 
         loaded = storage.load()
-        assert loaded.providers[0].base_url is None
+        assert loaded.providers[0].api_url is None
 
     def test_multiple_providers_with_same_name(self, storage: SettingsStorageProvider) -> None:
         """Test saving multiple providers with identical names."""
@@ -384,7 +384,7 @@ class TestSettingsStorageEdgeCases:
                     provider_type="openai",
                     model="",
                     api_key="",
-                    base_url="",
+                    api_url="",
                 )
             ]
         )
@@ -395,7 +395,7 @@ class TestSettingsStorageEdgeCases:
         assert loaded.providers[0].name == ""
         assert loaded.providers[0].model == ""
         assert loaded.providers[0].api_key == ""
-        assert loaded.providers[0].base_url == ""
+        assert loaded.providers[0].api_url == ""
 
     def test_database_file_permissions(self, temp_db: Path) -> None:
         """Test that database file is created with proper permissions."""

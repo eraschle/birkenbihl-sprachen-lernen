@@ -45,6 +45,16 @@ class LanguageSelector(QWidget):
         label = QLabel(self._label_text)
         self._combo = QComboBox()  # type: ignore[reportUninitializedInstanceVariable]
         self._combo.currentIndexChanged.connect(self._on_selection_changed)
+        self._combo.setStyleSheet("""
+            QComboBox QAbstractItemView::item:selected {
+                background-color: #0078d4;
+                color: white;
+            }
+            QComboBox QAbstractItemView::item:hover {
+                background-color: #e5f3ff;
+                color: black;
+            }
+        """)
 
         layout.addWidget(label)
         layout.addWidget(self._combo)
@@ -59,7 +69,7 @@ class LanguageSelector(QWidget):
             source_lang = ls.get_default_source_language()
             self._combo.addItem(source_lang.name_de, source_lang.code)
 
-        for lang in ls.get_languages():
+        for lang in ls.get_languages(self._show_auto_detect):
             self._combo.addItem(lang.name_de, lang.code)
 
         self._select_default()
@@ -95,9 +105,9 @@ class LanguageSelector(QWidget):
         Args:
             lang_code: Language code to select
         """
-        for i in range(self._combo.count()):
-            if self._combo.itemData(i) == lang_code:
-                self._combo.setCurrentIndex(i)
+        for idx in range(self._combo.count()):
+            if self._combo.itemData(idx) == lang_code:
+                self._combo.setCurrentIndex(idx)
                 break
 
     def set_enabled(self, enabled: bool) -> None:

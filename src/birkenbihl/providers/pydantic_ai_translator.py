@@ -75,7 +75,7 @@ class PydanticAITranslator:
             "Initializing PydanticAITranslator: provider=%s, model=%s, base_url=%s",
             provider_config.provider_type,
             provider_config.model,
-            provider_config.base_url or "default",
+            provider_config.api_url or "default",
         )
         model = self._create_model(provider_config)
         self._translator = BaseTranslator(model)
@@ -195,8 +195,8 @@ class PydanticAITranslator:
         provider_kwargs: dict[str, object] = {"api_key": config.api_key}
 
         # Add base_url if configured
-        if config.base_url:
-            provider_kwargs["base_url"] = config.base_url
+        if config.api_url:
+            provider_kwargs["base_url"] = config.api_url
 
         # Create custom HTTP client with User-Agent header for better API compatibility
         from httpx import AsyncClient

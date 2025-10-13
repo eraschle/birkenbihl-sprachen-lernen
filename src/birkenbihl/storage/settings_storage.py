@@ -182,7 +182,7 @@ class SettingsStorageProvider:
                 provider_type=provider.provider_type,
                 model=provider.model,
                 api_key=provider.api_key,
-                base_url=provider.base_url,
+                base_url=provider.api_url,
                 is_default=provider.is_default,
                 supports_streaming=provider.supports_streaming,
             )
@@ -208,7 +208,7 @@ class SettingsStorageProvider:
                     provider_type=provider_dao.provider_type,
                     model=provider_dao.model,
                     api_key=provider_dao.api_key,
-                    base_url=provider_dao.base_url,
+                    api_url=provider_dao.base_url,
                     is_default=provider_dao.is_default,
                     supports_streaming=provider_dao.supports_streaming,
                 )

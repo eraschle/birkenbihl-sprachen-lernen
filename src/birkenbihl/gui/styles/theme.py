@@ -5,6 +5,35 @@ from pathlib import Path
 from PySide6.QtWidgets import QApplication
 
 
+def get_default_combobox_style() -> str:
+    """Return the default combo box style.
+
+    Returns: Combo box style
+    """
+    return """
+        QComboBox {
+            background-color: white;
+            color: black;
+        }
+        QComboBox QAbstractItemView {
+            background-color: white;
+            color: black;
+        }
+        QComboBox QAbstractItemView::item {
+            background-color: white;
+            color: black;
+        }
+        QComboBox QAbstractItemView::item:selected {
+            background-color: #0078d4;
+            color: white;
+        }
+        QComboBox QAbstractItemView::item:hover {
+            background-color: #e5f3ff;
+            color: black;
+        }
+    """
+
+
 class ThemeManager:
     """Manages application theming and stylesheets.
 

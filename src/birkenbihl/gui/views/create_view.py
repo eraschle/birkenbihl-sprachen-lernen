@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
 from birkenbihl.gui.components import ProgressWidget, ProviderSelector
 from birkenbihl.gui.models.context import ProviderSelectorContext
 from birkenbihl.gui.viewmodels.create_vm import CreateTranslationViewModel
+from birkenbihl.gui.widgets.language_combo import LanguageCombo
 from birkenbihl.models.languages import Language
 from birkenbihl.models.settings import ProviderConfig
 from birkenbihl.models.translation import Translation
@@ -69,12 +70,11 @@ class CreateTranslationView(QWidget):
 
         return form
 
-    def _create_language_combo(self) -> QComboBox:
+    def _create_language_combo(self) -> LanguageCombo:
         """Create combo box for source language selection."""
-        combo = QComboBox()
-        combo.addItem("Auto-detect", userData="auto")
-        combo.addItem("English", userData="en")
-        combo.addItem("Spanish", userData="es")
+        combo = LanguageCombo()
+        languages = ls.get_languages()
+        combo.add_languages(languages)
         combo.setCurrentIndex(0)
         return combo
 
@@ -123,17 +123,20 @@ class CreateTranslationView(QWidget):
         """Handle translate button click."""
         text = self._text_input.toPlainText()
         title = self._title_input.text() or "Untitled Translation"
-        source_lang = self._get_source_language()
+        source_lang = self._source_lang_combo.current_language()
 
         if not self._selected_provider:
             self._viewmodel._emit_error("No provider selected")
             return
 
-        if source_lang == "auto":
+        if not source_lang:
+            self._viewmodel._emit_error("No source language selected")
+            return
+
+        if ls.is_auto_detect(source_lang.code):
             self._start_auto_detect_translation(text, title)
         else:
-            source_language = ls.get_language_by(source_lang)
-            self._start_translation(text, source_language, title)
+            self._start_translation(text, source_lang, title)
 
     def _start_auto_detect_translation(self, text: str, title: str) -> None:
         """Start translation with auto-detected language."""
@@ -170,9 +173,7 @@ class CreateTranslationView(QWidget):
 
     def _on_language_detected(self, language: str) -> None:
         """Handle successful language detection."""
-        language_map = {"en": 1, "es": 2}
-        if language in language_map:
-            self._source_lang_combo.setCurrentIndex(language_map[language])
+        self._source_lang_combo.set_language(language)
 
     def _on_error_occurred(self, _: str) -> None:
         """Handle error from viewmodel."""
@@ -190,6 +191,3 @@ class CreateTranslationView(QWidget):
         self._progress_widget.update_progress(progress)
         self._progress_widget.set_message(message)
 
-    def _get_source_language(self) -> str:
-        """Get selected source language code."""
-        return self._source_lang_combo.currentData()

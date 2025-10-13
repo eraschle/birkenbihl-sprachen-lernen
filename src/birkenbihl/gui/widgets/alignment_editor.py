@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from birkenbihl.gui.styles import theme
 from birkenbihl.models.translation import Sentence, WordAlignment
 from birkenbihl.models.validation import validate_alignment_complete
 
@@ -137,6 +138,8 @@ class AlignmentEditor(QWidget):
         label.setMinimumWidth(100)
 
         combo = QComboBox()
+        combo.setStyleSheet(theme.get_default_combobox_style())
+
         combo.addItem("(nicht zugeordnet)", None)
 
         for target_word in self._target_words:

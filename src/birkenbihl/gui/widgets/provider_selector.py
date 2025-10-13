@@ -3,6 +3,7 @@
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QComboBox, QLabel, QVBoxLayout, QWidget
 
+from birkenbihl.gui.styles import theme
 from birkenbihl.models.settings import ProviderConfig
 
 
@@ -35,6 +36,7 @@ class ProviderSelector(QWidget):
         label = QLabel("Provider:")
         self._combo = QComboBox()  # type: ignore[reportUninitializedInstanceVariable]
         self._combo.currentIndexChanged.connect(self._on_selection_changed)
+        self._combo.setStyleSheet(theme.get_default_combobox_style())
 
         layout.addWidget(label)
         layout.addWidget(self._combo)

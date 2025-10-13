@@ -8,7 +8,7 @@ from dataclasses import fields
 
 from birkenbihl.models.languages import Language
 
-AUTO_DETECT = Language(code="auto", name_de="Automatisch erkennen", name_en="Auto-detect")
+AUTO_DETECT = Language(code="auto", name_de="Autom. erkennen", name_en="Auto-detect")
 
 # All supported languages (36 total) - European languages first, then others alphabetically
 SUPPORTED_LANGUAGES: dict[str, Language] = {
@@ -74,9 +74,12 @@ def is_auto_detect(name_or_code: str) -> bool:
     return _has_field_value(language=AUTO_DETECT, to_compare=name_or_code)
 
 
-def get_languages() -> list[Language]:
-    languages = [AUTO_DETECT] + sorted(SUPPORTED_LANGUAGES.values(), key=lambda lang: lang.name_de)
-    return languages
+def get_languages(with_auto_detect: bool = True) -> list[Language]:
+    language_models = sorted(SUPPORTED_LANGUAGES.values(), key=lambda lang: lang.name_de)
+
+    if with_auto_detect:
+        language_models = [AUTO_DETECT] + language_models
+    return language_models
 
 
 def get_language_by(name_or_code: str) -> Language:

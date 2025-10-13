@@ -30,6 +30,8 @@ class ProviderMetadata:
     model_class: type[Model]
     default_models: list[str]
     requires_api_key: bool = True
+    requires_api_url: bool = False
+    api_url: str | None = None
 
 
 def _extract_model_names(model_name_type: Any) -> list[str]:
@@ -117,6 +119,7 @@ def _create_openai_models() -> dict[str, ProviderMetadata]:
             display_name=display_name,
             model_class=OpenAIChatModel,
             default_models=models,
+            requires_api_url=False,
         )
     return provider_metadata
 
@@ -132,6 +135,7 @@ def _create_anthropic_models() -> dict[str, ProviderMetadata]:
             display_name="Anthropic Claude",
             model_class=AnthropicModel,
             default_models=all_models,
+            requires_api_url=False,
         )
     }
 
@@ -147,6 +151,7 @@ def _create_gemini_models() -> dict[str, ProviderMetadata]:
             display_name="Google Gemini",
             model_class=GoogleModel,
             default_models=all_models,
+            requires_api_url=False,
         )
     }
 
@@ -162,6 +167,7 @@ def _create_groq_models() -> dict[str, ProviderMetadata]:
             display_name="Groq",
             model_class=GroqModel,
             default_models=all_models,
+            requires_api_url=False,
         )
     }
 
@@ -177,6 +183,7 @@ def _create_cohere_models() -> dict[str, ProviderMetadata]:
             display_name="Cohere",
             model_class=CohereModel,
             default_models=all_models,
+            requires_api_url=False,
         )
     }
 
@@ -192,6 +199,7 @@ def _create_mistral_models() -> dict[str, ProviderMetadata]:
             display_name="Mistral AI",
             model_class=MistralModel,
             default_models=all_models,
+            requires_api_url=False,
         )
     }
 
@@ -206,6 +214,7 @@ def _create_bedrock_models() -> dict[str, ProviderMetadata]:
             display_name="AWS Bedrock",
             model_class=BedrockConverseModel,
             default_models=["anthropic.claude-3-sonnet", "anthropic.claude-3-haiku"],
+            requires_api_url=False,
         )
     }
 
@@ -285,7 +294,7 @@ class ProviderRegistry:
             List of ProviderMetadata for all available providers
         """
         cls._initialize()
-        return list(cls._providers.values())
+        return sorted(cls._providers.values(), key=lambda prv: prv.display_name)
 
     @classmethod
     def get_provider_types(cls) -> list[str]:

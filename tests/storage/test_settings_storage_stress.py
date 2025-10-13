@@ -60,7 +60,7 @@ class TestSettingsStorageStress:
                 provider_type="openai" if i % 3 == 0 else ("anthropic" if i % 3 == 1 else "gemini"),
                 model=f"model-{i}",
                 api_key=f"key-{i}" * 10,  # Longer keys
-                base_url=f"https://api{i}.example.com" if i % 5 == 0 else None,
+                api_url=f"https://api{i}.example.com" if i % 5 == 0 else None,
                 is_default=(i == 0),
                 supports_streaming=(i % 2 == 0),
             )
@@ -285,7 +285,7 @@ class TestSettingsStorageStress:
                 provider_type="openai",
                 model=f"model-{i}" * 10,
                 api_key=f"key-{i}" * 50,  # Longer keys
-                base_url=f"https://api{i}.example.com/v1/very/long/path",
+                api_url=f"https://api{i}.example.com/v1/very/long/path",
             )
             for i in range(100)
         ]

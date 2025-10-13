@@ -154,7 +154,7 @@ class TestSettingsStorageProvider:
                     provider_type="publicai",
                     model="swiss-ai/apertus-8b-instruct",
                     api_key="publicai-key",
-                    base_url="https://api.publicai.co/v1",
+                    api_url="https://api.publicai.co/v1",
                 )
             ]
         )
@@ -162,7 +162,7 @@ class TestSettingsStorageProvider:
         storage.save(settings)
         loaded = storage.load()
 
-        assert loaded.providers[0].base_url == "https://api.publicai.co/v1"
+        assert loaded.providers[0].api_url == "https://api.publicai.co/v1"
 
     def test_provider_streaming_flag(self, storage: SettingsStorageProvider) -> None:
         """Test saving and loading provider with supports_streaming flag."""

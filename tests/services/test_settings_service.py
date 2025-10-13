@@ -87,6 +87,7 @@ target_language: es
         try:
             os.chdir(tmp_path)
 
+            SettingsService.load_settings()
             settings = SettingsService.get_settings()
 
             assert settings is not None

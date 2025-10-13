@@ -4,6 +4,7 @@ from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QComboBox
 
 from birkenbihl.gui.models.context import ProviderSelectorContext
+from birkenbihl.gui.styles import theme
 from birkenbihl.models.settings import ProviderConfig
 
 
@@ -19,6 +20,7 @@ class ProviderSelector(QComboBox):
     def __init__(self, context: ProviderSelectorContext):
         super().__init__()
         self._providers = context.providers
+        self.setStyleSheet(theme.get_default_combobox_style())
         self._populate_providers()
         self._set_default_provider(context.default_provider)
         self.setEnabled(not context.disabled)

@@ -1,6 +1,7 @@
 """Tests for LanguageSelector widget."""
 
 from pytestqt.qtbot import QtBot
+
 from birkenbihl.gui.widgets.language_selector import LanguageSelector
 
 
@@ -16,7 +17,7 @@ class TestLanguageSelector:
         """Test widget with auto-detect option."""
         widget = LanguageSelector(show_auto_detect=True)
         assert widget._combo.itemData(0) == "auto"
-        assert widget._combo.itemText(0) == "Automatisch"
+        assert widget._combo.itemText(0) == "Autom. Erkennen"
 
     def test_default_language_selection(self):
         """Test default language is selected."""
