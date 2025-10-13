@@ -27,7 +27,7 @@ class AlignmentEditor(QWidget):
     alignment_changed = Signal(list)  # list[WordAlignment]
     validation_failed = Signal(str)  # error message
 
-    def __init__(self, sentence: Sentence | None = None, parent=None):
+    def __init__(self, parent: QWidget | None = None, sentence: Sentence | None = None):
         """Initialize widget.
 
         Args:
@@ -38,6 +38,7 @@ class AlignmentEditor(QWidget):
         self._sentence = sentence
         self._target_words = []
         self._mappings = {}  # source_word -> target_word
+        self._scroll_area = QScrollArea()
         self._setup_ui()
 
     def _setup_ui(self) -> None:
@@ -47,12 +48,11 @@ class AlignmentEditor(QWidget):
         title_label = QLabel("<b>Wort-für-Wort Zuordnung</b>")
         layout.addWidget(title_label)
 
-        self._scroll_area = QScrollArea()
         self._scroll_area.setWidgetResizable(True)
-        self._scroll_area.setFrameShape(QFrame.NoFrame)
+        self._scroll_area.setFrameShape(QFrame.Shape.NoFrame)
 
-        self._mapping_widget = QWidget()
-        self._mapping_layout = QVBoxLayout(self._mapping_widget)
+        self._mapping_widget = QWidget()  # type: ignore[reportUninitializedInstanceVariable]
+        self._mapping_layout = QVBoxLayout(self._mapping_widget)  # type: ignore[reportUninitializedInstanceVariable]
 
         self._scroll_area.setWidget(self._mapping_widget)
         layout.addWidget(self._scroll_area)
@@ -60,10 +60,10 @@ class AlignmentEditor(QWidget):
         button_layout = QHBoxLayout()
         button_layout.addStretch()
 
-        self._validate_button = QPushButton("Validieren")
+        self._validate_button = QPushButton("Validieren")  # type: ignore[reportUninitializedInstanceVariable]
         self._validate_button.clicked.connect(self._on_validate)
 
-        self._apply_button = QPushButton("Übernehmen")
+        self._apply_button = QPushButton("Übernehmen")  # type: ignore[reportUninitializedInstanceVariable]
         self._apply_button.clicked.connect(self._on_apply)
 
         button_layout.addWidget(self._validate_button)
@@ -117,8 +117,8 @@ class AlignmentEditor(QWidget):
         """Clear mapping layout."""
         while self._mapping_layout.count():
             item = self._mapping_layout.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
+            if item.widget() and hasattr(item.widget(), "deleteLater"):
+                item.widget().deleteLater()  # type: ignore[reportOptionalMemberAccess]
 
     def _create_mapping_row(self, source_word: str) -> QWidget:
         """Create mapping row for source word.

@@ -12,10 +12,12 @@ from PySide6.QtWidgets import (
 )
 
 from birkenbihl.gui.models.translation_viewmodel import TranslationCreationViewModel
+from birkenbihl.gui.models.ui_state import TranslationCreationState
 from birkenbihl.gui.widgets.language_selector import LanguageSelector
 from birkenbihl.gui.widgets.progress_widget import ProgressWidget
 from birkenbihl.gui.widgets.provider_selector import ProviderSelector
-from birkenbihl.models.settings import Settings
+from birkenbihl.models.settings import ProviderConfig, Settings
+from birkenbihl.models.translation import Translation
 
 
 class TranslationView(QWidget):
@@ -26,7 +28,7 @@ class TranslationView(QWidget):
     Delegates business logic to TranslationCreationViewModel.
     """
 
-    def __init__(self, viewmodel: TranslationCreationViewModel, settings: Settings, parent=None):
+    def __init__(self, viewmodel: TranslationCreationViewModel, settings: Settings, parent: QWidget | None = None):
         """Initialize view.
 
         Args:
@@ -47,7 +49,7 @@ class TranslationView(QWidget):
 
         # Title input
         title_label = QLabel("<b>Titel:</b>")
-        self._title_input = QLineEdit()
+        self._title_input = QLineEdit()  # type: ignore[reportUninitializedInstanceVariable]
         self._title_input.setPlaceholderText("Geben Sie einen Titel ein...")
         self._title_input.textChanged.connect(self._on_title_changed)
 
@@ -61,7 +63,7 @@ class TranslationView(QWidget):
         text_group = QGroupBox("Text eingeben")
         text_layout = QVBoxLayout(text_group)
 
-        self._text_input = QTextEdit()
+        self._text_input = QTextEdit()  # type: ignore[reportUninitializedInstanceVariable]
         self._text_input.setPlaceholderText("Geben Sie hier den zu übersetzenden Text ein...")
         self._text_input.textChanged.connect(self._on_text_changed)
 
@@ -72,21 +74,21 @@ class TranslationView(QWidget):
         settings_group = QGroupBox("Einstellungen")
         settings_layout = QVBoxLayout(settings_group)
 
-        self._source_lang_selector = LanguageSelector(
+        self._source_lang_selector = LanguageSelector(  # type: ignore[reportUninitializedInstanceVariable]
             label_text="Quellsprache:",
             show_auto_detect=True,
             default_language="auto",
         )
         self._source_lang_selector.language_selected.connect(self._on_source_lang_changed)
 
-        self._target_lang_selector = LanguageSelector(
+        self._target_lang_selector = LanguageSelector(  # type: ignore[reportUninitializedInstanceVariable]
             label_text="Zielsprache:",
             show_auto_detect=False,
             default_language=self._settings.target_language,
         )
         self._target_lang_selector.language_selected.connect(self._on_target_lang_changed)
 
-        self._provider_selector = ProviderSelector(self._settings.providers)
+        self._provider_selector = ProviderSelector(self._settings.providers)  # type: ignore[reportUninitializedInstanceVariable]
         self._provider_selector.provider_selected.connect(self._on_provider_changed)
 
         settings_layout.addWidget(self._source_lang_selector)
@@ -98,7 +100,7 @@ class TranslationView(QWidget):
         layout.addLayout(content_layout)
 
         # Progress widget (initially hidden)
-        self._progress_widget = ProgressWidget()
+        self._progress_widget = ProgressWidget()  # type: ignore[reportUninitializedInstanceVariable]
         self._progress_widget.cancel_requested.connect(self._on_cancel_requested)
         layout.addWidget(self._progress_widget)
 
@@ -106,7 +108,7 @@ class TranslationView(QWidget):
         button_layout = QHBoxLayout()
         button_layout.addStretch()
 
-        self._translate_button = QPushButton("Übersetzen")
+        self._translate_button = QPushButton("Übersetzen")  # type: ignore[reportUninitializedInstanceVariable]
         self._translate_button.clicked.connect(self._on_translate_clicked)
 
         button_layout.addWidget(self._translate_button)
@@ -141,7 +143,7 @@ class TranslationView(QWidget):
         """Handle target language change."""
         self._viewmodel.set_target_language(lang)
 
-    def _on_provider_changed(self, provider) -> None:
+    def _on_provider_changed(self, provider: ProviderConfig) -> None:
         """Handle provider change."""
         self._viewmodel.set_provider(provider)
 
@@ -153,7 +155,7 @@ class TranslationView(QWidget):
         """Handle translation cancellation."""
         self._viewmodel.cancel_translation()
 
-    def _on_state_changed(self, state) -> None:
+    def _on_state_changed(self, state: TranslationCreationState) -> None:
         """Handle state changes.
 
         Args:
@@ -175,7 +177,7 @@ class TranslationView(QWidget):
         """Handle translation start."""
         self._progress_widget.start("Übersetze...")
 
-    def _on_translation_completed(self, translation) -> None:
+    def _on_translation_completed(self, translation: Translation) -> None:
         """Handle translation completion."""
         self._progress_widget.finish()
         # In real app: navigate to editor or show success

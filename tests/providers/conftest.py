@@ -14,7 +14,7 @@ from birkenbihl.providers.models import (
 
 
 @pytest.fixture
-def openai_provider_config():
+def openai_provider_config() -> ProviderConfig:
     """Create OpenAI ProviderConfig from environment variable.
 
     Requires OPENAI_API_KEY environment variable.
@@ -35,7 +35,7 @@ def openai_provider_config():
 
 
 @pytest.fixture
-def anthropic_provider_config():
+def anthropic_provider_config() -> ProviderConfig:
     """Create Anthropic ProviderConfig from environment variable.
 
     Requires ANTHROPIC_API_KEY environment variable.
@@ -56,7 +56,7 @@ def anthropic_provider_config():
 
 
 @pytest.fixture
-def sample_english_german_response():
+def sample_english_german_response() -> TranslationResponse:
     """Sample translation response: English -> German 'Hello world'."""
     return TranslationResponse(
         sentences=[
@@ -73,7 +73,7 @@ def sample_english_german_response():
 
 
 @pytest.fixture
-def sample_spanish_german_response():
+def sample_spanish_german_response() -> TranslationResponse:
     """Sample translation response: Spanish -> German 'Yo te extrañaré'.
 
     Example from ORIGINAL_REQUIREMENTS.md demonstrating Birkenbihl method.
@@ -94,7 +94,7 @@ def sample_spanish_german_response():
 
 
 @pytest.fixture
-def sample_multi_sentence_response():
+def sample_multi_sentence_response() -> TranslationResponse:
     """Sample translation response with multiple sentences."""
     return TranslationResponse(
         sentences=[
@@ -120,7 +120,7 @@ def sample_multi_sentence_response():
 
 
 @pytest.fixture
-def sample_complex_spanish_response():
+def sample_complex_spanish_response() -> TranslationResponse:
     """Sample complex Spanish sentence from ORIGINAL_REQUIREMENTS.md.
 
     'Fueron tantos bellos y malos momentos'
@@ -145,7 +145,7 @@ def sample_complex_spanish_response():
 
 
 @pytest.fixture
-def sample_dekodierung_example():
+def sample_dekodierung_example() -> TranslationResponse:
     """Sample dekodierung example from ORIGINAL_REQUIREMENTS.md.
 
     'Lo que parecía no importante' -> 'Das was schien nicht wichtig'

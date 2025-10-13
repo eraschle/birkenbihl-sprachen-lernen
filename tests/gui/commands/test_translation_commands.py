@@ -1,6 +1,6 @@
 """Tests for translation commands."""
 
-from unittest.mock import Mock
+from unittest.mock import MagicMock, Mock
 from uuid import uuid4
 
 import pytest
@@ -36,7 +36,7 @@ def mock_service():
     return service
 
 
-def test_create_translation_can_execute_success(mock_service):
+def test_create_translation_can_execute_success(mock_service: MagicMock):
     """Test can execute with valid data."""
     cmd = CreateTranslationCommand(
         service=mock_service,
@@ -48,7 +48,7 @@ def test_create_translation_can_execute_success(mock_service):
     assert cmd.can_execute()
 
 
-def test_create_translation_can_execute_missing_text(mock_service):
+def test_create_translation_can_execute_missing_text(mock_service: MagicMock):
     """Test can execute with missing text."""
     cmd = CreateTranslationCommand(
         service=mock_service,
@@ -60,7 +60,7 @@ def test_create_translation_can_execute_missing_text(mock_service):
     assert not cmd.can_execute()
 
 
-def test_create_translation_can_execute_missing_lang(mock_service):
+def test_create_translation_can_execute_missing_lang(mock_service: MagicMock):
     """Test can execute with missing language."""
     cmd = CreateTranslationCommand(
         service=mock_service,
@@ -72,7 +72,7 @@ def test_create_translation_can_execute_missing_lang(mock_service):
     assert not cmd.can_execute()
 
 
-def test_create_translation_can_execute_missing_title(mock_service):
+def test_create_translation_can_execute_missing_title(mock_service: MagicMock):
     """Test can execute with missing title."""
     cmd = CreateTranslationCommand(
         service=mock_service,
@@ -84,7 +84,7 @@ def test_create_translation_can_execute_missing_title(mock_service):
     assert not cmd.can_execute()
 
 
-def test_create_translation_execute_success(mock_service):
+def test_create_translation_execute_success(mock_service: MagicMock):
     """Test successful translation creation."""
     cmd = CreateTranslationCommand(
         service=mock_service,
@@ -101,7 +101,7 @@ def test_create_translation_execute_success(mock_service):
     mock_service.translate_and_save.assert_called_once()
 
 
-def test_create_translation_execute_cannot_execute(mock_service):
+def test_create_translation_execute_cannot_execute(mock_service: MagicMock):
     """Test execute when cannot execute."""
     cmd = CreateTranslationCommand(
         service=mock_service,
@@ -117,7 +117,7 @@ def test_create_translation_execute_cannot_execute(mock_service):
     mock_service.translate_and_save.assert_not_called()
 
 
-def test_create_translation_execute_service_error(mock_service):
+def test_create_translation_execute_service_error(mock_service: MagicMock):
     """Test execute with service error."""
     mock_service.translate_and_save.side_effect = Exception("Service error")
 
@@ -134,7 +134,7 @@ def test_create_translation_execute_service_error(mock_service):
     assert "Service error" in result.message
 
 
-def test_auto_detect_can_execute_success(mock_service):
+def test_auto_detect_can_execute_success(mock_service: MagicMock):
     """Test auto detect can execute with valid data."""
     cmd = AutoDetectTranslationCommand(
         service=mock_service,
@@ -145,7 +145,7 @@ def test_auto_detect_can_execute_success(mock_service):
     assert cmd.can_execute()
 
 
-def test_auto_detect_can_execute_missing_text(mock_service):
+def test_auto_detect_can_execute_missing_text(mock_service: MagicMock):
     """Test auto detect can execute with missing text."""
     cmd = AutoDetectTranslationCommand(
         service=mock_service,
@@ -156,7 +156,7 @@ def test_auto_detect_can_execute_missing_text(mock_service):
     assert not cmd.can_execute()
 
 
-def test_auto_detect_execute_success(mock_service):
+def test_auto_detect_execute_success(mock_service: MagicMock):
     """Test auto detect execute success."""
     cmd = AutoDetectTranslationCommand(
         service=mock_service,
@@ -172,7 +172,7 @@ def test_auto_detect_execute_success(mock_service):
     mock_service.auto_detect_and_translate.assert_called_once()
 
 
-def test_auto_detect_execute_cannot_execute(mock_service):
+def test_auto_detect_execute_cannot_execute(mock_service: MagicMock):
     """Test auto detect execute when cannot execute."""
     cmd = AutoDetectTranslationCommand(
         service=mock_service,
@@ -186,7 +186,7 @@ def test_auto_detect_execute_cannot_execute(mock_service):
     mock_service.auto_detect_and_translate.assert_not_called()
 
 
-def test_auto_detect_execute_service_error(mock_service):
+def test_auto_detect_execute_service_error(mock_service: MagicMock):
     """Test auto detect execute with service error."""
     mock_service.auto_detect_and_translate.side_effect = Exception("Detection failed")
 

@@ -16,7 +16,7 @@ class ProviderSelector(QWidget):
 
     provider_selected = Signal(object)  # ProviderConfig
 
-    def __init__(self, providers: list[ProviderConfig], parent=None):
+    def __init__(self, providers: list[ProviderConfig], parent: QWidget | None = None):
         """Initialize widget.
 
         Args:
@@ -33,7 +33,7 @@ class ProviderSelector(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
 
         label = QLabel("Provider:")
-        self._combo = QComboBox()
+        self._combo = QComboBox()  # type: ignore[reportUninitializedInstanceVariable]
         self._combo.currentIndexChanged.connect(self._on_selection_changed)
 
         layout.addWidget(label)

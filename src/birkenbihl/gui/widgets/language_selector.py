@@ -3,7 +3,7 @@
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QComboBox, QLabel, QVBoxLayout, QWidget
 
-from birkenbihl.services.language_service import SUPPORTED_LANGUAGES
+from birkenbihl.services import language_service as ls
 
 
 class LanguageSelector(QWidget):
@@ -21,7 +21,7 @@ class LanguageSelector(QWidget):
         label_text: str = "Sprache:",
         show_auto_detect: bool = False,
         default_language: str = "de",
-        parent=None,
+        parent: QWidget | None = None,
     ):
         """Initialize widget.
 
@@ -43,7 +43,7 @@ class LanguageSelector(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
 
         label = QLabel(self._label_text)
-        self._combo = QComboBox()
+        self._combo = QComboBox()  # type: ignore[reportUninitializedInstanceVariable]
         self._combo.currentIndexChanged.connect(self._on_selection_changed)
 
         layout.addWidget(label)
@@ -56,9 +56,10 @@ class LanguageSelector(QWidget):
         self._combo.clear()
 
         if self._show_auto_detect:
-            self._combo.addItem("Automatisch", "auto")
+            source_lang = ls.get_default_source_language()
+            self._combo.addItem(source_lang.name_de, source_lang.code)
 
-        for lang in SUPPORTED_LANGUAGES.values():
+        for lang in ls.get_languages():
             self._combo.addItem(lang.name_de, lang.code)
 
         self._select_default()
@@ -86,7 +87,7 @@ class LanguageSelector(QWidget):
         Returns:
             Language code or "auto"
         """
-        return self._combo.currentData() or "de"
+        return self._combo.currentData()
 
     def set_language(self, lang_code: str) -> None:
         """Set selected language.

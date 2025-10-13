@@ -12,7 +12,7 @@ class AlignmentPreview(QWidget):
     Similar to Streamlit UI alignment display.
     """
 
-    def __init__(self, alignments: list[WordAlignment] | None = None, parent=None):
+    def __init__(self, alignments: list[WordAlignment] | None = None, parent: QWidget | None = None):
         """Initialize widget.
 
         Args:
@@ -28,7 +28,7 @@ class AlignmentPreview(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
 
-        self._text_browser = QTextBrowser()
+        self._text_browser = QTextBrowser()  # type: ignore[reportUninitializedInstanceVariable]
         self._text_browser.setReadOnly(True)
         self._text_browser.setOpenExternalLinks(False)
 

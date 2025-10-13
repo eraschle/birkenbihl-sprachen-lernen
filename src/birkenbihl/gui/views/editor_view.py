@@ -1,5 +1,7 @@
 """Translation editor view."""
 
+from uuid import UUID
+
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
@@ -12,9 +14,11 @@ from PySide6.QtWidgets import (
 )
 
 from birkenbihl.gui.models.editor_viewmodel import TranslationEditorViewModel
+from birkenbihl.gui.models.ui_state import TranslationEditorState
 from birkenbihl.gui.widgets.alignment_editor import AlignmentEditor
 from birkenbihl.gui.widgets.alignment_preview import AlignmentPreview
 from birkenbihl.models.settings import Settings
+from birkenbihl.models.translation import Sentence, Translation, WordAlignment
 
 
 class EditorView(QWidget):
@@ -24,7 +28,12 @@ class EditorView(QWidget):
     Delegates business logic to TranslationEditorViewModel.
     """
 
-    def __init__(self, viewmodel: TranslationEditorViewModel, settings: Settings, parent=None):
+    def __init__(
+        self,
+        viewmodel: TranslationEditorViewModel | None = None,
+        settings: Settings | None = None,
+        parent: QWidget | None = None,
+    ):
         """Initialize view.
 
         Args:
@@ -33,8 +42,8 @@ class EditorView(QWidget):
             parent: Parent widget
         """
         super().__init__(parent)
-        self._viewmodel = viewmodel
-        self._settings = settings
+        self._viewmodel = viewmodel or TranslationEditorViewModel(None, Settings())  # type: ignore
+        self._settings = settings or Settings()
         self._sentence_cards = {}
         self.setup_ui()
         self.bind_viewmodel()
@@ -45,7 +54,7 @@ class EditorView(QWidget):
         layout = QHBoxLayout(self)
 
         # Left: Sentence list
-        self._sentence_list = QListWidget()
+        self._sentence_list = QListWidget()  # type: ignore[reportUninitializedInstanceVariable]
         self._sentence_list.currentRowChanged.connect(self._on_sentence_selected)
         layout.addWidget(self._sentence_list, 1)
 
@@ -53,29 +62,29 @@ class EditorView(QWidget):
         edit_panel = QWidget()
         edit_layout = QVBoxLayout(edit_panel)
 
-        self._mode_label = QLabel("<b>Ansicht</b>")
+        self._mode_label = QLabel("<b>Ansicht</b>")  # type: ignore[reportUninitializedInstanceVariable]
         edit_layout.addWidget(self._mode_label)
 
-        self._stacked_widget = QStackedWidget()
+        self._stacked_widget = QStackedWidget()  # type: ignore[reportUninitializedInstanceVariable]
         edit_layout.addWidget(self._stacked_widget, 1)
 
         # Mode 1: View mode (AlignmentPreview)
-        self._view_widget = self._create_view_widget()
+        self._view_widget = self._create_view_widget()  # type: ignore[reportUninitializedInstanceVariable]
         self._stacked_widget.addWidget(self._view_widget)
 
         # Mode 2: Edit natural mode
-        self._edit_natural_widget = self._create_edit_natural_widget()
+        self._edit_natural_widget = self._create_edit_natural_widget()  # type: ignore[reportUninitializedInstanceVariable]
         self._stacked_widget.addWidget(self._edit_natural_widget)
 
         # Mode 3: Edit alignment mode
-        self._edit_alignment_widget = self._create_edit_alignment_widget()
+        self._edit_alignment_widget = self._create_edit_alignment_widget()  # type: ignore[reportUninitializedInstanceVariable]
         self._stacked_widget.addWidget(self._edit_alignment_widget)
 
         # Action buttons
         button_layout = QHBoxLayout()
-        self._edit_button = QPushButton("Bearbeiten")
+        self._edit_button = QPushButton("Bearbeiten")  # type: ignore[reportUninitializedInstanceVariable]
         self._edit_button.clicked.connect(self._on_edit_clicked)
-        self._back_button = QPushButton("Zurück")
+        self._back_button = QPushButton("Zurück")  # type: ignore[reportUninitializedInstanceVariable]
         self._back_button.clicked.connect(self._on_back_clicked)
 
         button_layout.addStretch()
@@ -91,7 +100,7 @@ class EditorView(QWidget):
         widget = QWidget()
         layout = QVBoxLayout(widget)
 
-        self._alignment_preview = AlignmentPreview()
+        self._alignment_preview = AlignmentPreview()  # type: ignore[reportUninitializedInstanceVariable]
         layout.addWidget(self._alignment_preview)
 
         return widget
@@ -101,7 +110,7 @@ class EditorView(QWidget):
         widget = QWidget()
         layout = QVBoxLayout(widget)
 
-        self._natural_edit = QTextEdit()
+        self._natural_edit = QTextEdit()  # type: ignore[reportUninitializedInstanceVariable]
         layout.addWidget(self._natural_edit)
 
         save_button = QPushButton("Speichern")
@@ -115,7 +124,7 @@ class EditorView(QWidget):
         widget = QWidget()
         layout = QVBoxLayout(widget)
 
-        self._alignment_editor = AlignmentEditor()
+        self._alignment_editor = AlignmentEditor()  # type: ignore[reportUninitializedInstanceVariable]
         self._alignment_editor.alignment_changed.connect(self._on_alignment_changed)
         layout.addWidget(self._alignment_editor)
 
@@ -127,7 +136,7 @@ class EditorView(QWidget):
         self._viewmodel.sentence_updated.connect(self._on_sentence_updated)
         self._viewmodel.error_occurred.connect(self._on_error)
 
-    def load_translation(self, translation_id) -> None:
+    def load_translation(self, translation_id: UUID) -> None:
         """Load translation into editor.
 
         Args:
@@ -157,11 +166,11 @@ class EditorView(QWidget):
         if provider:
             self._viewmodel.update_natural_translation(new_text, provider)
 
-    def _on_alignment_changed(self, alignments) -> None:
+    def _on_alignment_changed(self, alignments: list[WordAlignment]) -> None:
         """Handle alignment change."""
         self._viewmodel.update_alignment(alignments)
 
-    def _on_state_changed(self, state) -> None:
+    def _on_state_changed(self, state: TranslationEditorState) -> None:
         """Handle state changes."""
         if state.translation:
             self._update_sentence_list(state.translation)
@@ -174,13 +183,13 @@ class EditorView(QWidget):
             if sentence:
                 self._update_edit_panel(sentence, state.edit_mode)
 
-    def _update_sentence_list(self, translation) -> None:
+    def _update_sentence_list(self, translation: Translation) -> None:
         """Update sentence list."""
         self._sentence_list.clear()
         for sentence in translation.sentences:
             self._sentence_list.addItem(sentence.source_text[:50] + "...")
 
-    def _update_edit_panel(self, sentence, mode: str) -> None:
+    def _update_edit_panel(self, sentence: Sentence, mode: str) -> None:
         """Update edit panel based on mode."""
         if mode == "view":
             self._mode_label.setText("<b>Ansicht</b>")

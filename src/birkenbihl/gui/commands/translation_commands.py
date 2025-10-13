@@ -1,6 +1,7 @@
 """Commands for translation operations."""
 
 from birkenbihl.gui.commands.base import CommandResult
+from birkenbihl.models.languages import Language
 from birkenbihl.services.translation_service import TranslationService
 
 
@@ -14,8 +15,8 @@ class CreateTranslationCommand:
         self,
         service: TranslationService,
         text: str,
-        source_lang: str,
-        target_lang: str,
+        source_lang: Language | str,
+        target_lang: Language | str,
         title: str,
     ):
         """Initialize command.
@@ -23,14 +24,14 @@ class CreateTranslationCommand:
         Args:
             service: TranslationService instance
             text: Source text to translate
-            source_lang: Source language code
-            target_lang: Target language code
+            source_lang: Source language (Language object or code string)
+            target_lang: Target language (Language object or code string)
             title: Translation title
         """
         self._service = service
         self._text = text
-        self._source_lang = source_lang
-        self._target_lang = target_lang
+        self._source_lang = source_lang if isinstance(source_lang, Language) else Language(source_lang, "", "")
+        self._target_lang = target_lang if isinstance(target_lang, Language) else Language(target_lang, "", "")
         self._title = title
 
     def can_execute(self) -> bool:
@@ -39,7 +40,7 @@ class CreateTranslationCommand:
         Returns:
             True if all required fields are present
         """
-        return bool(self._text) and bool(self._source_lang) and bool(self._target_lang) and bool(self._title)
+        return bool(self._text) and bool(self._source_lang.code) and bool(self._target_lang.code) and bool(self._title)
 
     def execute(self) -> CommandResult:
         """Execute translation creation.
@@ -79,7 +80,7 @@ class AutoDetectTranslationCommand:
         self,
         service: TranslationService,
         text: str,
-        target_lang: str,
+        target_lang: Language | str,
         title: str,
     ):
         """Initialize command.
@@ -87,12 +88,12 @@ class AutoDetectTranslationCommand:
         Args:
             service: TranslationService instance
             text: Source text to translate
-            target_lang: Target language code
+            target_lang: Target language (Language object or code string)
             title: Translation title
         """
         self._service = service
         self._text = text
-        self._target_lang = target_lang
+        self._target_lang = target_lang if isinstance(target_lang, Language) else Language(target_lang, "", "")
         self._title = title
 
     def can_execute(self) -> bool:

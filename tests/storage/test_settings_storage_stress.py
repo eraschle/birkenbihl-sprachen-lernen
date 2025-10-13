@@ -68,8 +68,8 @@ class TestSettingsStorageStress:
         ]
 
         settings = Settings(target_language="de", providers=providers)
+        storage.save(settings)
 
-        _saved = storage.save(settings)
         loaded = storage.load()
 
         assert len(loaded.providers) == 100
@@ -121,7 +121,7 @@ class TestSettingsStorageStress:
                 ],
             )
 
-            _saved = storage.save(settings)
+            settings = storage.save(settings)
 
             # Delete every other iteration
             if i % 2 == 0:
@@ -148,7 +148,7 @@ class TestSettingsStorageStress:
             ]
         )
 
-        _saved = storage.save(settings)
+        storage.save(settings)
         loaded = storage.load()
 
         assert len(loaded.providers[0].api_key) == 100000
@@ -242,7 +242,7 @@ class TestSettingsStorageStress:
         storage.save(Settings(target_language="de", providers=initial_providers))
 
         # Remove providers one by one
-        for idx in range(49):  # Leave one provider
+        for _ in range(49):  # Leave one provider
             loaded = storage.load()
             updated = Settings(target_language=loaded.target_language, providers=loaded.providers[1:])
             storage.save(updated)
@@ -370,7 +370,7 @@ class TestSettingsStorageStress:
             ]
         )
 
-        _saved = storage.save(settings)
+        storage.save(settings)
         loaded = storage.load()
 
         assert len(loaded.providers[0].name) == 1000

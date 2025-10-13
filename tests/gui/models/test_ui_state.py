@@ -8,6 +8,7 @@ from birkenbihl.gui.models.ui_state import (
     TranslationEditorState,
 )
 from birkenbihl.models.settings import ProviderConfig
+from birkenbihl.services import language_service as ls
 
 
 class TestTranslationCreationState:
@@ -19,8 +20,8 @@ class TestTranslationCreationState:
 
         assert state.title == ""
         assert state.source_text == ""
-        assert state.source_language is None
-        assert state.target_language == "de"
+        assert ls.is_auto_detect(state.source_language.code)
+        assert state.source_language.code == "auto"
         assert state.selected_provider is None
         assert state.is_translating is False
         assert state.progress == 0.0
@@ -32,8 +33,8 @@ class TestTranslationCreationState:
         state = TranslationCreationState(
             title="Test Title",
             source_text="Hello World",
-            source_language="en",
-            target_language="de",
+            source_language=ls.get_language_by("en"),
+            target_language=ls.get_default_target_language(),
             selected_provider=provider,
             is_translating=True,
             progress=0.5,
@@ -41,8 +42,8 @@ class TestTranslationCreationState:
 
         assert state.title == "Test Title"
         assert state.source_text == "Hello World"
-        assert state.source_language == "en"
-        assert state.target_language == "de"
+        assert state.source_language.code == "en"
+        assert state.target_language.code == "de"
         assert state.selected_provider == provider
         assert state.is_translating is True
         assert state.progress == 0.5
@@ -88,7 +89,7 @@ class TestSettingsViewState:
 
         assert state.providers == []
         assert state.selected_provider_index == -1
-        assert state.target_language == "de"
+        assert state.target_language.code == "de"
         assert state.is_editing is False
         assert state.has_unsaved_changes is False
 
@@ -102,13 +103,13 @@ class TestSettingsViewState:
         state = SettingsViewState(
             providers=providers,
             selected_provider_index=0,
-            target_language="en",
+            target_language=ls.get_default_target_language(),
             is_editing=True,
             has_unsaved_changes=True,
         )
 
         assert len(state.providers) == 2
         assert state.selected_provider_index == 0
-        assert state.target_language == "en"
+        assert state.target_language.code == "de"
         assert state.is_editing is True
         assert state.has_unsaved_changes is True

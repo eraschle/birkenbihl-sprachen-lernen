@@ -1,6 +1,7 @@
 """Entry point for Birkenbihl GUI application."""
 
 import sys
+import traceback
 from pathlib import Path
 
 from PySide6.QtWidgets import QApplication, QMessageBox
@@ -23,6 +24,7 @@ def create_services() -> tuple[TranslationService, SettingsService]:
     """
     settings_service = create_settings_service()
     translation_service = create_translation_service(settings_service)
+
     return translation_service, settings_service
 
 
@@ -32,13 +34,10 @@ def create_settings_service() -> SettingsService:
     Returns:
         SettingsService instance
     """
-    settings_path = Path.home() / ".birkenbihl" / "settings.yaml"
-    return SettingsService(settings_path)
+    return SettingsService()
 
 
-def create_translation_service(
-    settings_service: SettingsService,
-) -> TranslationService:
+def create_translation_service(service: SettingsService) -> TranslationService:
     """Create TranslationService instance.
 
     Args:
@@ -50,18 +49,20 @@ def create_translation_service(
     storage_dir = Path.home() / ".birkenbihl" / "translations"
     storage_dir.mkdir(parents=True, exist_ok=True)
     storage = JsonStorageProvider(storage_dir)
+    setting_file_name = "settings.yaml"
+    if not service.load_settings(setting_file_name):
+        raise RuntimeError(f"No settings {setting_file_name} found.")
 
-    settings = settings_service.get_settings()
-    provider_config = settings.get_default_provider()
+    settings = service.get_settings()
 
-    if not provider_config:
-        raise RuntimeError("No default provider configured")
+    provider = None
+    if provider_config := settings.get_default_provider():
+        provider = PydanticAITranslator(provider_config)
 
-    translation_provider = PydanticAITranslator(provider_config)
-    return TranslationService(translation_provider, storage)
+    return TranslationService(provider, storage)
 
 
-def setup_exception_handler(app: QApplication) -> None:
+def setup_exception_handler() -> None:
     """Setup global exception handler.
 
     Args:
@@ -75,7 +76,7 @@ def setup_exception_handler(app: QApplication) -> None:
             return
 
         error_msg = f"{exc_type.__name__}: {exc_value}"
-        QMessageBox.critical(None, "Fehler", f"Ein Fehler ist aufgetreten:\n\n{error_msg}")
+        QMessageBox.critical(None, "Fehler", f"Ein Fehler ist aufgetreten:\n\n{error_msg}\n{traceback.format_exc()}")
         sys.__excepthook__(exc_type, exc_value, exc_traceback)
 
     sys.excepthook = handle_exception
@@ -95,7 +96,7 @@ def main() -> int:
         theme_manager = ThemeManager()
         theme_manager.apply_theme(app)
 
-        setup_exception_handler(app)
+        setup_exception_handler()
 
         translation_service, settings_service = create_services()
         window = MainWindow(translation_service, settings_service)

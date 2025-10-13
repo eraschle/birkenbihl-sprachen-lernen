@@ -1,6 +1,6 @@
 """Tests for ProgressWidget."""
 
-import pytest
+from pytestqt.qtbot import QtBot
 
 from birkenbihl.gui.widgets.progress_widget import ProgressWidget
 
@@ -8,18 +8,13 @@ from birkenbihl.gui.widgets.progress_widget import ProgressWidget
 class TestProgressWidget:
     """Test ProgressWidget."""
 
-    @pytest.fixture
-    def qapp(self, qapp):
-        """Provide QApplication instance."""
-        return qapp
-
-    def test_widget_creation(self, qapp):
+    def test_widget_creation(self):
         """Test widget creation."""
         widget = ProgressWidget()
         assert widget is not None
         assert not widget.isVisible()
 
-    def test_set_progress(self, qapp):
+    def test_set_progress(self):
         """Test setting progress value."""
         widget = ProgressWidget()
 
@@ -29,7 +24,7 @@ class TestProgressWidget:
         widget.set_progress(1.0)
         assert widget._progress_bar.value() == 100
 
-    def test_set_message(self, qapp):
+    def test_set_message(self):
         """Test setting message."""
         widget = ProgressWidget()
         message = "Processing..."
@@ -37,7 +32,7 @@ class TestProgressWidget:
         widget.set_message(message)
         assert widget._message_label.text() == message
 
-    def test_start(self, qapp):
+    def test_start(self):
         """Test start method."""
         widget = ProgressWidget()
 
@@ -46,7 +41,7 @@ class TestProgressWidget:
         assert widget._message_label.text() == "Starting..."
         assert widget._progress_bar.value() == 0
 
-    def test_finish(self, qapp):
+    def test_finish(self):
         """Test finish method."""
         widget = ProgressWidget()
         widget.start()
@@ -55,7 +50,7 @@ class TestProgressWidget:
         assert not widget.isVisible()
         assert widget._progress_bar.value() == 100
 
-    def test_cancel_signal(self, qapp, qtbot):
+    def test_cancel_signal(self, qtbot: QtBot):
         """Test cancel button emits signal."""
         widget = ProgressWidget()
         cancelled = []
@@ -66,7 +61,7 @@ class TestProgressWidget:
 
         assert len(cancelled) == 1
 
-    def test_cancel_enabled(self, qapp):
+    def test_cancel_enabled(self):
         """Test enable/disable cancel button."""
         widget = ProgressWidget()
 

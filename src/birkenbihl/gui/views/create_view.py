@@ -14,8 +14,10 @@ from PySide6.QtWidgets import (
 from birkenbihl.gui.components import ProgressWidget, ProviderSelector
 from birkenbihl.gui.models.context import ProviderSelectorContext
 from birkenbihl.gui.viewmodels.create_vm import CreateTranslationViewModel
+from birkenbihl.models.languages import Language
 from birkenbihl.models.settings import ProviderConfig
 from birkenbihl.models.translation import Translation
+from birkenbihl.services import language_service as ls
 
 
 class CreateTranslationView(QWidget):
@@ -41,7 +43,7 @@ class CreateTranslationView(QWidget):
         form_layout = self._create_form()
         button_layout = self._create_buttons()
 
-        self._progress_widget = ProgressWidget()
+        self._progress_widget = ProgressWidget()  # type: ignore[reportUninitializedInstanceVariable]
 
         layout.addLayout(form_layout)
         layout.addWidget(self._progress_widget)
@@ -51,14 +53,14 @@ class CreateTranslationView(QWidget):
         """Create form layout with input fields."""
         form = QFormLayout()
 
-        self._title_input = QLineEdit()
+        self._title_input = QLineEdit()  # type: ignore[reportUninitializedInstanceVariable]
         self._title_input.setPlaceholderText("Enter translation title...")
 
-        self._text_input = QTextEdit()
+        self._text_input = QTextEdit()  # type: ignore[reportUninitializedInstanceVariable]
         self._text_input.setPlaceholderText("Enter text to translate...")
 
-        self._source_lang_combo = self._create_language_combo()
-        self._provider_selector = self._create_provider_selector()
+        self._source_lang_combo = self._create_language_combo()  # type: ignore[reportUninitializedInstanceVariable]
+        self._provider_selector = self._create_provider_selector()  # type: ignore[reportUninitializedInstanceVariable]
 
         form.addRow("Title:", self._title_input)
         form.addRow("Text:", self._text_input)
@@ -89,8 +91,8 @@ class CreateTranslationView(QWidget):
         """Create button layout with action buttons."""
         layout = QHBoxLayout()
 
-        self._detect_button = QPushButton("Detect Language")
-        self._translate_button = QPushButton("Translate")
+        self._detect_button = QPushButton("Detect Language")  # type: ignore[reportUninitializedInstanceVariable]
+        self._translate_button = QPushButton("Translate")  # type: ignore[reportUninitializedInstanceVariable]
 
         self._translate_button.setDefault(True)
 
@@ -130,7 +132,8 @@ class CreateTranslationView(QWidget):
         if source_lang == "auto":
             self._start_auto_detect_translation(text, title)
         else:
-            self._start_translation(text, source_lang, title)
+            source_language = ls.get_language_by(source_lang)
+            self._start_translation(text, source_language, title)
 
     def _start_auto_detect_translation(self, text: str, title: str) -> None:
         """Start translation with auto-detected language."""
@@ -146,7 +149,7 @@ class CreateTranslationView(QWidget):
         except Exception as e:
             self._viewmodel._emit_error(f"Language detection failed: {e}")
 
-    def _start_translation(self, text: str, source_lang: str, title: str) -> None:
+    def _start_translation(self, text: str, source_lang: Language, title: str) -> None:
         """Start translation with known source language."""
         if not self._selected_provider:
             return
@@ -161,7 +164,7 @@ class CreateTranslationView(QWidget):
         """Handle provider selection change."""
         self._selected_provider = provider
 
-    def _on_translation_completed(self, translation: Translation) -> None:
+    def _on_translation_completed(self, _: Translation) -> None:
         """Handle successful translation completion."""
         self._progress_widget.finish()
 
@@ -171,7 +174,7 @@ class CreateTranslationView(QWidget):
         if language in language_map:
             self._source_lang_combo.setCurrentIndex(language_map[language])
 
-    def _on_error_occurred(self, error: str) -> None:
+    def _on_error_occurred(self, _: str) -> None:
         """Handle error from viewmodel."""
         self._progress_widget.finish()
 

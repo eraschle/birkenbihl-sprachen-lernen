@@ -59,7 +59,7 @@ class TestSettingsStorageConcurrent:
 
         # All reads should succeed
         assert len(results) == 20
-        for thread_id, lang, provider_name in results:
+        for _, lang, provider_name in results:
             assert lang == "de"
             assert provider_name == "Test Provider"
 
@@ -399,7 +399,7 @@ class TestSettingsStorageConcurrent:
             storage.close()
             return "write_done"
 
-        def fast_read(thread_id: int) -> str:
+        def fast_read(_: int) -> str:
             storage = SettingsStorageProvider(temp_db)
             loaded = storage.load()
             storage.close()

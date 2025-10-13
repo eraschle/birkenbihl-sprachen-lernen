@@ -3,8 +3,10 @@
 from dataclasses import dataclass, field
 from uuid import UUID
 
+from birkenbihl.models.languages import Language
 from birkenbihl.models.settings import ProviderConfig
 from birkenbihl.models.translation import Translation
+from birkenbihl.services import language_service as ls
 
 
 @dataclass
@@ -13,8 +15,8 @@ class TranslationCreationState:
 
     title: str = ""
     source_text: str = ""
-    source_language: str | None = None  # None = auto-detect
-    target_language: str = "de"
+    source_language: Language = ls.get_default_source_language()
+    target_language: Language = ls.get_default_target_language()
     selected_provider: ProviderConfig | None = None
     is_translating: bool = False
     progress: float = 0.0
@@ -37,6 +39,6 @@ class SettingsViewState:
 
     providers: list[ProviderConfig] = field(default_factory=list)
     selected_provider_index: int = -1
-    target_language: str = "de"
+    target_language: Language = ls.get_default_target_language()
     is_editing: bool = False
     has_unsaved_changes: bool = False

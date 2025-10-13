@@ -20,19 +20,19 @@ from birkenbihl.services.language_service import get_language_by
 
 
 @pytest.fixture
-def mock_model():
+def mock_model() -> MagicMock:
     """Create a mock PydanticAI Model."""
     return MagicMock()
 
 
 @pytest.fixture
-def mock_agent():
+def mock_agent() -> MagicMock:
     """Create a mock PydanticAI Agent instance."""
     return MagicMock()
 
 
 @pytest.fixture
-def base_translator(mock_model: MagicMock, mock_agent: MagicMock):
+def base_translator(mock_model: MagicMock, mock_agent: MagicMock) -> BaseTranslator:
     """Create BaseTranslator with mocked Agent."""
     with patch("birkenbihl.providers.base_translator.Agent", return_value=mock_agent):
         translator = BaseTranslator(mock_model)
@@ -45,7 +45,7 @@ def base_translator(mock_model: MagicMock, mock_agent: MagicMock):
 class TestBaseTranslator:
     """Test BaseTranslator core functionality."""
 
-    def test_initialization(self, mock_model: MagicMock):
+    def test_initialization(self, mock_model: MagicMock) -> None:
         """Test translator initialization creates Agent correctly."""
         from birkenbihl.providers.models import TranslationResponse
         from birkenbihl.providers.prompts import BIRKENBIHL_SYSTEM_PROMPT
@@ -60,7 +60,7 @@ class TestBaseTranslator:
                 system_prompt=BIRKENBIHL_SYSTEM_PROMPT,
             )
 
-    def test_translate_single_sentence(self, base_translator: BaseTranslator, mock_agent: MagicMock):
+    def test_translate_single_sentence(self, base_translator: BaseTranslator, mock_agent: MagicMock) -> None:
         """Test translation of single sentence returns correct domain model."""
         # Arrange: Mock AI response
         mock_response = TranslationResponse(
@@ -106,7 +106,7 @@ class TestBaseTranslator:
         assert sentence.word_alignments[1].target_word == "Welt"
         assert sentence.word_alignments[1].position == 1
 
-    def test_translate_multiple_sentences(self, base_translator: BaseTranslator, mock_agent: MagicMock):
+    def test_translate_multiple_sentences(self, base_translator: BaseTranslator, mock_agent: MagicMock) -> None:
         """Test translation of multiple sentences."""
         # Arrange: Mock AI response with 2 sentences
         mock_response = TranslationResponse(
@@ -143,7 +143,7 @@ class TestBaseTranslator:
         assert result.sentences[1].source_text == "How are you"
         assert result.sentences[1].natural_translation == "Wie geht es dir"
 
-    def test_translate_spanish_to_german(self, base_translator: BaseTranslator, mock_agent: MagicMock):
+    def test_translate_spanish_to_german(self, base_translator: BaseTranslator, mock_agent: MagicMock) -> None:
         """Test Spanish to German translation (Birkenbihl method focus)."""
         # Arrange: Example from ORIGINAL_REQUIREMENTS.md
         mock_response = TranslationResponse(
@@ -176,7 +176,7 @@ class TestBaseTranslator:
         assert sentence.word_alignments[2].source_word == "extrañaré"
         assert sentence.word_alignments[2].target_word == "vermissen-werde"  # Compound word with hyphen
 
-    def test_detect_language_english(self, base_translator: BaseTranslator):
+    def test_detect_language_english(self, base_translator: BaseTranslator) -> None:
         """Test language detection for English text."""
         with patch("birkenbihl.providers.base_translator.detector_factory.detect") as mock_detect:
             mock_detect.return_value = "en"
@@ -186,7 +186,7 @@ class TestBaseTranslator:
             assert result.code == "en"
             mock_detect.assert_called_once_with("Hello world")
 
-    def test_detect_language_spanish(self, base_translator: BaseTranslator):
+    def test_detect_language_spanish(self, base_translator: BaseTranslator) -> None:
         """Test language detection for Spanish text."""
         with patch("birkenbihl.providers.base_translator.detector_factory.detect") as mock_detect:
             mock_detect.return_value = "es"
@@ -195,7 +195,7 @@ class TestBaseTranslator:
 
             assert result.code == "es"
 
-    def test_detect_language_german(self, base_translator: BaseTranslator):
+    def test_detect_language_german(self, base_translator: BaseTranslator) -> None:
         """Test language detection for German text."""
         with patch("birkenbihl.providers.base_translator.detector_factory.detect") as mock_detect:
             mock_detect.return_value = "de"
@@ -204,7 +204,7 @@ class TestBaseTranslator:
 
             assert result.code == "de"
 
-    def test_convert_to_domain_model_preserves_uuids(self, base_translator: BaseTranslator):
+    def test_convert_to_domain_model_preserves_uuids(self, base_translator: BaseTranslator) -> None:
         """Test that converting to domain model generates unique UUIDs."""
         # Arrange
         response = TranslationResponse(
@@ -227,7 +227,7 @@ class TestBaseTranslator:
         assert result1.uuid != result2.uuid
         assert result1.sentences[0].uuid != result2.sentences[0].uuid
 
-    def test_convert_to_domain_model_timestamps(self, base_translator: BaseTranslator):
+    def test_convert_to_domain_model_timestamps(self, base_translator: BaseTranslator) -> None:
         """Test that domain model has proper timestamps."""
         # Arrange
         response = TranslationResponse(
@@ -256,7 +256,7 @@ class TestBaseTranslator:
 class TestBirkenbilFormatValidation:
     """Test Birkenbihl method format requirements."""
 
-    def test_word_alignment_position_ordering(self, base_translator: BaseTranslator, mock_agent: MagicMock):
+    def test_word_alignment_position_ordering(self, base_translator: BaseTranslator, mock_agent: MagicMock) -> None:
         """Test that word alignments maintain correct position ordering."""
         # Arrange: Example from ORIGINAL_REQUIREMENTS.md
         mock_response = TranslationResponse(
@@ -286,7 +286,7 @@ class TestBirkenbilFormatValidation:
         for i, alignment in enumerate(alignments):
             assert alignment.position == i
 
-    def test_hyphenated_compound_words(self, base_translator: BaseTranslator, mock_agent: MagicMock):
+    def test_hyphenated_compound_words(self, base_translator: BaseTranslator, mock_agent: MagicMock) -> None:
         """Test that compound translations use hyphens correctly."""
         # Arrange: Example with compound word
         mock_response = TranslationResponse(

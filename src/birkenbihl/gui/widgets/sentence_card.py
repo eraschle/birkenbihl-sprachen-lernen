@@ -2,7 +2,6 @@
 
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
-    QFrame,
     QHBoxLayout,
     QLabel,
     QPushButton,
@@ -23,7 +22,7 @@ class SentenceCard(QWidget):
 
     edit_requested = Signal(object)  # Sentence UUID
 
-    def __init__(self, sentence: Sentence, expanded: bool = False, parent=None):
+    def __init__(self, sentence: Sentence, expanded: bool = False, parent: QWidget | None = None):
         """Initialize widget.
 
         Args:
@@ -38,18 +37,17 @@ class SentenceCard(QWidget):
 
     def _setup_ui(self) -> None:
         """Setup UI components."""
-        self.setFrameShape(QFrame.StyledPanel)
-        self.setFrameShadow(QFrame.Raised)
+        # Note: QWidget doesn't have setFrameShape/setFrameShadow
 
         layout = QVBoxLayout(self)
 
         header_layout = QHBoxLayout()
 
-        self._source_label = QLabel()
+        self._source_label = QLabel()  # type: ignore[reportUninitializedInstanceVariable]
         self._source_label.setWordWrap(True)
         self._source_label.setStyleSheet("font-weight: bold; color: #2196F3;")
 
-        self._toggle_button = QPushButton("▼" if self._expanded else "▶")
+        self._toggle_button = QPushButton("▼" if self._expanded else "▶")  # type: ignore[reportUninitializedInstanceVariable]
         self._toggle_button.setFixedWidth(30)
         self._toggle_button.clicked.connect(self._on_toggle)
 
@@ -58,18 +56,18 @@ class SentenceCard(QWidget):
 
         layout.addLayout(header_layout)
 
-        self._content_widget = QWidget()
+        self._content_widget = QWidget()  # type: ignore[reportUninitializedInstanceVariable]
         content_layout = QVBoxLayout(self._content_widget)
         content_layout.setContentsMargins(30, 0, 0, 0)
 
-        self._natural_label = QLabel()
+        self._natural_label = QLabel()  # type: ignore[reportUninitializedInstanceVariable]
         self._natural_label.setWordWrap(True)
         self._natural_label.setStyleSheet("color: #4CAF50;")
 
-        self._alignment_count_label = QLabel()
+        self._alignment_count_label = QLabel()  # type: ignore[reportUninitializedInstanceVariable]
         self._alignment_count_label.setStyleSheet("color: #666; font-size: 12px;")
 
-        self._edit_button = QPushButton("Bearbeiten")
+        self._edit_button = QPushButton("Bearbeiten")  # type: ignore[reportUninitializedInstanceVariable]
         self._edit_button.clicked.connect(self._on_edit_clicked)
 
         content_layout.addWidget(self._natural_label)

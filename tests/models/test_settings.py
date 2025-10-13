@@ -13,7 +13,7 @@ from birkenbihl.models.settings import ProviderConfig, Settings
 class TestProviderConfig:
     """Test ProviderConfig model."""
 
-    def test_create_provider_config_with_all_fields(self):
+    def test_create_provider_config_with_all_fields(self) -> None:
         """Test creating a provider config with all fields specified."""
         config = ProviderConfig(
             name="OpenAI GPT-4",
@@ -29,7 +29,7 @@ class TestProviderConfig:
         assert config.api_key == "sk-test-key-123"
         assert config.is_default is True
 
-    def test_is_default_field_defaults_to_false(self):
+    def test_is_default_field_defaults_to_false(self) -> None:
         """Test that is_default field defaults to False when not specified."""
         config = ProviderConfig(
             name="Claude",
@@ -40,7 +40,7 @@ class TestProviderConfig:
 
         assert config.is_default is False
 
-    def test_provider_config_is_immutable_with_pydantic(self):
+    def test_provider_config_is_immutable_with_pydantic(self) -> None:
         """Test that ProviderConfig validates data with Pydantic."""
         config = ProviderConfig(
             name="OpenAI GPT-4",
@@ -53,7 +53,7 @@ class TestProviderConfig:
         config.name = "Modified Name"
         assert config.name == "Modified Name"
 
-    def test_provider_config_validates_required_fields(self):
+    def test_provider_config_validates_required_fields(self) -> None:
         """Test that ProviderConfig requires all mandatory fields."""
         with pytest.raises(ValueError, match="validation errors for ProviderConfig"):
             ProviderConfig(name="Test", provider_type="openai")  # type: ignore
@@ -63,7 +63,7 @@ class TestProviderConfig:
 class TestSettingsDomainModel:
     """Test Settings domain model creation and validation."""
 
-    def test_create_settings_with_providers(self):
+    def test_create_settings_with_providers(self) -> None:
         """Test creating Settings instance with providers."""
         settings = Settings(
             providers=[
@@ -90,14 +90,14 @@ class TestSettingsDomainModel:
         assert settings.providers[0].name == "OpenAI GPT-4"
         assert settings.providers[1].name == "Claude Sonnet"
 
-    def test_create_settings_with_empty_providers(self):
+    def test_create_settings_with_empty_providers(self) -> None:
         """Test creating Settings instance with empty providers list."""
         settings = Settings(providers=[], target_language="de")
 
         assert settings.providers == []
         assert settings.target_language == "de"
 
-    def test_create_settings_with_custom_target_language(self):
+    def test_create_settings_with_custom_target_language(self) -> None:
         """Test creating Settings instance with custom target language."""
         settings = Settings(
             providers=[
@@ -114,14 +114,14 @@ class TestSettingsDomainModel:
 
         assert settings.target_language == "es"
 
-    def test_settings_defaults_to_empty_providers_and_german(self):
+    def test_settings_defaults_to_empty_providers_and_german(self) -> None:
         """Test that Settings uses default values when not specified."""
         settings = Settings()
 
         assert settings.providers == []
         assert settings.target_language == "de"
 
-    def test_providers_list_is_mutable(self):
+    def test_providers_list_is_mutable(self) -> None:
         """Test that providers list can be modified after creation."""
         settings = Settings(providers=[], target_language="de")
 
@@ -137,7 +137,7 @@ class TestSettingsDomainModel:
         assert len(settings.providers) == 1
         assert settings.providers[0].name == "OpenAI GPT-4"
 
-    def test_settings_validates_with_pydantic(self):
+    def test_settings_validates_with_pydantic(self) -> None:
         """Test that Settings validates data with Pydantic."""
         # Valid creation
         settings = Settings(target_language="fr")
@@ -152,7 +152,7 @@ class TestSettingsDomainModel:
 class TestGetDefaultProvider:
     """Test get_default_provider method."""
 
-    def test_get_default_provider_returns_marked_default(self):
+    def test_get_default_provider_returns_marked_default(self) -> None:
         """Test get_default_provider returns provider marked as default."""
         settings = Settings(
             providers=[
@@ -180,7 +180,7 @@ class TestGetDefaultProvider:
         assert default.name == "Claude Sonnet"
         assert default.is_default is True
 
-    def test_get_default_provider_returns_first_if_none_marked(self):
+    def test_get_default_provider_returns_first_if_none_marked(self) -> None:
         """Test get_default_provider returns first provider if none marked as default."""
         settings = Settings(
             providers=[
@@ -207,7 +207,7 @@ class TestGetDefaultProvider:
         assert default is not None
         assert default.name == "OpenAI GPT-4"
 
-    def test_get_default_provider_returns_none_if_no_providers(self):
+    def test_get_default_provider_returns_none_if_no_providers(self) -> None:
         """Test get_default_provider returns None if no providers exist."""
         settings = Settings(providers=[], target_language="de")
 
@@ -215,7 +215,7 @@ class TestGetDefaultProvider:
 
         assert default is None
 
-    def test_get_default_provider_with_multiple_defaults_returns_first(self):
+    def test_get_default_provider_with_multiple_defaults_returns_first(self) -> None:
         """Test get_default_provider returns first marked default if multiple exist."""
         settings = Settings(
             providers=[
@@ -249,7 +249,7 @@ class TestGetDefaultProvider:
         assert default is not None
         assert default.name == "OpenAI GPT-4"
 
-    def test_get_default_provider_with_single_provider(self):
+    def test_get_default_provider_with_single_provider(self) -> None:
         """Test get_default_provider returns single provider regardless of is_default value."""
         settings = Settings(
             providers=[

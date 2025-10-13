@@ -16,7 +16,7 @@ from birkenbihl.services.language_service import get_language_by
 class TestPydanticAITranslatorUnit:
     """Unit tests for PydanticAITranslator factory logic."""
 
-    def test_unsupported_provider_raises_value_error(self):
+    def test_unsupported_provider_raises_value_error(self) -> None:
         """Test that unsupported provider_type raises ValueError."""
         # Arrange
         config = ProviderConfig(
@@ -38,7 +38,7 @@ class TestPydanticAITranslatorUnit:
 class TestPydanticAITranslatorOpenAIIntegration:
     """Integration tests with OpenAI provider."""
 
-    def test_translate_with_openai(self, openai_provider_config: ProviderConfig):
+    def test_translate_with_openai(self, openai_provider_config: ProviderConfig) -> None:
         """Test translation using OpenAI through universal translator."""
         # Arrange
         translator = PydanticAITranslator(openai_provider_config)
@@ -57,7 +57,7 @@ class TestPydanticAITranslatorOpenAIIntegration:
         assert sentence.natural_translation.strip() != ""
         assert len(sentence.word_alignments) >= 2
 
-    def test_detect_language_with_openai(self, openai_provider_config: ProviderConfig):
+    def test_detect_language_with_openai(self, openai_provider_config: ProviderConfig) -> None:
         """Test language detection using OpenAI through universal translator."""
         # Arrange
         translator = PydanticAITranslator(openai_provider_config)
@@ -74,7 +74,7 @@ class TestPydanticAITranslatorOpenAIIntegration:
 class TestPydanticAITranslatorAnthropicIntegration:
     """Integration tests with Anthropic provider."""
 
-    def test_translate_with_anthropic(self, anthropic_provider_config: ProviderConfig):
+    def test_translate_with_anthropic(self, anthropic_provider_config: ProviderConfig) -> None:
         """Test translation using Anthropic through universal translator."""
         # Arrange
         translator = PydanticAITranslator(anthropic_provider_config)
@@ -93,7 +93,7 @@ class TestPydanticAITranslatorAnthropicIntegration:
         assert sentence.natural_translation.strip() != ""
         assert len(sentence.word_alignments) >= 2
 
-    def test_detect_language_with_anthropic(self, anthropic_provider_config: ProviderConfig):
+    def test_detect_language_with_anthropic(self, anthropic_provider_config: ProviderConfig) -> None:
         """Test language detection using Anthropic through universal translator."""
         # Arrange
         translator = PydanticAITranslator(anthropic_provider_config)
@@ -104,7 +104,7 @@ class TestPydanticAITranslatorAnthropicIntegration:
         # Assert
         assert result.code == "en"
 
-    def test_spanish_translation_with_anthropic(self, anthropic_provider_config: ProviderConfig):
+    def test_spanish_translation_with_anthropic(self, anthropic_provider_config: ProviderConfig) -> None:
         """Test Spanish to German translation using Anthropic."""
         # Arrange
         translator = PydanticAITranslator(anthropic_provider_config)
@@ -130,7 +130,7 @@ class TestPydanticAITranslatorMultiProviderCompatibility:
 
     def test_consistent_translation_structure_openai_vs_anthropic(
         self, openai_provider_config: ProviderConfig, anthropic_provider_config: ProviderConfig
-    ):
+    ) -> None:
         """Test that both providers return consistent Translation structure."""
         # Arrange
         text = "Hello world"
@@ -158,7 +158,7 @@ class TestPydanticAITranslatorMultiProviderCompatibility:
 
     def test_consistent_language_detection_openai_vs_anthropic(
         self, openai_provider_config: ProviderConfig, anthropic_provider_config: ProviderConfig
-    ):
+    ) -> None:
         """Test that language detection is consistent across providers."""
         # Arrange
         openai_translator = PydanticAITranslator(openai_provider_config)
@@ -184,7 +184,7 @@ class TestPydanticAITranslatorMultiProviderCompatibility:
 class TestPydanticAITranslatorBirkenbilhCompliance:
     """Test Birkenbihl method compliance using universal translator."""
 
-    def test_natural_and_word_alignments_present(self, openai_provider_config: ProviderConfig):
+    def test_natural_and_word_alignments_present(self, openai_provider_config: ProviderConfig) -> None:
         """Test that both natural translation and word alignments are provided."""
         # Arrange
         translator = PydanticAITranslator(openai_provider_config)
@@ -202,7 +202,7 @@ class TestPydanticAITranslatorBirkenbilhCompliance:
             assert alignment.source_word.strip() != ""
             assert alignment.target_word.strip() != ""
 
-    def test_word_alignment_positions_sequential(self, anthropic_provider_config: ProviderConfig):
+    def test_word_alignment_positions_sequential(self, anthropic_provider_config: ProviderConfig) -> None:
         """Test that word alignment positions are sequential."""
         # Arrange
         translator = PydanticAITranslator(anthropic_provider_config)
@@ -215,7 +215,7 @@ class TestPydanticAITranslatorBirkenbilhCompliance:
         for i, alignment in enumerate(sentence.word_alignments):
             assert alignment.position == i
 
-    def test_metadata_present_in_translation(self, openai_provider_config: ProviderConfig):
+    def test_metadata_present_in_translation(self, openai_provider_config: ProviderConfig) -> None:
         """Test that translation includes all required metadata."""
         # Arrange
         translator = PydanticAITranslator(openai_provider_config)
@@ -240,7 +240,7 @@ class TestPydanticAITranslatorBirkenbilhCompliance:
 class TestPydanticAITranslatorEditingFeatures:
     """Tests for translation editing features (generate_alternatives, regenerate_alignment)."""
 
-    def test_generate_alternatives_returns_multiple(self, openai_provider_config: ProviderConfig):
+    def test_generate_alternatives_returns_multiple(self, openai_provider_config: ProviderConfig) -> None:
         """Test that generate_alternatives returns multiple translation options."""
         # Arrange
         translator = PydanticAITranslator(openai_provider_config)
@@ -259,7 +259,7 @@ class TestPydanticAITranslatorEditingFeatures:
         # Should have different translations
         assert len(set(alternatives)) >= 2  # At least 2 unique alternatives
 
-    def test_generate_alternatives_custom_count(self, anthropic_provider_config: ProviderConfig):
+    def test_generate_alternatives_custom_count(self, anthropic_provider_config: ProviderConfig) -> None:
         """Test that generate_alternatives respects custom count parameter."""
         # Arrange
         translator = PydanticAITranslator(anthropic_provider_config)
@@ -275,7 +275,7 @@ class TestPydanticAITranslatorEditingFeatures:
         assert all(isinstance(alt, str) for alt in alternatives)
         assert all(len(alt.strip()) > 0 for alt in alternatives)
 
-    def test_regenerate_alignment_creates_valid_alignments(self, openai_provider_config: ProviderConfig):
+    def test_regenerate_alignment_creates_valid_alignments(self, openai_provider_config: ProviderConfig) -> None:
         """Test that regenerate_alignment creates valid WordAlignment objects."""
         # Arrange
         translator = PydanticAITranslator(openai_provider_config)
@@ -297,7 +297,7 @@ class TestPydanticAITranslatorEditingFeatures:
             assert alignment.target_word.strip() != ""
             assert alignment.position == i  # Sequential positions
 
-    def test_regenerate_alignment_preserves_all_words(self, anthropic_provider_config: ProviderConfig):
+    def test_regenerate_alignment_preserves_all_words(self, anthropic_provider_config: ProviderConfig) -> None:
         """Test that regenerate_alignment includes all words from natural translation."""
         # Arrange
         translator = PydanticAITranslator(anthropic_provider_config)

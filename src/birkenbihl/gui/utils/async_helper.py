@@ -16,7 +16,7 @@ class AsyncWorker(QThread):
     task_completed = Signal(object)  # result data
     task_failed = Signal(str)  # error message
 
-    def __init__(self, func: Callable, *args, **kwargs):
+    def __init__(self, func: Callable, *args: object, **kwargs: object):
         """Initialize worker with function and arguments.
 
         Args:
@@ -53,7 +53,7 @@ class AsyncWorker(QThread):
             return self._stop_flag
 
 
-def run_in_background(func: Callable, *args, **kwargs) -> AsyncWorker:
+def run_in_background(func: Callable, *args: object, **kwargs: object) -> AsyncWorker:
     """Run function in background thread.
 
     Args:

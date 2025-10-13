@@ -10,11 +10,6 @@ class TestAlignmentPreview:
     """Test AlignmentPreview widget."""
 
     @pytest.fixture
-    def qapp(self, qapp):
-        """Provide QApplication instance."""
-        return qapp
-
-    @pytest.fixture
     def alignments(self):
         """Provide test alignments."""
         return [
@@ -22,17 +17,17 @@ class TestAlignmentPreview:
             WordAlignment(source_word="World", target_word="Welt", position=1),
         ]
 
-    def test_widget_creation(self, qapp):
+    def test_widget_creation(self):
         """Test widget creation."""
         widget = AlignmentPreview()
         assert widget is not None
 
-    def test_widget_with_alignments(self, qapp, alignments):
+    def test_widget_with_alignments(self, alignments: list[WordAlignment]):
         """Test widget with initial alignments."""
         widget = AlignmentPreview(alignments)
         assert widget._alignments == alignments
 
-    def test_html_generation(self, qapp, alignments):
+    def test_html_generation(self, alignments: list[WordAlignment]):
         """Test HTML generation."""
         widget = AlignmentPreview(alignments)
         html = widget._build_alignment_html()
@@ -42,14 +37,14 @@ class TestAlignmentPreview:
         assert "World" in html
         assert "Welt" in html
 
-    def test_empty_alignments(self, qapp):
+    def test_empty_alignments(self):
         """Test widget with empty alignments."""
         widget = AlignmentPreview([])
         html = widget._build_alignment_html()
 
         assert "Keine Zuordnungen" in html
 
-    def test_update_data(self, qapp, alignments):
+    def test_update_data(self, alignments: list[WordAlignment]):
         """Test updating alignments."""
         widget = AlignmentPreview()
         assert widget._alignments == []
@@ -57,7 +52,7 @@ class TestAlignmentPreview:
         widget.update_data(alignments)
         assert widget._alignments == alignments
 
-    def test_clear(self, qapp, alignments):
+    def test_clear(self, alignments: list[WordAlignment]):
         """Test clearing alignments."""
         widget = AlignmentPreview(alignments)
         assert len(widget._alignments) == 2

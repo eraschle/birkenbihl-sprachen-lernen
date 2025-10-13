@@ -10,7 +10,7 @@ from birkenbihl.providers.registry import ProviderMetadata, ProviderRegistry, _e
 class TestExtractModelNames:
     """Test model name extraction from PydanticAI types."""
 
-    def test_extract_openai_models(self):
+    def test_extract_openai_models(self) -> None:
         """Test extraction of OpenAI model names."""
         from pydantic_ai.models.openai import OpenAIModelName
 
@@ -23,7 +23,7 @@ class TestExtractModelNames:
         assert "gpt-4o" in models
         assert "gpt-4o-mini" in models
 
-    def test_extract_anthropic_models(self):
+    def test_extract_anthropic_models(self) -> None:
         """Test extraction of Anthropic model names."""
         from pydantic_ai.models.anthropic import AnthropicModelName
 
@@ -36,7 +36,7 @@ class TestExtractModelNames:
         assert any("claude" in m for m in models)
         assert any("sonnet" in m for m in models)
 
-    def test_extract_gemini_models(self):
+    def test_extract_gemini_models(self) -> None:
         """Test extraction of Gemini model names."""
         from pydantic_ai.models.gemini import GeminiModelName
 
@@ -48,7 +48,7 @@ class TestExtractModelNames:
         # Check for known models
         assert any("gemini" in m for m in models)
 
-    def test_extract_groq_models(self):
+    def test_extract_groq_models(self) -> None:
         """Test extraction of Groq model names."""
         from pydantic_ai.models.groq import GroqModelName
 
@@ -64,7 +64,7 @@ class TestExtractModelNames:
 class TestProviderRegistry:
     """Test provider registry initialization and access."""
 
-    def test_registry_initialization(self):
+    def test_registry_initialization(self) -> None:
         """Test that registry initializes correctly."""
         providers = ProviderRegistry.get_supported_providers()
 
@@ -72,7 +72,7 @@ class TestProviderRegistry:
         assert len(providers) > 0
         assert all(isinstance(p, ProviderMetadata) for p in providers)
 
-    def test_registry_contains_expected_providers(self):
+    def test_registry_contains_expected_providers(self) -> None:
         """Test that registry contains all expected provider types."""
         provider_types = ProviderRegistry.get_provider_types()
 
@@ -81,7 +81,7 @@ class TestProviderRegistry:
         for provider in expected_providers:
             assert provider in provider_types, f"Provider {provider} not found in registry"
 
-    def test_registry_openai_compatible_providers(self):
+    def test_registry_openai_compatible_providers(self) -> None:
         """Test that OpenAI-compatible providers are registered."""
         provider_types = ProviderRegistry.get_provider_types()
 
@@ -105,7 +105,7 @@ class TestProviderRegistry:
         for provider in openai_compatible:
             assert provider in provider_types, f"OpenAI-compatible provider {provider} not found"
 
-    def test_get_provider_metadata(self):
+    def test_get_provider_metadata(self) -> None:
         """Test getting metadata for specific provider."""
         metadata = ProviderRegistry.get_provider_metadata("openai")
 
@@ -116,13 +116,13 @@ class TestProviderRegistry:
         assert len(metadata.default_models) > 0
         assert metadata.requires_api_key is True
 
-    def test_get_provider_metadata_nonexistent(self):
+    def test_get_provider_metadata_nonexistent(self) -> None:
         """Test getting metadata for nonexistent provider returns None."""
         metadata = ProviderRegistry.get_provider_metadata("nonexistent_provider")
 
         assert metadata is None
 
-    def test_get_model_class(self):
+    def test_get_model_class(self) -> None:
         """Test getting model class for provider."""
         from pydantic_ai.models.openai import OpenAIChatModel
 
@@ -131,19 +131,19 @@ class TestProviderRegistry:
         assert model_class is not None
         assert model_class == OpenAIChatModel
 
-    def test_get_model_class_nonexistent(self):
+    def test_get_model_class_nonexistent(self) -> None:
         """Test getting model class for nonexistent provider returns None."""
         model_class = ProviderRegistry.get_model_class("nonexistent_provider")
 
         assert model_class is None
 
-    def test_is_supported(self):
+    def test_is_supported(self) -> None:
         """Test checking if provider is supported."""
         assert ProviderRegistry.is_supported("openai") is True
         assert ProviderRegistry.is_supported("anthropic") is True
         assert ProviderRegistry.is_supported("nonexistent_provider") is False
 
-    def test_provider_has_all_models(self):
+    def test_provider_has_all_models(self) -> None:
         """Test that providers have all available models from PydanticAI."""
         from pydantic_ai.models.anthropic import AnthropicModelName
 
@@ -154,7 +154,7 @@ class TestProviderRegistry:
         assert len(metadata.default_models) == len(expected_models)
         assert set(metadata.default_models) == set(expected_models)
 
-    def test_openai_compatible_have_provider_specific_models(self):
+    def test_openai_compatible_have_provider_specific_models(self) -> None:
         """Test that OpenAI-compatible providers have provider-specific model lists."""
         openai_meta = ProviderRegistry.get_provider_metadata("openai")
         azure_meta = ProviderRegistry.get_provider_metadata("azure")
@@ -178,7 +178,7 @@ class TestProviderRegistry:
         assert "llama3.1" in ollama_meta.default_models
         assert len(ollama_meta.default_models) > 0
 
-    def test_openai_compatible_use_same_model_class(self):
+    def test_openai_compatible_use_same_model_class(self) -> None:
         """Test that all OpenAI-compatible providers use OpenAIChatModel."""
         from pydantic_ai.models.openai import OpenAIChatModel
 
@@ -188,7 +188,7 @@ class TestProviderRegistry:
             model_class = ProviderRegistry.get_model_class(provider_type)
             assert model_class == OpenAIChatModel, f"{provider_type} should use OpenAIChatModel"
 
-    def test_anthropic_metadata(self):
+    def test_anthropic_metadata(self) -> None:
         """Test Anthropic provider metadata."""
         from pydantic_ai.models.anthropic import AnthropicModel
 
@@ -203,7 +203,7 @@ class TestProviderRegistry:
         assert any("claude" in m for m in metadata.default_models)
         assert any("sonnet" in m or "haiku" in m or "opus" in m for m in metadata.default_models)
 
-    def test_gemini_metadata(self):
+    def test_gemini_metadata(self) -> None:
         """Test Gemini provider metadata."""
         from pydantic_ai.models.google import GoogleModel
 
@@ -216,7 +216,7 @@ class TestProviderRegistry:
         assert len(metadata.default_models) > 0
         assert any("gemini" in m for m in metadata.default_models)
 
-    def test_groq_metadata(self):
+    def test_groq_metadata(self) -> None:
         """Test Groq provider metadata."""
         from pydantic_ai.models.groq import GroqModel
 
@@ -228,7 +228,7 @@ class TestProviderRegistry:
         assert metadata.model_class == GroqModel
         assert len(metadata.default_models) > 0
 
-    def test_registry_singleton_behavior(self):
+    def test_registry_singleton_behavior(self) -> None:
         """Test that registry initializes only once (singleton pattern)."""
         # Call multiple times
         providers1 = ProviderRegistry.get_supported_providers()
@@ -239,7 +239,7 @@ class TestProviderRegistry:
         assert len(providers1) == len(providers2)
         assert len(providers3) == len(providers1)
 
-    def test_all_providers_have_valid_metadata(self):
+    def test_all_providers_have_valid_metadata(self) -> None:
         """Test that all registered providers have valid metadata."""
         providers = ProviderRegistry.get_supported_providers()
 
@@ -255,7 +255,7 @@ class TestProviderRegistry:
             # All models should be strings
             assert all(isinstance(m, str) for m in provider.default_models)
 
-    def test_no_duplicate_provider_types(self):
+    def test_no_duplicate_provider_types(self) -> None:
         """Test that there are no duplicate provider types."""
         provider_types = ProviderRegistry.get_provider_types()
 

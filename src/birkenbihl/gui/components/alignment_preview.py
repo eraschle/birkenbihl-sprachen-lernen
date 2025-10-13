@@ -69,7 +69,9 @@ class AlignmentPreview(QWidget):
     def _clear_layout(self) -> None:
         """Remove all widgets from layout."""
         layout = self.layout()
+        if layout is None:
+            return
         while layout.count():
             item = layout.takeAt(0)
-            if widget := item.widget():
+            if item and (widget := item.widget()):
                 widget.deleteLater()

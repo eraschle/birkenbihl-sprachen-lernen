@@ -6,8 +6,10 @@ from PySide6.QtCore import QObject, QRunnable, QThreadPool, Signal, Slot
 
 from birkenbihl.gui.services.translation_ui_service import TranslationUIService
 from birkenbihl.gui.viewmodels.base import BaseViewModel
+from birkenbihl.models.languages import Language
 from birkenbihl.models.settings import ProviderConfig
 from birkenbihl.models.translation import Translation
+from birkenbihl.services import language_service as ls
 from birkenbihl.services.settings_service import SettingsService
 
 
@@ -23,8 +25,8 @@ class TranslationWorker(QRunnable):
         callback: Callable[[Translation], None],
         error_callback: Callable[[str], None],
         text: str,
-        source_lang: str,
-        target_lang: str,
+        source_lang: Language,
+        target_lang: Language,
         title: str,
         provider: ProviderConfig,
     ):
@@ -58,7 +60,7 @@ class LanguageDetectionWorker(QRunnable):
 
     def __init__(
         self,
-        callback: Callable[[str], None],
+        callback: Callable[[Language], None],
         error_callback: Callable[[str], None],
         text: str,
         provider: ProviderConfig,
@@ -128,7 +130,7 @@ class CreateTranslationViewModel(BaseViewModel):
         finally:
             self._set_loading(False)
 
-    def translate(self, text: str, source_lang: str, title: str, provider: ProviderConfig) -> None:
+    def translate(self, text: str, source_lang: Language, title: str, provider: ProviderConfig) -> None:
         """Start async translation operation.
 
         Executes translation in background thread and emits signals on completion.
@@ -147,7 +149,7 @@ class CreateTranslationViewModel(BaseViewModel):
         self._set_loading(True)
         self.progress_updated.emit(0, "Starting translation...")
 
-        target_lang = self.target_language
+        target_lang = ls.get_language_by(self.target_language)
         worker = TranslationWorker(
             self._on_translation_complete, self._on_translation_error, text, source_lang, target_lang, title, provider
         )

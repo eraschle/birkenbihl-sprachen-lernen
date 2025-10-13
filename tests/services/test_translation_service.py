@@ -89,7 +89,7 @@ class TestGetSentenceSuggestions:
         mock_storage: IStorageProvider,
         provider_config: ProviderConfig,
         sample_translation: Translation,
-    ):
+    ) -> None:
         """Test successful generation of alternative translations."""
         # Arrange
         sentence_uuid = sample_translation.sentences[0].uuid
@@ -126,7 +126,7 @@ class TestGetSentenceSuggestions:
         translation_service: TranslationService,
         mock_storage: IStorageProvider,
         provider_config: ProviderConfig,
-    ):
+    ) -> None:
         """Test error when translation not found."""
         # Arrange
         translation_id = uuid4()
@@ -143,7 +143,7 @@ class TestGetSentenceSuggestions:
         mock_storage: IStorageProvider,
         provider_config: ProviderConfig,
         sample_translation: Translation,
-    ):
+    ) -> None:
         """Test error when sentence not found in translation."""
         # Arrange
         wrong_sentence_uuid = uuid4()
@@ -167,7 +167,7 @@ class TestUpdateSentenceNatural:
         mock_storage: IStorageProvider,
         provider_config: ProviderConfig,
         sample_translation: Translation,
-    ):
+    ) -> None:
         """Test successful update of natural translation and alignment regeneration."""
         # Arrange
         sentence_uuid = sample_translation.sentences[0].uuid
@@ -203,7 +203,7 @@ class TestUpdateSentenceNatural:
         mock_storage: IStorageProvider,
         provider_config: ProviderConfig,
         sample_translation: Translation,
-    ):
+    ) -> None:
         """Test that update_sentence_natural calls regenerate_alignment."""
         # Arrange
         sentence_uuid = sample_translation.sentences[0].uuid
@@ -235,7 +235,7 @@ class TestUpdateSentenceNatural:
         mock_storage: IStorageProvider,
         provider_config: ProviderConfig,
         sample_translation: Translation,
-    ):
+    ) -> None:
         """Test that update_sentence_natural updates updated_at timestamp."""
         # Arrange
         sentence_uuid = sample_translation.sentences[0].uuid
@@ -267,7 +267,7 @@ class TestUpdateSentenceAlignment:
         translation_service: TranslationService,
         mock_storage: IStorageProvider,
         sample_translation: Translation,
-    ):
+    ) -> None:
         """Test successful update of word-by-word alignment."""
         # Arrange
         sentence_uuid = sample_translation.sentences[0].uuid
@@ -293,7 +293,7 @@ class TestUpdateSentenceAlignment:
         translation_service: TranslationService,
         mock_storage: IStorageProvider,
         sample_translation: Translation,
-    ):
+    ) -> None:
         """Test that invalid alignment raises ValueError."""
         # Arrange
         sentence_uuid = sample_translation.sentences[0].uuid
@@ -314,7 +314,7 @@ class TestUpdateSentenceAlignment:
         translation_service: TranslationService,
         mock_storage: IStorageProvider,
         sample_translation: Translation,
-    ):
+    ) -> None:
         """Test that alignments with missing words raise ValueError."""
         # Arrange
         sentence_uuid = sample_translation.sentences[0].uuid

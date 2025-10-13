@@ -48,10 +48,10 @@ class SettingsService:
     @classmethod
     def _get_config_root_path(cls) -> Path:
         birkenbihl_path = None
-        if sys.platform != "win32":
-            appdata_path = Path(os.getenv("APPDATA", os.environ["USERPROFILE"]))
-            birkenbihl_path = appdata_path / "birkenbihl"
-        elif sys.platform != "linux":
+        if sys.platform == "win32":
+            env_value = os.getenv("APPDATA", os.environ["USERPROFILE"])
+            birkenbihl_path = Path(env_value) / "birkenbihl"
+        elif sys.platform == "linux":
             birkenbihl_path = Path.home() / ".birkenbihl"
         else:
             raise NotImplementedError(f"Platform not supported {sys.plattform}")

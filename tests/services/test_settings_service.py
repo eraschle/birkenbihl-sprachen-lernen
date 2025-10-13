@@ -4,6 +4,7 @@ Tests singleton pattern, lazy loading, thread safety, and delegation
 to Settings model for business logic.
 """
 
+from collections.abc import Generator
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from threading import Barrier
@@ -15,7 +16,7 @@ from birkenbihl.services.settings_service import SettingsService
 
 
 @pytest.fixture(autouse=True)
-def reset_singleton():
+def reset_singleton() -> Generator[None, None, None]:
     """Reset SettingsService singleton state before each test.
 
     Ensures test isolation by clearing singleton instance and settings cache.
@@ -34,7 +35,7 @@ def reset_singleton():
 class TestSettingsServiceSingleton:
     """Test SettingsService singleton pattern implementation."""
 
-    def test_get_instance_returns_same_instance_on_multiple_calls(self):
+    def test_get_instance_returns_same_instance_on_multiple_calls(self) -> None:
         """Test that get_instance returns the same instance on multiple calls."""
         instance1 = SettingsService.get_instance()
         instance2 = SettingsService.get_instance()
@@ -44,14 +45,14 @@ class TestSettingsServiceSingleton:
         assert instance2 is instance3
         assert instance1 is instance3
 
-    def test_direct_instantiation_raises_runtime_error(self):
+    def test_direct_instantiation_raises_runtime_error(self) -> None:
         """Test that direct instantiation raises RuntimeError after singleton created."""
         SettingsService.get_instance()
 
         with pytest.raises(RuntimeError, match="Use get_instance\\(\\) to get singleton instance"):
             SettingsService()
 
-    def test_singleton_persists_across_method_calls(self):
+    def test_singleton_persists_across_method_calls(self) -> None:
         """Test that singleton instance persists across different method calls."""
         service = SettingsService.get_instance()
         settings = SettingsService.get_settings()
@@ -66,7 +67,7 @@ class TestSettingsServiceSingleton:
 class TestSettingsServiceLazyLoading:
     """Test SettingsService lazy loading behavior."""
 
-    def test_get_settings_loads_on_first_access(self, tmp_path: Path):
+    def test_get_settings_loads_on_first_access(self, tmp_path: Path) -> None:
         """Test that get_settings loads settings on first access."""
         settings_file = tmp_path / "settings.yaml"
         settings_file.write_text(
@@ -95,7 +96,7 @@ target_language: es
         finally:
             os.chdir(original_cwd)
 
-    def test_get_settings_returns_cached_instance_on_subsequent_calls(self, tmp_path: Path):
+    def test_get_settings_returns_cached_instance_on_subsequent_calls(self, tmp_path: Path) -> None:
         """Test that get_settings returns cached instance on subsequent calls."""
         settings_file = tmp_path / "settings.yaml"
         settings_file.write_text(
@@ -124,7 +125,7 @@ target_language: es
         finally:
             os.chdir(original_cwd)
 
-    def test_get_settings_loads_defaults_when_settings_file_missing(self, tmp_path: Path):
+    def test_get_settings_loads_defaults_when_settings_file_missing(self, tmp_path: Path) -> None:
         """Test that get_settings loads default settings when settings.yaml file is missing."""
         import os
 
@@ -153,7 +154,7 @@ target_language: es
 class TestSettingsServiceLoadSettings:
     """Test SettingsService load_settings explicit loading."""
 
-    def test_load_settings_loads_from_specified_file(self, tmp_path: Path):
+    def test_load_settings_loads_from_specified_file(self, tmp_path: Path) -> None:
         """Test that load_settings loads from specified settings file."""
         settings_file = tmp_path / "custom.yaml"
         settings_file.write_text(
@@ -175,7 +176,7 @@ target_language: fr
         assert settings.target_language == "fr"
         assert SettingsService.get_current_provider() == settings.providers[0]
 
-    def test_load_settings_replaces_cached_settings(self, tmp_path: Path):
+    def test_load_settings_replaces_cached_settings(self, tmp_path: Path) -> None:
         """Test that load_settings replaces previously cached settings."""
         settings_file1 = tmp_path / "first.yaml"
         settings_file1.write_text(
@@ -215,7 +216,7 @@ target_language: fr
         assert current_settings.target_language == "fr"
         assert SettingsService.get_current_provider() == settings2.providers[0]
 
-    def test_load_settings_with_default_path(self, tmp_path: Path):
+    def test_load_settings_with_default_path(self, tmp_path: Path) -> None:
         """Test that load_settings uses default settings.yaml path when not specified."""
         settings_file = tmp_path / "settings.yaml"
         settings_file.write_text(
@@ -247,7 +248,7 @@ target_language: fr
 class TestSettingsServiceSaveSettings:
     """Test SettingsService save_settings persistence."""
 
-    def test_save_settings_persists_to_specified_file(self, tmp_path: Path):
+    def test_save_settings_persists_to_specified_file(self, tmp_path: Path) -> None:
         """Test that save_settings persists settings to specified settings file."""
         settings_file = tmp_path / "output.yaml"
 
@@ -272,7 +273,7 @@ class TestSettingsServiceSaveSettings:
         assert "api_key: sk-test-key" in content
         assert "target_language: de" in content
 
-    def test_save_settings_updates_cached_settings(self, tmp_path: Path):
+    def test_save_settings_updates_cached_settings(self, tmp_path: Path) -> None:
         """Test that save_settings updates the cached settings instance."""
         settings_file = tmp_path / "output.yaml"
 
@@ -297,7 +298,7 @@ class TestSettingsServiceSaveSettings:
         assert cached_settings.target_language == "es"
         assert cached_settings.providers[0].api_key == "sk-test-openai"
 
-    def test_save_settings_with_default_path(self, tmp_path: Path):
+    def test_save_settings_with_default_path(self, tmp_path: Path) -> None:
         """Test that save_settings uses default settings.yaml path when not specified."""
         import os
 
@@ -327,7 +328,7 @@ class TestSettingsServiceSaveSettings:
         finally:
             os.chdir(original_cwd)
 
-    def test_save_settings_round_trip_preserves_data(self, tmp_path: Path):
+    def test_save_settings_round_trip_preserves_data(self, tmp_path: Path) -> None:
         """Test that save and load round trip preserves all settings data."""
         settings_file = tmp_path / "roundtrip.yaml"
 
@@ -366,7 +367,7 @@ class TestSettingsServiceSaveSettings:
 class TestSettingsServiceGetDefaultProvider:
     """Test SettingsService get_default_provider delegation."""
 
-    def test_get_default_provider_returns_marked_default(self, tmp_path: Path):
+    def test_get_default_provider_returns_marked_default(self, tmp_path: Path) -> None:
         """Test that get_default_provider returns provider marked as default."""
         settings_file = tmp_path / "settings.yaml"
         settings_file.write_text(
@@ -391,7 +392,7 @@ class TestSettingsServiceGetDefaultProvider:
         assert default_provider.name == "Claude Sonnet"
         assert default_provider.is_default is True
 
-    def test_get_default_provider_returns_first_if_none_marked(self, tmp_path: Path):
+    def test_get_default_provider_returns_first_if_none_marked(self, tmp_path: Path) -> None:
         """Test that get_default_provider returns first provider if none marked default."""
         settings_file = tmp_path / "settings.yaml"
         settings_file.write_text(
@@ -415,7 +416,7 @@ class TestSettingsServiceGetDefaultProvider:
         assert default_provider is not None
         assert default_provider.name == "OpenAI GPT-4"
 
-    def test_get_default_provider_returns_none_if_no_providers(self):
+    def test_get_default_provider_returns_none_if_no_providers(self) -> None:
         """Test that get_default_provider returns None if no providers configured."""
         settings = Settings(providers=[], target_language="de")
         SettingsService.save_settings(settings, Path("settings.yaml"))
@@ -424,7 +425,7 @@ class TestSettingsServiceGetDefaultProvider:
 
         assert default_provider is None
 
-    def test_get_default_provider_delegates_to_settings_model(self, tmp_path: Path):
+    def test_get_default_provider_delegates_to_settings_model(self, tmp_path: Path) -> None:
         """Test that get_default_provider delegates to Settings.get_default_provider()."""
         settings_file = tmp_path / "settings.yaml"
         settings_file.write_text(
@@ -450,7 +451,7 @@ class TestSettingsServiceGetDefaultProvider:
 class TestSettingsServiceCurrentProvider:
     """Test SettingsService current provider management."""
 
-    def test_get_current_provider_returns_current_provider(self, tmp_path: Path):
+    def test_get_current_provider_returns_current_provider(self, tmp_path: Path) -> None:
         """Test that get_current_provider returns current provider."""
         settings_file = tmp_path / "settings.yaml"
         settings_file.write_text(
@@ -469,7 +470,7 @@ class TestSettingsServiceCurrentProvider:
         assert current_provider is not None
         assert current_provider.name == "OpenAI GPT-4"
 
-    def test_get_current_provider_auto_initializes_to_default(self, tmp_path: Path):
+    def test_get_current_provider_auto_initializes_to_default(self, tmp_path: Path) -> None:
         """Test that get_current_provider auto-initializes to default provider."""
         settings_file = tmp_path / "settings.yaml"
         settings_file.write_text(
@@ -497,7 +498,7 @@ class TestSettingsServiceCurrentProvider:
         finally:
             os.chdir(original_cwd)
 
-    def test_set_current_provider_sets_the_current_provider(self, tmp_path: Path):
+    def test_set_current_provider_sets_the_current_provider(self, tmp_path: Path) -> None:
         """Test that set_current_provider sets the current provider."""
         settings_file = tmp_path / "settings.yaml"
         settings_file.write_text(
@@ -528,7 +529,7 @@ class TestSettingsServiceCurrentProvider:
         assert current_provider.name == "Claude Sonnet"
         assert current_provider == claude_provider
 
-    def test_set_current_provider_doesnt_persist_to_file(self, tmp_path: Path):
+    def test_set_current_provider_doesnt_persist_to_file(self, tmp_path: Path) -> None:
         """Test that set_current_provider doesn't persist to file."""
         settings_file = tmp_path / "settings.yaml"
         settings_file.write_text(
@@ -558,7 +559,7 @@ class TestSettingsServiceCurrentProvider:
         assert current_provider
         assert current_provider.name == "OpenAI GPT-4"
 
-    def test_reset_current_provider_resets_to_default(self, tmp_path: Path):
+    def test_reset_current_provider_resets_to_default(self, tmp_path: Path) -> None:
         """Test that reset_current_provider resets to default provider."""
         settings_file = tmp_path / "settings.yaml"
         settings_file.write_text(
@@ -590,7 +591,7 @@ class TestSettingsServiceCurrentProvider:
         assert current_provider.name == "OpenAI GPT-4"
         assert current_provider == SettingsService.get_default_provider()
 
-    def test_current_provider_persists_across_get_settings_calls(self, tmp_path: Path):
+    def test_current_provider_persists_across_get_settings_calls(self, tmp_path: Path) -> None:
         """Test that current provider persists across get_settings() calls."""
         settings_file = tmp_path / "settings.yaml"
         settings_file.write_text(
@@ -625,13 +626,13 @@ class TestSettingsServiceCurrentProvider:
 class TestSettingsServiceThreadSafety:
     """Test SettingsService thread safety."""
 
-    def test_concurrent_get_instance_returns_same_singleton(self):
+    def test_concurrent_get_instance_returns_same_singleton(self) -> None:
         """Test that concurrent get_instance calls return the same singleton instance."""
         num_threads = 10
         barrier = Barrier(num_threads)
         instances = []
 
-        def get_instance_with_barrier():
+        def get_instance_with_barrier() -> None:
             barrier.wait()
             instance = SettingsService.get_instance()
             instances.append(instance)
@@ -644,7 +645,7 @@ class TestSettingsServiceThreadSafety:
         assert len(instances) == num_threads
         assert all(instance is instances[0] for instance in instances)
 
-    def test_concurrent_get_settings_returns_same_instance(self, tmp_path: Path):
+    def test_concurrent_get_settings_returns_same_instance(self, tmp_path: Path) -> None:
         """Test that concurrent get_settings calls return the same settings instance."""
         settings_file = tmp_path / "settings.yaml"
         settings_file.write_text(
@@ -667,7 +668,7 @@ class TestSettingsServiceThreadSafety:
             barrier = Barrier(num_threads)
             settings_list = []
 
-            def get_settings_with_barrier():
+            def get_settings_with_barrier() -> None:
                 barrier.wait()
                 settings = SettingsService.get_settings()
                 settings_list.append(settings)
@@ -682,7 +683,7 @@ class TestSettingsServiceThreadSafety:
         finally:
             os.chdir(original_cwd)
 
-    def test_concurrent_load_settings_thread_safe(self, tmp_path: Path):
+    def test_concurrent_load_settings_thread_safe(self, tmp_path: Path) -> None:
         """Test that concurrent load_settings calls are thread-safe."""
         settings_files = []
         for i in range(5):
@@ -703,7 +704,7 @@ target_language: de
         barrier = Barrier(num_threads)
         results = []
 
-        def load_settings_with_barrier(settings_file: str | Path):
+        def load_settings_with_barrier(settings_file: str | Path) -> None:
             barrier.wait()
             settings = SettingsService.load_settings(settings_file)
             results.append(settings)
@@ -717,12 +718,12 @@ target_language: de
         assert final_settings in results
         assert all(isinstance(s, Settings) for s in results)
 
-    def test_concurrent_save_settings_thread_safe(self, tmp_path: Path):
+    def test_concurrent_save_settings_thread_safe(self, tmp_path: Path) -> None:
         """Test that concurrent save_settings calls are thread-safe."""
         num_threads = 5
         barrier = Barrier(num_threads)
 
-        def save_settings_with_barrier(index: int):
+        def save_settings_with_barrier(index: int) -> None:
             barrier.wait()
             settings = Settings(
                 providers=[

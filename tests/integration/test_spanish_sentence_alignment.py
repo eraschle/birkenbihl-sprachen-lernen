@@ -8,7 +8,7 @@ from birkenbihl.services.language_service import get_language_by
 class TestSpanishSentenceAlignment:
     """Test alignment for the Spanish sentence with reported issues."""
 
-    def test_full_sentence_alignment(self):
+    def test_full_sentence_alignment(self) -> None:
         """Test complete alignment for: 'Mas comprendo que llegó tu tiempo, que Dios te ha llamado para estar a Su lado.'"""
         # Arrange
         natural_translation = (
@@ -55,7 +55,7 @@ class TestSpanishSentenceAlignment:
         para_alignment = next(a for a in alignments if a.source_word == "para")
         assert para_alignment.target_word == "um", "para should map to 'um'"
 
-    def test_broken_alignments_before_fix(self):
+    def test_broken_alignments_before_fix(self) -> None:
         """Test that the broken alignments (before fix) are correctly identified as invalid."""
         # Arrange
         natural_translation = (
@@ -95,7 +95,7 @@ class TestSpanishSentenceAlignment:
             or "nicht vollständig" in error_message.lower()
         ), f"Error should indicate alignment issues, got: {error_message}"
 
-    def test_word_extraction_includes_um(self):
+    def test_word_extraction_includes_um(self) -> None:
         """Test that 'um' is correctly extracted from natural translation."""
         # Arrange
         natural_translation = "Gott dich gerufen hat, um an Seiner Seite zu sein."
@@ -112,7 +112,7 @@ class TestSpanishSentenceAlignment:
         assert "gerufen" in target_words
         assert "hat" in target_words
 
-    def test_create_full_translation_object(self):
+    def test_create_full_translation_object(self) -> None:
         """Test creating a complete Translation object with the sentence."""
         # Arrange
         source_text = "Mas comprendo que llegó tu tiempo, que Dios te ha llamado para estar a Su lado."

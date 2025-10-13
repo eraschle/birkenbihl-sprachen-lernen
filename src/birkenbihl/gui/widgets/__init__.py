@@ -1,5 +1,15 @@
 """Reusable UI widgets/components."""
 
+from birkenbihl.gui.widgets import (
+    alignment_editor,
+    alignment_preview,
+    base,
+    language_selector,
+    progress_widget,
+    provider_selector,
+    sentence_card,
+)
+
 __all__ = [
     "base",
     "provider_selector",
@@ -8,5 +18,4 @@ __all__ = [
     "alignment_preview",
     "alignment_editor",
     "sentence_card",
-    "translation_card",
 ]

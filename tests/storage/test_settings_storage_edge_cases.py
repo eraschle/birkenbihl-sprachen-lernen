@@ -75,7 +75,7 @@ class TestSettingsStorageEdgeCases:
             ]
         )
 
-        _saved = storage.save(settings)
+        settings = storage.save(settings)
         loaded = storage.load()
 
         assert len(loaded.providers[0].name) == 10000
@@ -97,7 +97,7 @@ class TestSettingsStorageEdgeCases:
             ]
         )
 
-        _saved = storage.save(settings)
+        storage.save(settings)
         loaded = storage.load()
 
         assert special_chars in loaded.providers[0].name
@@ -118,7 +118,7 @@ class TestSettingsStorageEdgeCases:
             ]
         )
 
-        _saved = storage.save(settings)
+        storage.save(settings)
         loaded = storage.load()
 
         assert loaded.providers[0].name == emoji_string
@@ -138,7 +138,7 @@ class TestSettingsStorageEdgeCases:
             ]
         )
 
-        _saved = storage.save(settings)
+        storage.save(settings)
         loaded = storage.load()
 
         assert loaded.providers[0].name == multiline_string
@@ -159,7 +159,7 @@ class TestSettingsStorageEdgeCases:
         )
 
         # Should not raise any errors
-        _saved = storage.save(settings)
+        storage.save(settings)
         loaded = storage.load()
 
         assert loaded.providers[0].name == malicious_string
@@ -308,7 +308,7 @@ class TestSettingsStorageEdgeCases:
             ]
         )
 
-        _saved = storage.save(settings)
+        storage.save(settings)
         loaded = storage.load()
 
         assert len(loaded.providers) == 3
@@ -341,7 +341,7 @@ class TestSettingsStorageEdgeCases:
             ]
         )
 
-        _saved = storage.save(settings)
+        storage.save(settings)
 
         # Load multiple times - timestamps should remain consistent
         loaded1 = storage.load()
@@ -389,7 +389,7 @@ class TestSettingsStorageEdgeCases:
             ]
         )
 
-        _saved = storage.save(settings)
+        storage.save(settings)
         loaded = storage.load()
 
         assert loaded.providers[0].name == ""

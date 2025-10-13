@@ -1,11 +1,13 @@
 """ViewModel for translation creation."""
 
 from PySide6.QtCore import QObject, Signal
+from PySide6.QtWidgets import QWidget
 
 from birkenbihl.gui.models.ui_state import TranslationCreationState
 from birkenbihl.gui.utils.async_helper import AsyncWorker
 from birkenbihl.models.settings import ProviderConfig
 from birkenbihl.models.translation import Translation
+from birkenbihl.services import language_service as ls
 from birkenbihl.services.translation_service import TranslationService
 
 
@@ -23,7 +25,7 @@ class TranslationCreationViewModel(QObject):
     translation_failed = Signal(str)  # error message
     translation_progress = Signal(float, str)  # progress, message
 
-    def __init__(self, service: TranslationService, parent=None):
+    def __init__(self, service: TranslationService, parent: QWidget | None = None):
         """Initialize ViewModel.
 
         Args:
@@ -44,6 +46,11 @@ class TranslationCreationViewModel(QObject):
         if self._worker:
             self._worker.stop()
             self._worker.wait()
+
+    def reset(self) -> None:
+        """Reset state to initial values."""
+        self._state = TranslationCreationState()
+        self._emit_state()
 
     @property
     def state(self) -> TranslationCreationState:
@@ -74,7 +81,12 @@ class TranslationCreationViewModel(QObject):
         Args:
             lang: Language code or None for auto-detect
         """
-        self._state.source_language = lang
+        if lang is None:
+            language = ls.get_default_source_language()
+        else:
+            language = ls.get_language_by(lang)
+
+        self._state.source_language = language
         self._emit_state()
 
     def set_target_language(self, lang: str) -> None:
@@ -83,7 +95,7 @@ class TranslationCreationViewModel(QObject):
         Args:
             lang: Language code
         """
-        self._state.target_language = lang
+        self._state.target_language = ls.get_language_by(lang)
         self._emit_state()
 
     def set_provider(self, provider: ProviderConfig) -> None:
@@ -97,7 +109,7 @@ class TranslationCreationViewModel(QObject):
 
     def start_translation(self) -> None:
         """Start translation in background."""
-        if not self._can_translate():
+        if not self.can_translate():
             return
 
         self._state.is_translating = True
@@ -118,7 +130,7 @@ class TranslationCreationViewModel(QObject):
             self._state.progress = 0.0
             self._emit_state()
 
-    def _can_translate(self) -> bool:
+    def can_translate(self) -> bool:
         """Check if translation can be started.
 
         Returns:
@@ -143,10 +155,10 @@ class TranslationCreationViewModel(QObject):
         text = self._state.source_text
         title = self._state.title
 
-        if source_lang:
-            return self._service.translate_and_save(text, source_lang, target_lang, title)
-        else:
+        if ls.is_auto_detect(source_lang.code):
             return self._service.auto_detect_and_translate(text, target_lang, title)
+        else:
+            return self._service.translate_and_save(text, source_lang, target_lang, title)
 
     def _on_translation_completed(self, translation: Translation) -> None:
         """Handle translation completion.

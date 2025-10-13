@@ -21,7 +21,7 @@ class ProgressWidget(QWidget):
 
     cancel_requested = Signal()
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: QWidget | None = None):
         """Initialize widget.
 
         Args:
@@ -35,15 +35,15 @@ class ProgressWidget(QWidget):
         """Setup UI components."""
         layout = QVBoxLayout(self)
 
-        self._message_label = QLabel()
-        self._progress_bar = QProgressBar()
+        self._message_label = QLabel()  # type: ignore[reportUninitializedInstanceVariable]
+        self._progress_bar = QProgressBar()  # type: ignore[reportUninitializedInstanceVariable]
         self._progress_bar.setRange(0, 100)
         self._progress_bar.setValue(0)
 
         button_layout = QHBoxLayout()
         button_layout.addStretch()
 
-        self._cancel_button = QPushButton("Abbrechen")
+        self._cancel_button = QPushButton("Abbrechen")  # type: ignore[reportUninitializedInstanceVariable]
         self._cancel_button.clicked.connect(self._on_cancel_clicked)
 
         button_layout.addWidget(self._cancel_button)

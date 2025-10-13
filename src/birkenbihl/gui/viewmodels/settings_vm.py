@@ -1,6 +1,7 @@
 """SettingsViewModel for managing application settings in MVVM pattern."""
 
 from PySide6.QtCore import Signal
+from PySide6.QtWidgets import QWidget
 
 from birkenbihl.gui.viewmodels.base import BaseViewModel
 from birkenbihl.models.settings import ProviderConfig, Settings
@@ -22,10 +23,12 @@ class SettingsViewModel(BaseViewModel):
     default_provider_changed = Signal(int)
     target_language_changed = Signal(str)
 
-    def __init__(self, parent: object | None = None):
-        super().__init__(parent)
+    def __init__(self, service: SettingsService, parent: QWidget | None = None):
+        from PySide6.QtCore import QObject
+
+        super().__init__(parent if isinstance(parent, QObject) else None)
+        self._service = service
         self._settings: Settings | None = None
-        self._service = SettingsService.get_instance()
 
     @property
     def providers(self) -> list[ProviderConfig]:

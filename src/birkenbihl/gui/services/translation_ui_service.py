@@ -4,6 +4,7 @@ from pathlib import Path
 from threading import Lock
 from uuid import UUID
 
+from birkenbihl.models.languages import Language
 from birkenbihl.models.settings import ProviderConfig
 from birkenbihl.models.translation import Translation
 from birkenbihl.providers.pydantic_ai_translator import PydanticAITranslator
@@ -63,7 +64,7 @@ class TranslationUIService:
         return self.service.delete_translation(translation_id)
 
     def translate_and_save(
-        self, text: str, source_lang: str, target_lang: str, title: str, provider: ProviderConfig
+        self, text: str, source_lang: Language, target_lang: Language, title: str, provider: ProviderConfig
     ) -> Translation:
         translator = PydanticAITranslator(provider)
         temp_service = TranslationService(translator, self.storage)

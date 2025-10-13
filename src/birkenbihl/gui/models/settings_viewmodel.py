@@ -1,9 +1,11 @@
 """ViewModel for settings management."""
 
 from PySide6.QtCore import QObject, Signal
+from PySide6.QtWidgets import QWidget
 
 from birkenbihl.gui.models.ui_state import SettingsViewState
 from birkenbihl.models.settings import ProviderConfig, Settings
+from birkenbihl.services import language_service as ls
 from birkenbihl.services.settings_service import SettingsService
 
 
@@ -20,7 +22,7 @@ class SettingsViewModel(QObject):
     provider_deleted = Signal(int)  # index
     error_occurred = Signal(str)  # error message
 
-    def __init__(self, service: SettingsService, parent=None):
+    def __init__(self, service: SettingsService, parent: QWidget | None = None):
         """Initialize ViewModel.
 
         Args:
@@ -46,10 +48,10 @@ class SettingsViewModel(QObject):
 
     def load_settings(self) -> None:
         """Load settings from service."""
+        settings = self._service.get_settings()
         try:
-            settings = self._service.get_settings()
             self._state.providers = settings.providers.copy()
-            self._state.target_language = settings.target_language
+            self._state.target_language = ls.get_language_by(settings.target_language)
             self._state.has_unsaved_changes = False
             self._emit_state()
         except Exception as e:
@@ -106,7 +108,7 @@ class SettingsViewModel(QObject):
         Args:
             lang: Language code
         """
-        self._state.target_language = lang
+        self._state.target_language = ls.get_language_by(lang)
         self._state.has_unsaved_changes = True
         self._emit_state()
 
@@ -131,10 +133,8 @@ class SettingsViewModel(QObject):
     def save_settings(self) -> None:
         """Save settings to persistence."""
         try:
-            settings = Settings(
-                providers=self._state.providers,
-                target_language=self._state.target_language,
-            )
+            target_code = self._state.target_language.code
+            settings = Settings(providers=self._state.providers, target_language=target_code)
             self._service.save_settings(settings)
             self._state.has_unsaved_changes = False
             self._emit_state()

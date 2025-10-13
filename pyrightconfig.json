@@ -16,7 +16,7 @@
     "build",
     "dist",
     "*.egg-info",
-    "**/*/gui"
+    "**/*/ui"
   ],
   "ignore": [],
   "pythonVersion": "3.13",

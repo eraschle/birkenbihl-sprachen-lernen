@@ -3,6 +3,7 @@
 from uuid import UUID
 
 from PySide6.QtCore import QObject, Signal
+from PySide6.QtWidgets import QWidget
 
 from birkenbihl.gui.models.ui_state import TranslationEditorState
 from birkenbihl.models.settings import ProviderConfig
@@ -23,7 +24,7 @@ class TranslationEditorViewModel(QObject):
     suggestions_loaded = Signal(list)  # list[str]
     error_occurred = Signal(str)  # error message
 
-    def __init__(self, service: TranslationService, parent=None):
+    def __init__(self, service: TranslationService, parent: QWidget | None = None):
         """Initialize ViewModel.
 
         Args:
@@ -91,6 +92,7 @@ class TranslationEditorViewModel(QObject):
             provider: Provider for alignment regeneration
         """
         if not self._state.translation or not self._state.selected_sentence_uuid:
+            self.error_occurred.emit("No sentence selected")
             return
 
         self._state.is_saving = True
@@ -98,10 +100,7 @@ class TranslationEditorViewModel(QObject):
 
         try:
             updated = self._service.update_sentence_natural(
-                self._state.translation.uuid,
-                self._state.selected_sentence_uuid,
-                new_natural,
-                provider,
+                self._state.translation.uuid, self._state.selected_sentence_uuid, new_natural, provider
             )
             self._state.translation = updated
             self._state.has_unsaved_changes = False
@@ -120,6 +119,7 @@ class TranslationEditorViewModel(QObject):
             alignments: New alignments
         """
         if not self._state.translation or not self._state.selected_sentence_uuid:
+            self.error_occurred.emit("No sentence selected")
             return
 
         self._state.is_saving = True
@@ -127,9 +127,7 @@ class TranslationEditorViewModel(QObject):
 
         try:
             updated = self._service.update_sentence_alignment(
-                self._state.translation.uuid,
-                self._state.selected_sentence_uuid,
-                alignments,
+                self._state.translation.uuid, self._state.selected_sentence_uuid, alignments
             )
             self._state.translation = updated
             self._state.has_unsaved_changes = False
@@ -153,10 +151,7 @@ class TranslationEditorViewModel(QObject):
 
         try:
             suggestions = self._service.get_sentence_suggestions(
-                self._state.translation.uuid,
-                self._state.selected_sentence_uuid,
-                provider,
-                count,
+                self._state.translation.uuid, self._state.selected_sentence_uuid, provider, count
             )
             self.suggestions_loaded.emit(suggestions)
         except Exception as e:

@@ -1,6 +1,5 @@
 """Tests for base protocols."""
 
-import pytest
 from PySide6.QtCore import QObject, Signal
 from PySide6.QtWidgets import QWidget
 
@@ -49,12 +48,7 @@ class TestCommandProtocol:
 class TestViewModelProtocol:
     """Test ViewModel protocol."""
 
-    @pytest.fixture
-    def qapp(self, qapp):
-        """Provide QApplication instance."""
-        return qapp
-
-    def test_viewmodel_protocol_implementation(self, qapp):
+    def test_viewmodel_protocol_implementation(self):
         """Test ViewModel protocol implementation."""
 
         class TestViewModel(QObject):
@@ -80,12 +74,7 @@ class TestViewModelProtocol:
 class TestViewProtocol:
     """Test View protocol."""
 
-    @pytest.fixture
-    def qapp(self, qapp):
-        """Provide QApplication instance."""
-        return qapp
-
-    def test_view_protocol_implementation(self, qapp):
+    def test_view_protocol_implementation(self):
         """Test View protocol implementation."""
 
         class TestView(QWidget):

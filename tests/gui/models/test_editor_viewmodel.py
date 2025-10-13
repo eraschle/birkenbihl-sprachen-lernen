@@ -1,9 +1,10 @@
 """Tests for TranslationEditorViewModel."""
 
-from unittest.mock import Mock
+from unittest.mock import MagicMock, Mock
 from uuid import uuid4
 
 import pytest
+from pytestqt.qtbot import QtBot
 
 from birkenbihl.gui.models.editor_viewmodel import TranslationEditorViewModel
 from birkenbihl.models.languages import Language
@@ -36,7 +37,7 @@ def translation():
 
 
 @pytest.fixture
-def mock_service(translation):
+def mock_service(translation: Translation):
     """Create mock TranslationService."""
     service = Mock()
     service.get_translation.return_value = translation
@@ -58,13 +59,13 @@ def mock_settings():
 
 
 @pytest.fixture
-def viewmodel(mock_service):
+def viewmodel(mock_service: MagicMock):
     """Create TranslationEditorViewModel."""
     vm = TranslationEditorViewModel(mock_service)
     return vm
 
 
-def test_initial_state(viewmodel):
+def test_initial_state(viewmodel: TranslationEditorViewModel):
     """Test initial state."""
     state = viewmodel.state
     assert state.translation is None
@@ -74,7 +75,9 @@ def test_initial_state(viewmodel):
     assert not state.has_unsaved_changes
 
 
-def test_load_translation(qtbot, viewmodel, mock_service, translation):
+def test_load_translation(
+    qtbot: QtBot, viewmodel: TranslationEditorViewModel, mock_service: MagicMock, translation: Translation
+):
     """Test load translation."""
     with qtbot.waitSignal(viewmodel.state_changed, timeout=1000):
         viewmodel.load_translation(translation.uuid)
@@ -84,7 +87,7 @@ def test_load_translation(qtbot, viewmodel, mock_service, translation):
     mock_service.get_translation.assert_called_once_with(translation.uuid)
 
 
-def test_select_sentence(qtbot, viewmodel, translation):
+def test_select_sentence(qtbot: QtBot, viewmodel: TranslationEditorViewModel, translation: Translation):
     """Test select sentence."""
     viewmodel._state.translation = translation
     sentence_uuid = translation.sentences[0].uuid
@@ -95,7 +98,7 @@ def test_select_sentence(qtbot, viewmodel, translation):
     assert viewmodel.state.selected_sentence_uuid == sentence_uuid
 
 
-def test_set_edit_mode(qtbot, viewmodel):
+def test_set_edit_mode(qtbot: QtBot, viewmodel: TranslationEditorViewModel):
     """Test set edit mode."""
     with qtbot.waitSignal(viewmodel.state_changed, timeout=1000):
         viewmodel.set_edit_mode("edit_natural")
@@ -103,7 +106,13 @@ def test_set_edit_mode(qtbot, viewmodel):
     assert viewmodel.state.edit_mode == "edit_natural"
 
 
-def test_update_natural_translation(qtbot, viewmodel, mock_service, translation, mock_settings):
+def test_update_natural_translation(
+    qtbot: QtBot,
+    viewmodel: TranslationEditorViewModel,
+    mock_service: MagicMock,
+    translation: Translation,
+    mock_settings: MagicMock,
+):
     """Test update natural translation."""
     viewmodel._state.translation = translation
     viewmodel._state.selected_sentence_uuid = translation.sentences[0].uuid
@@ -116,7 +125,9 @@ def test_update_natural_translation(qtbot, viewmodel, mock_service, translation,
     assert not viewmodel.state.is_saving
 
 
-def test_update_alignment(qtbot, viewmodel, mock_service, translation):
+def test_update_alignment(
+    qtbot: QtBot, viewmodel: TranslationEditorViewModel, mock_service: MagicMock, translation: Translation
+):
     """Test update alignment."""
     viewmodel._state.translation = translation
     viewmodel._state.selected_sentence_uuid = translation.sentences[0].uuid
@@ -128,25 +139,29 @@ def test_update_alignment(qtbot, viewmodel, mock_service, translation):
     mock_service.update_sentence_alignment.assert_called_once()
 
 
-def test_update_natural_no_sentence_selected(qtbot, viewmodel, mock_settings):
+def test_update_natural_no_sentence_selected(
+    qtbot: QtBot, viewmodel: TranslationEditorViewModel, mock_settings: MagicMock
+):
     """Test update natural with no sentence selected."""
     provider = mock_settings.providers[0]
 
-    with qtbot.waitSignal(viewmodel.error_occurred, timeout=1000):
+    with qtbot.waitSignal(viewmodel.error_occurred, timeout=1000) as blocker:
         viewmodel.update_natural_translation("New", provider)
 
-    assert "No sentence selected" in viewmodel.error_occurred.signal_args[0]
+    assert "No sentence selected" in blocker.args[0]  # type: ignore[reportOptionalSubscript]
 
 
-def test_update_alignment_no_sentence_selected(qtbot, viewmodel):
+def test_update_alignment_no_sentence_selected(qtbot: QtBot, viewmodel: TranslationEditorViewModel):
     """Test update alignment with no sentence selected."""
     alignments = [WordAlignment(source_word="Test", target_word="Test", position=0)]
 
-    with qtbot.waitSignal(viewmodel.error_occurred, timeout=1000):
+    with qtbot.waitSignal(viewmodel.error_occurred, timeout=1000) as blocker:
         viewmodel.update_alignment(alignments)
 
+    assert "No sentence selected" in blocker.args[0]  # type: ignore[reportOptionalSubscript]
 
-def test_cleanup(viewmodel):
+
+def test_cleanup(viewmodel: TranslationEditorViewModel):
     """Test cleanup."""
     viewmodel.cleanup()
     # Should not raise any errors

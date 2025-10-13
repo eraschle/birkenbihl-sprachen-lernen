@@ -1,6 +1,6 @@
 """Tests for settings commands."""
 
-from unittest.mock import Mock
+from unittest.mock import MagicMock, Mock
 
 import pytest
 
@@ -50,13 +50,13 @@ def providers():
     ]
 
 
-def test_add_provider_can_execute_success(mock_service, provider):
+def test_add_provider_can_execute_success(mock_service: MagicMock, provider: ProviderConfig):
     """Test can execute with valid provider."""
     cmd = AddProviderCommand(mock_service, provider)
     assert cmd.can_execute()
 
 
-def test_add_provider_can_execute_no_name(mock_service):
+def test_add_provider_can_execute_no_name(mock_service: MagicMock):
     """Test can execute with no name."""
     provider = ProviderConfig(
         name="",
@@ -68,7 +68,7 @@ def test_add_provider_can_execute_no_name(mock_service):
     assert not cmd.can_execute()
 
 
-def test_add_provider_can_execute_no_model(mock_service):
+def test_add_provider_can_execute_no_model(mock_service: MagicMock):
     """Test can execute with no model."""
     provider = ProviderConfig(
         name="Test",
@@ -80,7 +80,7 @@ def test_add_provider_can_execute_no_model(mock_service):
     assert not cmd.can_execute()
 
 
-def test_add_provider_execute_success(mock_service, provider):
+def test_add_provider_execute_success(mock_service: MagicMock, provider: ProviderConfig):
     """Test successful provider addition."""
     cmd = AddProviderCommand(mock_service, provider)
     result = cmd.execute()
@@ -91,7 +91,7 @@ def test_add_provider_execute_success(mock_service, provider):
     mock_service.validate_provider_config.assert_called_once_with(provider)
 
 
-def test_add_provider_execute_cannot_execute(mock_service):
+def test_add_provider_execute_cannot_execute(mock_service: MagicMock):
     """Test execute when cannot execute."""
     provider = ProviderConfig(
         name="",
@@ -106,7 +106,7 @@ def test_add_provider_execute_cannot_execute(mock_service):
     assert "required" in result.message.lower()
 
 
-def test_add_provider_execute_validation_error(mock_service, provider):
+def test_add_provider_execute_validation_error(mock_service: MagicMock, provider: ProviderConfig):
     """Test execute with validation error."""
     mock_service.validate_provider_config.return_value = "Invalid config"
 
@@ -117,25 +117,25 @@ def test_add_provider_execute_validation_error(mock_service, provider):
     assert result.message == "Invalid config"
 
 
-def test_delete_provider_can_execute_success(providers):
+def test_delete_provider_can_execute_success(providers: list[ProviderConfig]):
     """Test can execute with valid index."""
     cmd = DeleteProviderCommand(providers, 0)
     assert cmd.can_execute()
 
 
-def test_delete_provider_can_execute_invalid_index_negative(providers):
+def test_delete_provider_can_execute_invalid_index_negative(providers: list[ProviderConfig]):
     """Test can execute with negative index."""
     cmd = DeleteProviderCommand(providers, -1)
     assert not cmd.can_execute()
 
 
-def test_delete_provider_can_execute_invalid_index_too_large(providers):
+def test_delete_provider_can_execute_invalid_index_too_large(providers: list[ProviderConfig]):
     """Test can execute with index too large."""
     cmd = DeleteProviderCommand(providers, 99)
     assert not cmd.can_execute()
 
 
-def test_delete_provider_execute_success(providers):
+def test_delete_provider_execute_success(providers: list[ProviderConfig]):
     """Test successful provider deletion."""
     cmd = DeleteProviderCommand(providers, 0)
     result = cmd.execute()
@@ -145,7 +145,7 @@ def test_delete_provider_execute_success(providers):
     assert "Provider1" in result.message
 
 
-def test_delete_provider_execute_cannot_execute(providers):
+def test_delete_provider_execute_cannot_execute(providers: list[ProviderConfig]):
     """Test execute when cannot execute."""
     cmd = DeleteProviderCommand(providers, 99)
     result = cmd.execute()
@@ -154,14 +154,14 @@ def test_delete_provider_execute_cannot_execute(providers):
     assert "invalid" in result.message.lower()
 
 
-def test_save_settings_can_execute(mock_service):
+def test_save_settings_can_execute(mock_service: MagicMock):
     """Test can execute always returns True."""
     settings = Settings(providers=[], target_language="de")
     cmd = SaveSettingsCommand(mock_service, settings)
     assert cmd.can_execute()
 
 
-def test_save_settings_execute_success(mock_service):
+def test_save_settings_execute_success(mock_service: MagicMock):
     """Test successful settings save."""
     settings = Settings(providers=[], target_language="de")
     cmd = SaveSettingsCommand(mock_service, settings)
@@ -172,7 +172,7 @@ def test_save_settings_execute_success(mock_service):
     mock_service.save_settings.assert_called_once_with(settings)
 
 
-def test_save_settings_execute_error(mock_service):
+def test_save_settings_execute_error(mock_service: MagicMock):
     """Test execute with error."""
     mock_service.save_settings.side_effect = Exception("Save failed")
     settings = Settings(providers=[], target_language="de")

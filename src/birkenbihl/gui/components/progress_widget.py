@@ -23,9 +23,9 @@ class ProgressWidget(QWidget):
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
 
-        self._progress_bar = QProgressBar()
-        self._message_label = QLabel()
-        self._cancel_button = QPushButton("Cancel")
+        self._progress_bar = QProgressBar()  # type: ignore[reportUninitializedInstanceVariable]
+        self._message_label = QLabel()  # type: ignore[reportUninitializedInstanceVariable]
+        self._cancel_button = QPushButton("Cancel")  # type: ignore[reportUninitializedInstanceVariable]
 
         self._cancel_button.clicked.connect(self._on_cancel_clicked)
 

@@ -17,11 +17,11 @@ class TestBirkenbihUnit11WordByWord:
     """Test word-by-word translations against Unit 1.1 expected outputs."""
 
     @pytest.fixture(scope="class")
-    def test_data(self):
+    def test_data(self) -> dict[str, object]:
         """Fixture providing Unit 1.1 test cases."""
         return conftest.load_test_data("birkenbihl_unit1_1.json")
 
-    def test_fixture_loaded(self, test_data: dict[str, object]):
+    def test_fixture_loaded(self, test_data: dict[str, object]) -> None:
         """Verify fixture loads correctly with expected structure."""
 
         assert "test_cases" in test_data
@@ -30,7 +30,9 @@ class TestBirkenbihUnit11WordByWord:
         assert test_data["source_language"] == "en"
         assert test_data["target_language"] == "de"
 
-    def test_word_by_word_translation_accuracy(self, test_data: dict[str, object], anthropic_config: ProviderConfig):
+    def test_word_by_word_translation_accuracy(
+        self, test_data: dict[str, object], anthropic_config: ProviderConfig
+    ) -> None:
         """Test word-by-word translation accuracy against all Unit 1.1 cases.
 
         This test translates each source_text and compares the generated word-by-word
@@ -79,7 +81,7 @@ class TestBirkenbihUnit11WordByWord:
 
             pytest.fail(failure_msg)
 
-    def test_sample_translation_structure(self, test_data: dict[str, object], anthropic_config: ProviderConfig):
+    def test_sample_translation_structure(self, test_data: dict[str, object], anthropic_config: ProviderConfig) -> None:
         """Test a sample translation to verify structure is correct."""
         translator = PydanticAITranslator(anthropic_config)
 
@@ -105,7 +107,7 @@ class TestBirkenbihUnit11WordByWord:
     @pytest.mark.parametrize("test_index", [0, 1, 2, 3, 4])
     def test_first_five_translations_sample(
         self, test_data: dict[str, object], anthropic_config: ProviderConfig, test_index: int
-    ):
+    ) -> None:
         """Test first 5 translations and show comparison for review (non-failing)."""
         translator = PydanticAITranslator(anthropic_config)
         source_lang = conftest.get_source_language(test_data)

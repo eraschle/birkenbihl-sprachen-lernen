@@ -7,7 +7,7 @@ from birkenbihl.models.validation import validate_alignment_complete, validate_s
 class TestValidateAlignmentComplete:
     """Tests for validate_alignment_complete function."""
 
-    def test_validate_alignment_complete_success(self):
+    def test_validate_alignment_complete_success(self) -> None:
         """Test successful validation with all words present."""
         natural = "Ich werde dich vermissen"
         alignments = [
@@ -22,7 +22,7 @@ class TestValidateAlignmentComplete:
         assert is_valid is True
         assert error is None
 
-    def test_validate_alignment_complete_with_hyphenated_words(self):
+    def test_validate_alignment_complete_with_hyphenated_words(self) -> None:
         """Test validation with hyphenated target words."""
         natural = "Ich werde dich vermissen"
         alignments = [
@@ -36,7 +36,7 @@ class TestValidateAlignmentComplete:
         assert is_valid is True
         assert error is None
 
-    def test_validate_alignment_complete_missing_words(self):
+    def test_validate_alignment_complete_missing_words(self) -> None:
         """Test validation fails when words are missing."""
         natural = "Ich werde dich vermissen"
         alignments = [
@@ -51,7 +51,7 @@ class TestValidateAlignmentComplete:
         assert "dich" in error.lower()
         assert "fehlende" in error.lower()
 
-    def test_validate_alignment_complete_extra_words(self):
+    def test_validate_alignment_complete_extra_words(self) -> None:
         """Test validation fails when extra words are present."""
         natural = "Ich werde dich vermissen"
         alignments = [
@@ -68,7 +68,7 @@ class TestValidateAlignmentComplete:
         assert "sehr" in error.lower()
         assert "zusätzliche" in error.lower()
 
-    def test_validate_alignment_with_punctuation(self):
+    def test_validate_alignment_with_punctuation(self) -> None:
         """Test validation ignores punctuation."""
         natural = "Hallo, wie geht's dir?"
         alignments = [
@@ -83,7 +83,7 @@ class TestValidateAlignmentComplete:
         assert is_valid is True
         assert error is None
 
-    def test_validate_alignment_case_insensitive(self):
+    def test_validate_alignment_case_insensitive(self) -> None:
         """Test validation is case-insensitive."""
         natural = "ICH werde DICH vermissen"
         alignments = [
@@ -97,7 +97,7 @@ class TestValidateAlignmentComplete:
         assert is_valid is True
         assert error is None
 
-    def test_validate_alignment_empty_natural(self):
+    def test_validate_alignment_empty_natural(self) -> None:
         """Test validation with empty natural translation."""
         natural = ""
         alignments = []
@@ -107,7 +107,7 @@ class TestValidateAlignmentComplete:
         assert is_valid is True
         assert error is None
 
-    def test_validate_alignment_empty_natural_with_alignments(self):
+    def test_validate_alignment_empty_natural_with_alignments(self) -> None:
         """Test validation fails when natural is empty but alignments exist."""
         natural = ""
         alignments = [
@@ -119,7 +119,7 @@ class TestValidateAlignmentComplete:
         assert is_valid is False
         assert error is not None
 
-    def test_validate_alignment_empty_alignments(self):
+    def test_validate_alignment_empty_alignments(self) -> None:
         """Test validation fails when alignments are empty but natural is not."""
         natural = "Ich werde dich vermissen"
         alignments = []
@@ -130,7 +130,7 @@ class TestValidateAlignmentComplete:
         assert error is not None
         assert "keine alignments" in error.lower()
 
-    def test_validate_alignment_whitespace_natural(self):
+    def test_validate_alignment_whitespace_natural(self) -> None:
         """Test validation with only whitespace in natural translation."""
         natural = "   "
         alignments = []
@@ -140,7 +140,7 @@ class TestValidateAlignmentComplete:
         assert is_valid is True
         assert error is None
 
-    def test_validate_alignment_complex_hyphenation(self):
+    def test_validate_alignment_complex_hyphenation(self) -> None:
         """Test validation with multiple hyphenated words."""
         natural = "Das war ein sehr schöner Moment"
         alignments = [
@@ -157,7 +157,7 @@ class TestValidateAlignmentComplete:
         assert is_valid is True
         assert error is None
 
-    def test_validate_alignment_missing_and_extra_words(self):
+    def test_validate_alignment_missing_and_extra_words(self) -> None:
         """Test validation when both missing and extra words exist."""
         natural = "Ich werde dich vermissen"
         alignments = [
@@ -179,7 +179,7 @@ class TestValidateAlignmentComplete:
 class TestValidateSourceWordsMapped:
     """Tests for validate_source_words_mapped function."""
 
-    def test_all_source_words_mapped(self):
+    def test_all_source_words_mapped(self) -> None:
         """Test successful validation when all source words have targets."""
         alignments = [
             WordAlignment(source_word="no", target_word="nicht", position=0),
@@ -191,7 +191,7 @@ class TestValidateSourceWordsMapped:
         assert is_valid is True
         assert error is None
 
-    def test_source_word_with_empty_target(self):
+    def test_source_word_with_empty_target(self) -> None:
         """Test validation fails when source word has empty target."""
         alignments = [
             WordAlignment(source_word="no", target_word="", position=0),
@@ -205,7 +205,7 @@ class TestValidateSourceWordsMapped:
         assert "no" in error
         assert "quellwörter ohne zielwort" in error.lower()
 
-    def test_source_word_with_whitespace_target(self):
+    def test_source_word_with_whitespace_target(self) -> None:
         """Test validation fails when source word has only whitespace target."""
         alignments = [
             WordAlignment(source_word="ha", target_word="gerufen-hat", position=0),
@@ -219,7 +219,7 @@ class TestValidateSourceWordsMapped:
         assert "llamado" in error
         assert "quellwörter ohne zielwort" in error.lower()
 
-    def test_multiple_unmapped_source_words(self):
+    def test_multiple_unmapped_source_words(self) -> None:
         """Test validation reports all unmapped source words."""
         alignments = [
             WordAlignment(source_word="ha", target_word="", position=0),
@@ -235,7 +235,7 @@ class TestValidateSourceWordsMapped:
         assert "llamado" in error
         assert "quellwörter ohne zielwort" in error.lower()
 
-    def test_hyphenated_target_words_valid(self):
+    def test_hyphenated_target_words_valid(self) -> None:
         """Test that hyphenated target words are considered valid mappings."""
         alignments = [
             WordAlignment(source_word="I've", target_word="Ich-habe", position=0),
@@ -247,7 +247,7 @@ class TestValidateSourceWordsMapped:
         assert is_valid is True
         assert error is None
 
-    def test_empty_alignments_list(self):
+    def test_empty_alignments_list(self) -> None:
         """Test validation with empty alignments list."""
         alignments = []
 

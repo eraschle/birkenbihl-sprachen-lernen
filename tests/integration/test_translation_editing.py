@@ -44,7 +44,7 @@ class TestFullWorkflowEditNaturalTranslation:
 
     def test_full_workflow_edit_natural_translation(
         self, translation_service_with_storage: TranslationService, openai_provider_config: ProviderConfig
-    ):
+    ) -> None:
         """Test complete workflow: create → suggest → update natural → verify alignment regenerated → verify saved.
 
         Workflow:
@@ -116,7 +116,7 @@ class TestFullWorkflowEditNaturalTranslation:
 class TestFullWorkflowEditAlignmentManually:
     """Integration test for manually editing word-by-word alignment workflow."""
 
-    def test_full_workflow_edit_alignment_manually(self, translation_service_with_storage: TranslationService):
+    def test_full_workflow_edit_alignment_manually(self, translation_service_with_storage: TranslationService) -> None:
         """Test complete workflow: create → create manual alignments → validate → update → verify saved.
 
         Workflow:
@@ -179,7 +179,7 @@ class TestFullWorkflowEditAlignmentManually:
 class TestDeleteTranslation:
     """Integration test for translation deletion workflow."""
 
-    def test_delete_translation(self, translation_service_with_storage: TranslationService):
+    def test_delete_translation(self, translation_service_with_storage: TranslationService) -> None:
         """Test complete workflow: create → delete → verify not in storage.
 
         Workflow:
@@ -220,7 +220,7 @@ class TestMultipleEditsWorkflow:
 
     def test_multiple_edits_preserve_data_integrity(
         self, translation_service_with_storage: TranslationService, openai_provider_config: ProviderConfig
-    ):
+    ) -> None:
         """Test that multiple sequential edits maintain data integrity.
 
         Workflow:

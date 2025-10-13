@@ -13,7 +13,7 @@ from birkenbihl.services.language_service import get_language_by
 
 
 @pytest.fixture
-def openai_provider_config():
+def openai_provider_config() -> ProviderConfig:
     """Create OpenAI ProviderConfig from environment variable.
 
     Requires OPENAI_API_KEY environment variable.
@@ -34,7 +34,7 @@ def openai_provider_config():
 
 
 @pytest.fixture
-def anthropic_config():
+def anthropic_config() -> ProviderConfig:
     """Create Anthropic ProviderConfig from environment variable.
 
     Requires ANTHROPIC_API_KEY environment variable.

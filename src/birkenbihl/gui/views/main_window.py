@@ -5,11 +5,12 @@ from PySide6.QtWidgets import (
     QMenuBar,
     QMessageBox,
     QStackedWidget,
+    QWidget,
 )
 
 from birkenbihl.gui.models.editor_viewmodel import TranslationEditorViewModel
-from birkenbihl.gui.models.settings_viewmodel import SettingsViewModel
 from birkenbihl.gui.models.translation_viewmodel import TranslationCreationViewModel
+from birkenbihl.gui.viewmodels.settings_vm import SettingsViewModel
 from birkenbihl.gui.views.editor_view import EditorView
 from birkenbihl.gui.views.settings_view import SettingsView
 from birkenbihl.gui.views.translation_view import TranslationView
@@ -21,10 +22,7 @@ class MainWindow(QMainWindow):
     """Main application window with view navigation."""
 
     def __init__(
-        self,
-        translation_service: TranslationService,
-        settings_service: SettingsService,
-        parent=None,
+        self, translation_service: TranslationService, settings_service: SettingsService, parent: QWidget | None = None
     ):
         """Initialize main window.
 
@@ -44,7 +42,7 @@ class MainWindow(QMainWindow):
     def _init_ui(self) -> None:
         """Initialize UI components."""
         self.setWindowTitle("Birkenbihl Sprachtrainer")
-        self._stacked_widget = QStackedWidget()
+        self._stacked_widget = QStackedWidget()  # type: ignore[reportUninitializedInstanceVariable]
         self.setCentralWidget(self._stacked_widget)
         self._create_views()
 
@@ -56,26 +54,20 @@ class MainWindow(QMainWindow):
 
     def _create_translation_view(self) -> None:
         """Create translation creation view."""
-        vm = TranslationCreationViewModel(
-            self._translation_service,
-            self._settings,
-        )
-        self._translation_view = TranslationView(vm, self._settings)
+        view_model = TranslationCreationViewModel(self._translation_service, parent=self)
+        self._translation_view = TranslationView(view_model, self._settings, parent=self)  # type: ignore[reportUninitializedInstanceVariable]
         self._stacked_widget.addWidget(self._translation_view)
 
     def _create_editor_view(self) -> None:
         """Create translation editor view."""
-        vm = TranslationEditorViewModel(
-            self._translation_service,
-            self._settings,
-        )
-        self._editor_view = EditorView(vm, self._settings)
+        view_model = TranslationEditorViewModel(self._translation_service, parent=self)
+        self._editor_view = EditorView(viewmodel=view_model, settings=self._settings, parent=self)  # type: ignore[reportUninitializedInstanceVariable]
         self._stacked_widget.addWidget(self._editor_view)
 
     def _create_settings_view(self) -> None:
         """Create settings view."""
-        vm = SettingsViewModel(self._settings_service)
-        self._settings_view = SettingsView(vm)
+        view_model = SettingsViewModel(self._settings_service, parent=self)
+        self._settings_view = SettingsView(view_model, parent=self)  # type: ignore[reportUninitializedInstanceVariable]
         self._stacked_widget.addWidget(self._settings_view)
 
     def _create_menu_bar(self) -> None:
@@ -130,6 +122,6 @@ class MainWindow(QMainWindow):
         self.resize(1200, 800)
         self.setMinimumSize(800, 600)
 
-    def closeEvent(self, event) -> None:
+    def closeEvent(self, event) -> None:  # type: ignore
         """Handle window close event."""
         event.accept()
