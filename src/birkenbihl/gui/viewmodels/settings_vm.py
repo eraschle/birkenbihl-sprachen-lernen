@@ -54,7 +54,7 @@ class SettingsViewModel(BaseViewModel):
 
         try:
             self._set_loading(True)
-            self._service.save_settings(self._settings)
+            self._service.save_settings()
             self.settings_saved.emit()
         except ValueError as e:
             self._emit_error(str(e))
@@ -75,7 +75,7 @@ class SettingsViewModel(BaseViewModel):
         assert self._settings is not None
 
         # Apply default provider logic via service
-        self._service.add_provider(self._settings, provider)
+        self._service.add_provider(provider)
 
         self.provider_added.emit(provider)
 
@@ -91,7 +91,7 @@ class SettingsViewModel(BaseViewModel):
         assert self._settings is not None
 
         # Apply default provider logic via service
-        self._service.update_provider(self._settings, index, provider)
+        self._service.update_provider(index, provider)
 
         self.provider_updated.emit(index)
 
@@ -102,7 +102,7 @@ class SettingsViewModel(BaseViewModel):
         assert self._settings is not None
 
         # Apply default provider logic via service
-        self._service.delete_provider(self._settings, index)
+        self._service.delete_provider(index)
 
         self.provider_deleted.emit(index)
 

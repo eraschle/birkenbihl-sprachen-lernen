@@ -55,13 +55,17 @@ class MainWindow(QMainWindow):
     def _create_translation_view(self) -> None:
         """Create translation creation view."""
         view_model = TranslationCreationViewModel(self._translation_service, parent=self)
-        self._translation_view = TranslationView(view_model, self._settings, parent=self)  # type: ignore[reportUninitializedInstanceVariable]
+        self._translation_view = TranslationView(  # type: ignore[reportUninitializedInstanceVariable]
+            view_model, self._settings, self._settings_service, parent=self
+        )
         self._stacked_widget.addWidget(self._translation_view)
 
     def _create_editor_view(self) -> None:
         """Create translation editor view."""
         view_model = TranslationEditorViewModel(self._translation_service, parent=self)
-        self._editor_view = EditorView(viewmodel=view_model, settings=self._settings, parent=self)  # type: ignore[reportUninitializedInstanceVariable]
+        self._editor_view = EditorView(  # type: ignore[reportUninitializedInstanceVariable]
+            viewmodel=view_model, settings=self._settings, settings_service=self._settings_service, parent=self
+        )
         self._stacked_widget.addWidget(self._editor_view)
 
     def _create_settings_view(self) -> None:

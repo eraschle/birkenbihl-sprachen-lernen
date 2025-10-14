@@ -4,7 +4,7 @@ from PySide6.QtCore import QObject, Signal
 from PySide6.QtWidgets import QWidget
 
 from birkenbihl.gui.models.ui_state import SettingsViewState
-from birkenbihl.models.settings import ProviderConfig, Settings
+from birkenbihl.models.settings import ProviderConfig
 from birkenbihl.services import language_service as ls
 from birkenbihl.services.settings_service import SettingsService
 
@@ -68,7 +68,10 @@ class SettingsViewModel(QObject):
             self.error_occurred.emit(error)
             return
 
-        self._state.providers.append(provider)
+        # Add to service immediately
+        self._service.add_provider(provider)
+        # Update state from service to stay in sync
+        self._state.providers = self._service.get_settings().providers.copy()
         self._state.has_unsaved_changes = True
         self._emit_state()
         self.provider_added.emit()
@@ -86,7 +89,10 @@ class SettingsViewModel(QObject):
                 self.error_occurred.emit(error)
                 return
 
-            self._state.providers[index] = provider
+            # Update in service immediately
+            self._service.update_provider(index, provider)
+            # Update state from service to stay in sync
+            self._state.providers = self._service.get_settings().providers.copy()
             self._state.has_unsaved_changes = True
             self._emit_state()
 
@@ -97,7 +103,10 @@ class SettingsViewModel(QObject):
             index: Provider index
         """
         if 0 <= index < len(self._state.providers):
-            del self._state.providers[index]
+            # Delete from service immediately
+            self._service.delete_provider(index)
+            # Update state from service to stay in sync
+            self._state.providers = self._service.get_settings().providers.copy()
             self._state.has_unsaved_changes = True
             self._emit_state()
             self.provider_deleted.emit(index)
@@ -108,6 +117,10 @@ class SettingsViewModel(QObject):
         Args:
             lang: Language code
         """
+        # Update in service immediately
+        settings = self._service.get_settings()
+        settings.target_language = lang
+        # Update state
         self._state.target_language = ls.get_language_by(lang)
         self._state.has_unsaved_changes = True
         self._emit_state()
@@ -133,9 +146,9 @@ class SettingsViewModel(QObject):
     def save_settings(self) -> None:
         """Save settings to persistence."""
         try:
-            target_code = self._state.target_language.code
-            settings = Settings(providers=self._state.providers, target_language=target_code)
-            self._service.save_settings(settings)
+            # Service already has current settings in its internal state
+            # Just need to call save
+            self._service.save_settings()
             self._state.has_unsaved_changes = False
             self._emit_state()
             self.settings_saved.emit()

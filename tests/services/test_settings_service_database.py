@@ -22,20 +22,6 @@ def temp_db() -> Generator[Path, None, None]:
         db_path.unlink()
 
 
-@pytest.fixture(autouse=True)
-def reset_singleton() -> Generator[None, None, None]:
-    """Reset SettingsService singleton state before each test."""
-    SettingsService._instance = None
-    SettingsService._settings = None
-    SettingsService._current_provider = None
-    SettingsService._storage = None
-    yield
-    SettingsService._instance = None
-    SettingsService._settings = None
-    SettingsService._current_provider = None
-    SettingsService._storage = None
-
-
 @pytest.fixture
 def sample_settings() -> Settings:
     """Create sample settings for testing."""
@@ -65,10 +51,15 @@ class TestSettingsServiceDatabaseIntegration:
 
     def test_save_to_database(self, temp_db: Path, sample_settings: Settings) -> None:
         """Test saving settings to database via service."""
-        # Initialize storage manually for testing
-        SettingsService._storage = SettingsStorageProvider(temp_db)
+        service = SettingsService(db_path=temp_db)
 
-        SettingsService.save_settings(sample_settings, use_database=True)
+        # Load sample settings by adding providers
+        service.load_settings()  # Load defaults
+        for provider in sample_settings.providers:
+            service.add_provider(provider)
+        service.get_settings().target_language = sample_settings.target_language
+
+        service.save_settings(use_database=True)
 
         # Verify settings were saved to database
         storage = SettingsStorageProvider(temp_db)
@@ -84,11 +75,9 @@ class TestSettingsServiceDatabaseIntegration:
         storage = SettingsStorageProvider(temp_db)
         storage.save(sample_settings)
 
-        # Set storage in service
-        SettingsService._storage = SettingsStorageProvider(temp_db)
-
         # Load settings via service
-        loaded = SettingsService.load_settings(use_database=True)
+        service = SettingsService(db_path=temp_db)
+        loaded = service.load_settings(use_database=True)
 
         assert loaded.target_language == "de"
         assert len(loaded.providers) == 2
@@ -96,23 +85,27 @@ class TestSettingsServiceDatabaseIntegration:
 
     def test_load_from_empty_database_raises_error(self, temp_db: Path) -> None:
         """Test loading from empty database raises NotFoundError."""
-        SettingsService._storage = SettingsStorageProvider(temp_db)
+        service = SettingsService(db_path=temp_db)
 
         with pytest.raises(NotFoundError):
-            SettingsService.load_settings(use_database=True)
+            service.load_settings(use_database=True)
 
     def test_save_and_load_roundtrip(self, temp_db: Path, sample_settings: Settings) -> None:
         """Test full roundtrip: save to database and load back."""
-        SettingsService._storage = SettingsStorageProvider(temp_db)
+        service1 = SettingsService(db_path=temp_db)
+
+        # Load and configure settings
+        service1.load_settings()
+        for provider in sample_settings.providers:
+            service1.add_provider(provider)
+        service1.get_settings().target_language = sample_settings.target_language
 
         # Save settings
-        SettingsService.save_settings(sample_settings, use_database=True)
+        service1.save_settings(use_database=True)
 
-        # Clear in-memory cache
-        SettingsService._settings = None
-
-        # Load settings back
-        loaded = SettingsService.load_settings(use_database=True)
+        # Load settings back with new service instance
+        service2 = SettingsService(db_path=temp_db)
+        loaded = service2.load_settings(use_database=True)
 
         assert loaded.target_language == sample_settings.target_language
         assert len(loaded.providers) == len(sample_settings.providers)
@@ -121,72 +114,56 @@ class TestSettingsServiceDatabaseIntegration:
 
     def test_update_settings_in_database(self, temp_db: Path, sample_settings: Settings) -> None:
         """Test updating settings in database."""
-        SettingsService._storage = SettingsStorageProvider(temp_db)
+        service = SettingsService(db_path=temp_db)
 
-        # Save initial settings
-        SettingsService.save_settings(sample_settings, use_database=True)
+        # Load and save initial settings
+        service.load_settings()
+        for provider in sample_settings.providers:
+            service.add_provider(provider)
+        service.get_settings().target_language = sample_settings.target_language
+        service.save_settings(use_database=True)
 
         # Update settings
-        updated_settings = Settings(
-            target_language="es",
-            providers=[
-                ProviderConfig(
-                    name="Gemini Flash",
-                    provider_type="gemini",
-                    model="gemini-2.0-flash",
-                    api_key="gemini-key",
-                    is_default=True,
-                )
-            ],
+        service2 = SettingsService(db_path=temp_db)
+        service2.load_settings()
+        service2.add_provider(
+            ProviderConfig(
+                name="Gemini Flash",
+                provider_type="gemini",
+                model="gemini-2.0-flash",
+                api_key="gemini-key",
+                is_default=True,
+            )
         )
-
-        SettingsService.save_settings(updated_settings, use_database=True)
+        service2.get_settings().target_language = "es"
+        service2.save_settings(use_database=True)
 
         # Load and verify
-        loaded = SettingsService.load_settings(use_database=True)
+        service3 = SettingsService(db_path=temp_db)
+        loaded = service3.load_settings(use_database=True)
 
         assert loaded.target_language == "es"
         assert len(loaded.providers) == 1
         assert loaded.providers[0].name == "Gemini Flash"
 
-    def test_current_provider_updated_after_database_load(self, temp_db: Path, sample_settings: Settings) -> None:
-        """Test that current provider is updated after loading from database."""
-        SettingsService._storage = SettingsStorageProvider(temp_db)
-
-        # Save settings with default provider
-        SettingsService.save_settings(sample_settings, use_database=True)
-
-        # Clear current provider
-        SettingsService._current_provider = None
-
-        # Load settings
-        SettingsService.load_settings(use_database=True)
-
-        # Verify current provider is set to default
-        current = SettingsService.get_current_provider()
-        assert current is not None
-        assert current.name == "OpenAI GPT-4"
-        assert current.is_default is True
-
     def test_validate_provider_before_database_save(self, temp_db: Path) -> None:
         """Test that provider validation occurs before database save."""
-        SettingsService._storage = SettingsStorageProvider(temp_db)
+        service = SettingsService(db_path=temp_db)
+        service.load_settings()
 
-        # Create settings with invalid provider (unsupported type)
-        invalid_settings = Settings(
-            providers=[
-                ProviderConfig(
-                    name="Invalid Provider",
-                    provider_type="invalid_type",
-                    model="invalid-model",
-                    api_key="test-key",
-                )
-            ]
+        # Add invalid provider (unsupported type)
+        service.add_provider(
+            ProviderConfig(
+                name="Invalid Provider",
+                provider_type="invalid_type",
+                model="invalid-model",
+                api_key="test-key",
+            )
         )
 
         # Should raise ValueError due to validation
         with pytest.raises(ValueError, match="wird nicht unterstützt"):
-            SettingsService.save_settings(invalid_settings, use_database=True)
+            service.save_settings(use_database=True)
 
         # Verify nothing was saved to database
         with pytest.raises(NotFoundError):
@@ -195,22 +172,20 @@ class TestSettingsServiceDatabaseIntegration:
 
     def test_database_persistence_across_service_resets(self, temp_db: Path, sample_settings: Settings) -> None:
         """Test that database persists settings across service resets."""
-        SettingsService._storage = SettingsStorageProvider(temp_db)
+        service1 = SettingsService(db_path=temp_db)
 
         # Save settings
-        SettingsService.save_settings(sample_settings, use_database=True)
+        service1.load_settings()
+        for provider in sample_settings.providers:
+            service1.add_provider(provider)
+        service1.get_settings().target_language = sample_settings.target_language
+        service1.save_settings(use_database=True)
 
-        # Reset service completely
-        SettingsService._instance = None
-        SettingsService._settings = None
-        SettingsService._current_provider = None
-        SettingsService._storage = None
-
-        # Create new storage connection
-        SettingsService._storage = SettingsStorageProvider(temp_db)
+        # Create new service instance
+        service2 = SettingsService(db_path=temp_db)
 
         # Load settings - should still be there
-        loaded = SettingsService.load_settings(use_database=True)
+        loaded = service2.load_settings(use_database=True)
 
         assert loaded.target_language == "de"
         assert len(loaded.providers) == 2
@@ -218,31 +193,37 @@ class TestSettingsServiceDatabaseIntegration:
     def test_yaml_and_database_independent(self, temp_db: Path, sample_settings: Settings, tmp_path: Path) -> None:
         """Test that YAML and database storage are independent."""
         yaml_file = tmp_path / "settings.yaml"
-        SettingsService._storage = SettingsStorageProvider(temp_db)
 
         # Save to YAML
-        SettingsService.save_settings(sample_settings, settings_file=yaml_file, use_database=False)
+        service1 = SettingsService()
+        service1.load_settings()
+        for provider in sample_settings.providers:
+            service1.add_provider(provider)
+        service1.get_settings().target_language = sample_settings.target_language
+        service1.save_settings(settings_file=yaml_file, use_database=False)
 
         # Modify and save to database
-        db_settings = Settings(
-            target_language="fr",
-            providers=[
-                ProviderConfig(
-                    name="Different Provider",
-                    provider_type="openai",
-                    model="gpt-4o",
-                    api_key="different-key",
-                )
-            ],
+        service2 = SettingsService(db_path=temp_db)
+        service2.load_settings()
+        service2.add_provider(
+            ProviderConfig(
+                name="Different Provider",
+                provider_type="openai",
+                model="gpt-4o",
+                api_key="different-key",
+            )
         )
-        SettingsService.save_settings(db_settings, use_database=True)
+        service2.get_settings().target_language = "fr"
+        service2.save_settings(use_database=True)
 
         # Load from YAML
-        yaml_loaded = SettingsService.load_settings(settings_file=yaml_file, use_database=False)
+        service3 = SettingsService()
+        yaml_loaded = service3.load_settings(settings_file=yaml_file, use_database=False)
         assert yaml_loaded.target_language == "de"
         assert len(yaml_loaded.providers) == 2
 
         # Load from database
-        db_loaded = SettingsService.load_settings(use_database=True)
+        service4 = SettingsService(db_path=temp_db)
+        db_loaded = service4.load_settings(use_database=True)
         assert db_loaded.target_language == "fr"
         assert len(db_loaded.providers) == 1

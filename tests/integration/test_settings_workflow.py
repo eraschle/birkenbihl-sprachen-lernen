@@ -7,9 +7,8 @@ from pathlib import Path
 import pytest
 import yaml
 
-from birkenbihl.models.settings import ProviderConfig, Settings
+from birkenbihl.models.settings import ProviderConfig
 from birkenbihl.services.settings_service import SettingsService
-from birkenbihl.storage.settings_storage import SettingsStorageProvider
 
 
 @pytest.fixture
@@ -27,20 +26,6 @@ def temp_yaml(tmp_path: Path) -> Path:
     """Create temporary YAML file for testing."""
     yaml_file = tmp_path / "test_settings.yaml"
     return yaml_file
-
-
-@pytest.fixture(autouse=True)
-def reset_singleton() -> Generator[None, None, None]:
-    """Reset SettingsService singleton state before each test."""
-    SettingsService._instance = None
-    SettingsService._settings = None
-    SettingsService._current_provider = None
-    SettingsService._storage = None
-    yield
-    SettingsService._instance = None
-    SettingsService._settings = None
-    SettingsService._current_provider = None
-    SettingsService._storage = None
 
 
 @pytest.mark.integration
@@ -77,14 +62,15 @@ class TestSettingsWorkflowIntegration:
             yaml.safe_dump(yaml_settings, f)
 
         # Load from YAML via service
-        loaded_from_yaml = SettingsService.load_settings(settings_file=temp_yaml, use_database=False)
+        service1 = SettingsService(db_path=temp_db)
+        service1.load_settings(settings_file=temp_yaml, use_database=False)
 
         # Migrate to database
-        SettingsService._storage = SettingsStorageProvider(temp_db)
-        SettingsService.save_settings(loaded_from_yaml, use_database=True)
+        service1.save_settings(use_database=True)
 
         # Load from database and verify
-        loaded_from_db = SettingsService.load_settings(use_database=True)
+        service2 = SettingsService(db_path=temp_db)
+        loaded_from_db = service2.load_settings(use_database=True)
 
         assert loaded_from_db.target_language == "de"
         assert len(loaded_from_db.providers) == 2
@@ -94,28 +80,26 @@ class TestSettingsWorkflowIntegration:
     def test_database_to_yaml_export(self, temp_db: Path, temp_yaml: Path) -> None:
         """Test exporting settings from database to YAML."""
         # Create settings in database
-        SettingsService._storage = SettingsStorageProvider(temp_db)
-
-        settings = Settings(
-            target_language="es",
-            providers=[
-                ProviderConfig(
-                    name="Gemini Flash",
-                    provider_type="gemini",
-                    model="gemini-2.0-flash",
-                    api_key="gemini-key",
-                    is_default=True,
-                )
-            ],
+        service1 = SettingsService(db_path=temp_db)
+        service1.load_settings()
+        service1.add_provider(
+            ProviderConfig(
+                name="Gemini Flash",
+                provider_type="gemini",
+                model="gemini-2.0-flash",
+                api_key="gemini-key",
+                is_default=True,
+            )
         )
-
-        SettingsService.save_settings(settings, use_database=True)
+        service1.get_settings().target_language = "es"
+        service1.save_settings(use_database=True)
 
         # Load from database
-        loaded = SettingsService.load_settings(use_database=True)
+        service2 = SettingsService(db_path=temp_db)
+        service2.load_settings(use_database=True)
 
         # Export to YAML
-        SettingsService.save_settings(loaded, settings_file=temp_yaml, use_database=False)
+        service2.save_settings(settings_file=temp_yaml, use_database=False)
 
         # Verify YAML file contents
         with temp_yaml.open("r") as f:
@@ -127,45 +111,40 @@ class TestSettingsWorkflowIntegration:
 
     def test_complete_user_workflow_add_provider(self, temp_db: Path) -> None:
         """Test complete workflow: load settings, add provider, save back."""
-        SettingsService._storage = SettingsStorageProvider(temp_db)
-
         # Initial settings
-        initial_settings = Settings(
-            target_language="de",
-            providers=[
-                ProviderConfig(
-                    name="OpenAI GPT-4",
-                    provider_type="openai",
-                    model="gpt-4o",
-                    api_key="openai-key",
-                    is_default=True,
-                )
-            ],
+        service1 = SettingsService(db_path=temp_db)
+        service1.load_settings()
+        service1.add_provider(
+            ProviderConfig(
+                name="OpenAI GPT-4",
+                provider_type="openai",
+                model="gpt-4o",
+                api_key="openai-key",
+                is_default=True,
+            )
         )
-
-        SettingsService.save_settings(initial_settings, use_database=True)
+        service1.save_settings(use_database=True)
 
         # Load settings
-        loaded = SettingsService.load_settings(use_database=True)
+        service2 = SettingsService(db_path=temp_db)
+        service2.load_settings(use_database=True)
 
         # Add new provider
-        new_provider = ProviderConfig(
-            name="Claude Sonnet",
-            provider_type="anthropic",
-            model="claude-3-5-sonnet-20241022",
-            api_key="claude-key",
-        )
-
-        updated_settings = Settings(
-            target_language=loaded.target_language,
-            providers=loaded.providers + [new_provider],
+        service2.add_provider(
+            ProviderConfig(
+                name="Claude Sonnet",
+                provider_type="anthropic",
+                model="claude-3-5-sonnet-20241022",
+                api_key="claude-key",
+            )
         )
 
         # Save updated settings
-        SettingsService.save_settings(updated_settings, use_database=True)
+        service2.save_settings(use_database=True)
 
         # Verify changes
-        final = SettingsService.load_settings(use_database=True)
+        service3 = SettingsService(db_path=temp_db)
+        final = service3.load_settings(use_database=True)
 
         assert len(final.providers) == 2
         assert final.providers[0].name == "OpenAI GPT-4"
@@ -173,93 +152,79 @@ class TestSettingsWorkflowIntegration:
 
     def test_complete_user_workflow_change_default_provider(self, temp_db: Path) -> None:
         """Test workflow: change default provider."""
-        SettingsService._storage = SettingsStorageProvider(temp_db)
-
         # Initial settings with two providers
-        initial_settings = Settings(
-            target_language="de",
-            providers=[
-                ProviderConfig(
-                    name="Provider A",
-                    provider_type="openai",
-                    model="gpt-4o",
-                    api_key="key-a",
-                    is_default=True,
-                ),
-                ProviderConfig(
-                    name="Provider B",
-                    provider_type="anthropic",
-                    model="claude",
-                    api_key="key-b",
-                    is_default=False,
-                ),
-            ],
-        )
-
-        SettingsService.save_settings(initial_settings, use_database=True)
-
-        # Change default to Provider B
-        loaded = SettingsService.load_settings(use_database=True)
-
-        updated_providers = [
+        service1 = SettingsService(db_path=temp_db)
+        service1.load_settings()
+        service1.add_provider(
             ProviderConfig(
                 name="Provider A",
                 provider_type="openai",
                 model="gpt-4o",
                 api_key="key-a",
-                is_default=False,
-            ),
+                is_default=True,
+            )
+        )
+        service1.add_provider(
             ProviderConfig(
                 name="Provider B",
                 provider_type="anthropic",
                 model="claude",
                 api_key="key-b",
-                is_default=True,
-            ),
-        ]
+                is_default=False,
+            )
+        )
+        service1.save_settings(use_database=True)
 
-        updated_settings = Settings(target_language=loaded.target_language, providers=updated_providers)
+        # Change default to Provider B
+        service2 = SettingsService(db_path=temp_db)
+        service2.load_settings(use_database=True)
 
-        SettingsService.save_settings(updated_settings, use_database=True)
+        # Update provider at index 1 to be default
+        updated_provider = ProviderConfig(
+            name="Provider B",
+            provider_type="anthropic",
+            model="claude",
+            api_key="key-b",
+            is_default=True,
+        )
+        service2.update_provider(1, updated_provider)
+        service2.save_settings(use_database=True)
 
         # Verify default provider changed
-        final = SettingsService.load_settings(use_database=True)
+        service3 = SettingsService(db_path=temp_db)
+        final = service3.load_settings(use_database=True)
 
         assert final.providers[0].is_default is False
         assert final.providers[1].is_default is True
 
         # Verify SettingsService recognizes new default
-        default_provider = SettingsService.get_default_provider()
+        default_provider = service3.get_default_provider()
         assert default_provider is not None
         assert default_provider.name == "Provider B"
 
     def test_complete_user_workflow_remove_provider(self, temp_db: Path) -> None:
         """Test workflow: remove a provider."""
-        SettingsService._storage = SettingsStorageProvider(temp_db)
-
         # Initial settings with three providers
-        initial_settings = Settings(
-            target_language="de",
-            providers=[
-                ProviderConfig(name="Provider 1", provider_type="openai", model="gpt-4o", api_key="key1"),
-                ProviderConfig(name="Provider 2", provider_type="anthropic", model="claude", api_key="key2"),
-                ProviderConfig(name="Provider 3", provider_type="gemini", model="gemini", api_key="key3"),
-            ],
+        service1 = SettingsService(db_path=temp_db)
+        service1.load_settings()
+        service1.add_provider(ProviderConfig(name="Provider 1", provider_type="openai", model="gpt-4o", api_key="key1"))
+        service1.add_provider(
+            ProviderConfig(name="Provider 2", provider_type="anthropic", model="claude", api_key="key2")
         )
-
-        SettingsService.save_settings(initial_settings, use_database=True)
+        service1.add_provider(ProviderConfig(name="Provider 3", provider_type="gemini", model="gemini", api_key="key3"))
+        service1.save_settings(use_database=True)
 
         # Remove Provider 2
-        loaded = SettingsService.load_settings(use_database=True)
+        service2 = SettingsService(db_path=temp_db)
+        service2.load_settings(use_database=True)
 
-        updated_providers = [p for p in loaded.providers if p.name != "Provider 2"]
-
-        updated_settings = Settings(target_language=loaded.target_language, providers=updated_providers)
-
-        SettingsService.save_settings(updated_settings, use_database=True)
+        # Find and delete Provider 2
+        service2.delete_provider(1)  # Provider 2 is at index 1
+        service2.save_settings(use_database=True)
 
         # Verify provider removed
-        final = SettingsService.load_settings(use_database=True)
+        service3 = SettingsService(db_path=temp_db)
+        final = service3.load_settings(use_database=True)
 
         assert len(final.providers) == 2
         assert final.providers[0].name == "Provider 1"
@@ -267,127 +232,114 @@ class TestSettingsWorkflowIntegration:
 
     def test_complete_user_workflow_change_language(self, temp_db: Path) -> None:
         """Test workflow: change target language."""
-        SettingsService._storage = SettingsStorageProvider(temp_db)
-
         # Initial settings
-        initial_settings = Settings(
-            target_language="de",
-            providers=[
-                ProviderConfig(
-                    name="Test Provider",
-                    provider_type="openai",
-                    model="gpt-4o",
-                    api_key="test-key",
-                )
-            ],
+        service1 = SettingsService(db_path=temp_db)
+        service1.load_settings()
+        service1.add_provider(
+            ProviderConfig(
+                name="Test Provider",
+                provider_type="openai",
+                model="gpt-4o",
+                api_key="test-key",
+            )
         )
-
-        SettingsService.save_settings(initial_settings, use_database=True)
+        service1.save_settings(use_database=True)
 
         # Change language to Spanish
-        loaded = SettingsService.load_settings(use_database=True)
+        service2 = SettingsService(db_path=temp_db)
+        loaded = service2.load_settings(use_database=True)
 
-        updated_settings = Settings(target_language="es", providers=loaded.providers)
-
-        SettingsService.save_settings(updated_settings, use_database=True)
+        loaded.target_language = "es"
+        service2.save_settings(use_database=True)
 
         # Verify language changed
-        final = SettingsService.load_settings(use_database=True)
+        service3 = SettingsService(db_path=temp_db)
+        final = service3.load_settings(use_database=True)
 
         assert final.target_language == "es"
         assert len(final.providers) == 1
 
     def test_complete_user_workflow_update_api_key(self, temp_db: Path) -> None:
         """Test workflow: update API key for a provider."""
-        SettingsService._storage = SettingsStorageProvider(temp_db)
-
         # Initial settings
-        initial_settings = Settings(
-            target_language="de",
-            providers=[
-                ProviderConfig(
-                    name="OpenAI GPT-4",
-                    provider_type="openai",
-                    model="gpt-4o",
-                    api_key="old-key",
-                    is_default=True,
-                )
-            ],
+        service1 = SettingsService(db_path=temp_db)
+        service1.load_settings()
+        service1.add_provider(
+            ProviderConfig(
+                name="OpenAI GPT-4",
+                provider_type="openai",
+                model="gpt-4o",
+                api_key="old-key",
+                is_default=True,
+            )
         )
-
-        SettingsService.save_settings(initial_settings, use_database=True)
+        service1.save_settings(use_database=True)
 
         # Update API key
-        loaded = SettingsService.load_settings(use_database=True)
+        service2 = SettingsService(db_path=temp_db)
+        loaded = service2.load_settings(use_database=True)
 
-        updated_providers = [
-            ProviderConfig(
-                name=p.name,
-                provider_type=p.provider_type,
-                model=p.model,
-                api_key="new-key" if p.name == "OpenAI GPT-4" else p.api_key,
-                is_default=p.is_default,
-                supports_streaming=p.supports_streaming,
-            )
-            for p in loaded.providers
-        ]
+        updated_provider = ProviderConfig(
+            name=loaded.providers[0].name,
+            provider_type=loaded.providers[0].provider_type,
+            model=loaded.providers[0].model,
+            api_key="new-key",
+            is_default=loaded.providers[0].is_default,
+            supports_streaming=loaded.providers[0].supports_streaming,
+        )
 
-        updated_settings = Settings(target_language=loaded.target_language, providers=updated_providers)
-
-        SettingsService.save_settings(updated_settings, use_database=True)
+        service2.update_provider(0, updated_provider)
+        service2.save_settings(use_database=True)
 
         # Verify API key updated
-        final = SettingsService.load_settings(use_database=True)
+        service3 = SettingsService(db_path=temp_db)
+        final = service3.load_settings(use_database=True)
 
         assert final.providers[0].api_key == "new-key"
 
     def test_multi_step_configuration_workflow(self, temp_db: Path) -> None:
         """Test multi-step configuration workflow."""
-        SettingsService._storage = SettingsStorageProvider(temp_db)
-
         # Step 1: Initialize with basic settings
-        step1 = Settings(target_language="de", providers=[])
-        SettingsService.save_settings(step1, use_database=True)
+        service1 = SettingsService(db_path=temp_db)
+        service1.load_settings()  # Defaults (no providers)
+        service1.save_settings(use_database=True)
 
         # Step 2: Add first provider
-        loaded1 = SettingsService.load_settings(use_database=True)
-        step2 = Settings(
-            target_language=loaded1.target_language,
-            providers=[
-                ProviderConfig(
-                    name="Provider 1",
-                    provider_type="openai",
-                    model="gpt-4o",
-                    api_key="key1",
-                    is_default=True,
-                )
-            ],
+        service2 = SettingsService(db_path=temp_db)
+        service2.load_settings(use_database=True)
+        service2.add_provider(
+            ProviderConfig(
+                name="Provider 1",
+                provider_type="openai",
+                model="gpt-4o",
+                api_key="key1",
+                is_default=True,
+            )
         )
-        SettingsService.save_settings(step2, use_database=True)
+        service2.save_settings(use_database=True)
 
         # Step 3: Add second provider
-        loaded2 = SettingsService.load_settings(use_database=True)
-        step3 = Settings(
-            target_language=loaded2.target_language,
-            providers=loaded2.providers
-            + [
-                ProviderConfig(
-                    name="Provider 2",
-                    provider_type="anthropic",
-                    model="claude",
-                    api_key="key2",
-                )
-            ],
+        service3 = SettingsService(db_path=temp_db)
+        service3.load_settings(use_database=True)
+        service3.add_provider(
+            ProviderConfig(
+                name="Provider 2",
+                provider_type="anthropic",
+                model="claude",
+                api_key="key2",
+            )
         )
-        SettingsService.save_settings(step3, use_database=True)
+        service3.save_settings(use_database=True)
 
         # Step 4: Change target language
-        loaded3 = SettingsService.load_settings(use_database=True)
-        step4 = Settings(target_language="es", providers=loaded3.providers)
-        SettingsService.save_settings(step4, use_database=True)
+        service4 = SettingsService(db_path=temp_db)
+        loaded3 = service4.load_settings(use_database=True)
+        loaded3.target_language = "es"
+        service4.save_settings(use_database=True)
 
         # Verify final state
-        final = SettingsService.load_settings(use_database=True)
+        service5 = SettingsService(db_path=temp_db)
+        final = service5.load_settings(use_database=True)
 
         assert final.target_language == "es"
         assert len(final.providers) == 2
@@ -397,32 +349,22 @@ class TestSettingsWorkflowIntegration:
     def test_settings_persistence_across_sessions(self, temp_db: Path) -> None:
         """Test that settings persist across different 'sessions'."""
         # Session 1: Create and save settings
-        SettingsService._storage = SettingsStorageProvider(temp_db)
-
-        settings = Settings(
-            target_language="de",
-            providers=[
-                ProviderConfig(
-                    name="Persistent Provider",
-                    provider_type="openai",
-                    model="gpt-4o",
-                    api_key="persistent-key",
-                    is_default=True,
-                )
-            ],
+        service1 = SettingsService(db_path=temp_db)
+        service1.load_settings()
+        service1.add_provider(
+            ProviderConfig(
+                name="Persistent Provider",
+                provider_type="openai",
+                model="gpt-4o",
+                api_key="persistent-key",
+                is_default=True,
+            )
         )
+        service1.save_settings(use_database=True)
 
-        SettingsService.save_settings(settings, use_database=True)
-
-        # Simulate session end
-        SettingsService._instance = None
-        SettingsService._settings = None
-        SettingsService._current_provider = None
-        SettingsService._storage = None
-
-        # Session 2: Load settings
-        SettingsService._storage = SettingsStorageProvider(temp_db)
-        loaded = SettingsService.load_settings(use_database=True)
+        # Session 2: Load settings (simulate new session with new service instance)
+        service2 = SettingsService(db_path=temp_db)
+        loaded = service2.load_settings(use_database=True)
 
         assert loaded.target_language == "de"
         assert loaded.providers[0].name == "Persistent Provider"
@@ -430,41 +372,37 @@ class TestSettingsWorkflowIntegration:
 
     def test_error_recovery_workflow(self, temp_db: Path) -> None:
         """Test recovery from errors during workflow."""
-        SettingsService._storage = SettingsStorageProvider(temp_db)
-
         # Save valid settings
-        valid_settings = Settings(
-            target_language="de",
-            providers=[
-                ProviderConfig(
-                    name="Valid Provider",
-                    provider_type="openai",
-                    model="gpt-4o",
-                    api_key="valid-key",
-                )
-            ],
+        service1 = SettingsService(db_path=temp_db)
+        service1.load_settings()
+        service1.add_provider(
+            ProviderConfig(
+                name="Valid Provider",
+                provider_type="openai",
+                model="gpt-4o",
+                api_key="valid-key",
+            )
         )
-
-        SettingsService.save_settings(valid_settings, use_database=True)
+        service1.save_settings(use_database=True)
 
         # Attempt to save invalid settings (should fail validation)
-        invalid_settings = Settings(
-            target_language="de",
-            providers=[
-                ProviderConfig(
-                    name="Invalid Provider",
-                    provider_type="invalid_type",
-                    model="invalid-model",
-                    api_key="invalid-key",
-                )
-            ],
+        service2 = SettingsService(db_path=temp_db)
+        service2.load_settings()
+        service2.add_provider(
+            ProviderConfig(
+                name="Invalid Provider",
+                provider_type="invalid_type",
+                model="invalid-model",
+                api_key="invalid-key",
+            )
         )
 
         with pytest.raises(ValueError):
-            SettingsService.save_settings(invalid_settings, use_database=True)
+            service2.save_settings(use_database=True)
 
         # Verify original settings still intact
-        recovered = SettingsService.load_settings(use_database=True)
+        service3 = SettingsService(db_path=temp_db)
+        recovered = service3.load_settings(use_database=True)
 
         assert recovered.target_language == "de"
         assert recovered.providers[0].name == "Valid Provider"

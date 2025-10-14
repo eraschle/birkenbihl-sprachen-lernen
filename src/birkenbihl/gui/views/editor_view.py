@@ -19,6 +19,7 @@ from birkenbihl.gui.widgets.alignment_editor import AlignmentEditor
 from birkenbihl.gui.widgets.alignment_preview import AlignmentPreview
 from birkenbihl.models.settings import Settings
 from birkenbihl.models.translation import Sentence, Translation, WordAlignment
+from birkenbihl.services.settings_service import SettingsService
 
 
 class EditorView(QWidget):
@@ -32,6 +33,7 @@ class EditorView(QWidget):
         self,
         viewmodel: TranslationEditorViewModel | None = None,
         settings: Settings | None = None,
+        settings_service: SettingsService | None = None,
         parent: QWidget | None = None,
     ):
         """Initialize view.
@@ -39,11 +41,13 @@ class EditorView(QWidget):
         Args:
             viewmodel: TranslationEditorViewModel instance
             settings: Settings for providers
+            settings_service: Optional SettingsService for reloading settings
             parent: Parent widget
         """
         super().__init__(parent)
         self._viewmodel = viewmodel or TranslationEditorViewModel(None, Settings())  # type: ignore
         self._settings = settings or Settings()
+        self._settings_service = settings_service
         self._sentence_cards = {}
         self.setup_ui()
         self.bind_viewmodel()
@@ -143,10 +147,10 @@ class EditorView(QWidget):
 
     def _reload_settings(self) -> None:
         """Reload settings and update UI components."""
-        from birkenbihl.services.settings_service import SettingsService
+        if self._settings_service is None:
+            return
 
-        settings_service = SettingsService.get_instance()
-        self._settings = settings_service.get_settings()
+        self._settings = self._settings_service.get_settings()
 
     def load_translation(self, translation_id: UUID) -> None:
         """Load translation into editor.

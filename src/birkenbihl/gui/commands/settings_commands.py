@@ -1,7 +1,7 @@
 """Commands for settings operations."""
 
 from birkenbihl.gui.commands.base import CommandResult
-from birkenbihl.models.settings import ProviderConfig, Settings
+from birkenbihl.models.settings import ProviderConfig
 from birkenbihl.services.settings_service import SettingsService
 
 
@@ -60,10 +60,9 @@ class DeleteProviderCommand:
 class SaveSettingsCommand:
     """Command to save settings."""
 
-    def __init__(self, service: SettingsService, settings: Settings):
+    def __init__(self, service: SettingsService):
         """Initialize command."""
         self._service = service
-        self._settings = settings
 
     def can_execute(self) -> bool:
         """Check if command can execute."""
@@ -72,7 +71,7 @@ class SaveSettingsCommand:
     def execute(self) -> CommandResult:
         """Execute save settings."""
         try:
-            self._service.save_settings(self._settings)
+            self._service.save_settings()
             return CommandResult(
                 success=True,
                 message="Settings saved successfully",

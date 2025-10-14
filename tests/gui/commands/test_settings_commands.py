@@ -9,7 +9,7 @@ from birkenbihl.gui.commands.settings_commands import (
     DeleteProviderCommand,
     SaveSettingsCommand,
 )
-from birkenbihl.models.settings import ProviderConfig, Settings
+from birkenbihl.models.settings import ProviderConfig
 
 
 @pytest.fixture
@@ -156,28 +156,25 @@ def test_delete_provider_execute_cannot_execute(providers: list[ProviderConfig])
 
 def test_save_settings_can_execute(mock_service: MagicMock):
     """Test can execute always returns True."""
-    settings = Settings(providers=[], target_language="de")
-    cmd = SaveSettingsCommand(mock_service, settings)
+    cmd = SaveSettingsCommand(mock_service)
     assert cmd.can_execute()
 
 
 def test_save_settings_execute_success(mock_service: MagicMock):
     """Test successful settings save."""
-    settings = Settings(providers=[], target_language="de")
-    cmd = SaveSettingsCommand(mock_service, settings)
+    cmd = SaveSettingsCommand(mock_service)
     result = cmd.execute()
 
     assert result.success
     assert "saved" in result.message.lower()
-    mock_service.save_settings.assert_called_once_with(settings)
+    mock_service.save_settings.assert_called_once_with()
 
 
 def test_save_settings_execute_error(mock_service: MagicMock):
     """Test execute with error."""
     mock_service.save_settings.side_effect = Exception("Save failed")
-    settings = Settings(providers=[], target_language="de")
 
-    cmd = SaveSettingsCommand(mock_service, settings)
+    cmd = SaveSettingsCommand(mock_service)
     result = cmd.execute()
 
     assert not result.success

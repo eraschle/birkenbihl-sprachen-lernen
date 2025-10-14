@@ -95,9 +95,9 @@ class CreateTranslationViewModel(BaseViewModel):
     progress_updated = Signal(int, str)
     language_detected = Signal(str)
 
-    def __init__(self, parent: QObject | None = None):
+    def __init__(self, settings_service: SettingsService, parent: QObject | None = None):
         super().__init__(parent)
-        self._settings_service = SettingsService.get_instance()
+        self._settings_service = settings_service
         self._thread_pool = QThreadPool.globalInstance()
 
     @property
@@ -115,7 +115,7 @@ class CreateTranslationViewModel(BaseViewModel):
     @property
     def selected_provider(self) -> ProviderConfig | None:
         """Get currently selected provider from settings."""
-        return self._settings_service.get_current_provider()
+        return self._settings_service.get_default_provider()
 
     def load_settings(self) -> None:
         """Load settings from SettingsService.

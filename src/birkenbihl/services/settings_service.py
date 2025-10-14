@@ -4,7 +4,6 @@ import os
 import sys
 from pathlib import Path
 from threading import Lock
-from typing import Self
 
 import yaml
 
@@ -15,28 +14,26 @@ from birkenbihl.storage.settings_storage import SettingsStorageProvider
 class SettingsService:
     """Service for managing application settings and provider configurations.
 
-    Implements singleton pattern with lazy loading for centralized settings management.
+    Instance-based service for settings management with internal state.
     Orchestrates Settings model operations while maintaining separation of concerns.
-    Thread-safe singleton ensures consistent configuration across application.
-    Tracks currently active provider for translation operations.
+    Thread-safe operations ensure consistent configuration access.
     """
 
-    _instance: Self | None = None
-    _settings: Settings | None = None
-    _current_provider: ProviderConfig | None = None
-    _storage: SettingsStorageProvider | None = None
-    _lock: Lock = Lock()
+    def __init__(self, db_path: Path | None = None):
+        """Initialize SettingsService with empty state.
 
-    def __init__(self):
-        """Private constructor for singleton pattern.
+        Call load_settings() to load configuration from file or database.
 
-        Use get_instance() to obtain the service instance.
+        Args:
+            db_path: Optional custom database path (defaults to ~/.birkenbihl/birkenbihl.db)
         """
-        if SettingsService._instance is not None:
-            raise RuntimeError("Use get_instance() to get singleton instance")
+        self._settings: Settings | None = None
+        self._storage: SettingsStorageProvider | None = None
+        self._lock = Lock()
+        self._db_path = db_path if db_path else self._get_config_root_path() / "birkenbihl.db"
 
-    @classmethod
-    def _ensure_exists(cls, path: Path) -> Path:
+    @staticmethod
+    def _ensure_exists(path: Path) -> Path:
         if path.exists():
             return path
         dir_path = path
@@ -46,8 +43,8 @@ class SettingsService:
             dir_path.mkdir()
         return path
 
-    @classmethod
-    def _get_config_root_path(cls) -> Path:
+    @staticmethod
+    def _get_config_root_path() -> Path:
         birkenbihl_path = None
         if sys.platform == "win32":
             env_value = os.getenv("APPDATA", os.environ["USERPROFILE"])
@@ -56,34 +53,31 @@ class SettingsService:
             birkenbihl_path = Path.home() / ".birkenbihl"
         else:
             raise NotImplementedError(f"Platform not supported {sys.plattform}")
-        return cls._ensure_exists(birkenbihl_path)
+        return SettingsService._ensure_exists(birkenbihl_path)
 
-    @classmethod
-    def _get_setting_path(cls, file_path_or_name: str | Path) -> Path:
+    @staticmethod
+    def _get_setting_path(file_path_or_name: str | Path) -> Path:
         if isinstance(file_path_or_name, str):
-            return cls._get_config_root_path() / file_path_or_name
+            return SettingsService._get_config_root_path() / file_path_or_name
         return file_path_or_name
 
-    @classmethod
-    def get_settings(cls) -> Settings:
-        """Get current settings, loading from settings.yaml if not already loaded.
-
-        Lazy loading: Settings are loaded on first access using default settings.yaml path.
-        Automatically initializes current provider to default provider.
+    def get_settings(self) -> Settings:
+        """Get current settings.
 
         Returns:
             Current Settings instance
-        """
-        if cls._settings is None:
-            raise RuntimeError("Settings not loaded")
-        return cls._settings
 
-    @classmethod
-    def load_settings(cls, settings_file: str | Path = "settings.yaml", use_database: bool = False) -> Settings:
+        Raises:
+            RuntimeError: If settings not loaded yet
+        """
+        if self._settings is None:
+            raise RuntimeError("Settings not loaded. Call load_settings() first.")
+        return self._settings
+
+    def load_settings(self, settings_file: str | Path = "settings.yaml", use_database: bool = False) -> Settings:
         """Load settings from specified settings file or database.
 
         Replaces current settings with newly loaded configuration.
-        Updates current provider to new default provider.
         Thread-safe operation ensures consistency during concurrent access.
 
         Args:
@@ -93,19 +87,18 @@ class SettingsService:
         Returns:
             Loaded Settings instance
         """
-        with cls._lock:
+        with self._lock:
             if use_database:
-                if cls._storage is None:
-                    cls._storage = SettingsStorageProvider(cls._get_config_root_path() / "birkenbihl.db")
-                cls._settings = cls._storage.load()
+                if self._storage is None:
+                    self._storage = SettingsStorageProvider(self._db_path)
+                self._settings = self._storage.load()
             else:
-                settings_path = cls._get_setting_path(settings_file)
-                cls._settings = cls._load_settings_from_file(settings_path)
-            cls._current_provider = cls._settings.get_default_provider()
-        return cls._settings
+                settings_path = self._get_setting_path(settings_file)
+                self._settings = self._load_settings_from_file(settings_path)
+        return self._settings
 
-    @classmethod
-    def validate_provider_config(cls, provider: ProviderConfig) -> str | None:
+    @staticmethod
+    def validate_provider_config(provider: ProviderConfig) -> str | None:
         """Validate provider configuration.
 
         Checks if provider settings are valid, especially streaming support.
@@ -131,13 +124,7 @@ class SettingsService:
 
         return None
 
-    @classmethod
-    def clean_default_provider(cls, settings: Settings) -> None:
-        for prov in settings.providers:
-            prov.is_default = False
-
-    @classmethod
-    def add_provider(cls, settings: Settings, provider: ProviderConfig) -> None:
+    def add_provider(self, provider: ProviderConfig) -> None:
         """Add a provider to settings with automatic default management.
 
         Applies business rules:
@@ -145,109 +132,116 @@ class SettingsService:
         - If new provider is marked as default, clear other defaults
 
         Args:
-            settings: Settings instance to modify
             provider: Provider configuration to add
+
+        Raises:
+            RuntimeError: If settings not loaded yet
         """
+        if self._settings is None:
+            raise RuntimeError("Settings not loaded. Call load_settings() first.")
+
         # Check if any provider is already marked as default
-        has_default = any(p.is_default for p in settings.providers)
+        has_default = any(p.is_default for p in self._settings.providers)
 
         # Auto-set as default if no providers exist or no default exists
-        if not settings.providers or not has_default:
+        if not self._settings.providers or not has_default:
             provider.is_default = True
 
         # If new provider is default, clear other defaults
         if provider.is_default:
-            for prov in settings.providers:
+            for prov in self._settings.providers:
                 prov.is_default = False
 
-        settings.providers.append(provider)
+        self._settings.providers.append(provider)
 
-    @classmethod
-    def update_provider(cls, settings: Settings, index: int, provider: ProviderConfig) -> None:
+    def update_provider(self, index: int, provider: ProviderConfig) -> None:
         """Update a provider with automatic default management.
 
         Applies business rules:
         - If updated provider is marked as default, clear other defaults
 
         Args:
-            settings: Settings instance to modify
             index: Index of provider to update
             provider: New provider configuration
 
         Raises:
+            RuntimeError: If settings not loaded yet
             IndexError: If index is out of range
         """
-        if index < 0 or index >= len(settings.providers):
+        if self._settings is None:
+            raise RuntimeError("Settings not loaded. Call load_settings() first.")
+
+        if index < 0 or index >= len(self._settings.providers):
             raise IndexError(f"Provider index {index} out of range")
 
         # If updated provider is set as default, clear other defaults
         if provider.is_default:
-            for idx, prov in enumerate(settings.providers):
+            for idx, prov in enumerate(self._settings.providers):
                 if idx != index:
                     prov.is_default = False
 
-        settings.providers[index] = provider
+        self._settings.providers[index] = provider
 
-    @classmethod
-    def delete_provider(cls, settings: Settings, index: int) -> None:
+    def delete_provider(self, index: int) -> None:
         """Delete a provider with automatic default management.
 
         Applies business rules:
         - If deleted provider was default and providers remain, set first as default
 
         Args:
-            settings: Settings instance to modify
             index: Index of provider to delete
 
         Raises:
+            RuntimeError: If settings not loaded yet
             IndexError: If index is out of range
         """
-        if index < 0 or index >= len(settings.providers):
+        if self._settings is None:
+            raise RuntimeError("Settings not loaded. Call load_settings() first.")
+
+        if index < 0 or index >= len(self._settings.providers):
             raise IndexError(f"Provider index {index} out of range")
 
         # Check if deleted provider was default
-        was_default = settings.providers[index].is_default
+        was_default = self._settings.providers[index].is_default
 
-        del settings.providers[index]
+        del self._settings.providers[index]
 
         # If default was deleted and providers remain, set first as default
-        if was_default and settings.providers:
-            settings.providers[0].is_default = True
+        if was_default and self._settings.providers:
+            self._settings.providers[0].is_default = True
 
-    @classmethod
-    def save_settings(
-        cls, settings: Settings, settings_file: str | Path = "settings.yaml", use_database: bool = False
-    ) -> None:
+    def save_settings(self, settings_file: str | Path = "settings.yaml", use_database: bool = False) -> None:
         """Save settings to specified settings file or database.
 
-        Updates current settings and persists to file or database.
+        Persists current settings to file or database.
         Thread-safe operation prevents race conditions during save.
 
         Args:
-            settings: Settings instance to save
             settings_file: Path to settings file (defaults to settings.yaml in current directory)
             use_database: If True, save to database instead of YAML file
 
         Raises:
+            RuntimeError: If settings not loaded yet
             ValueError: If any provider configuration is invalid
         """
+        if self._settings is None:
+            raise RuntimeError("Settings not loaded. Call load_settings() first.")
+
         # Validate all providers before saving
-        for provider in settings.providers:
-            error = cls.validate_provider_config(provider)
+        for provider in self._settings.providers:
+            error = self.validate_provider_config(provider)
             if error:
                 raise ValueError(error)
 
-        with cls._lock:
+        with self._lock:
             if use_database:
-                if cls._storage is None:
-                    cls._storage = SettingsStorageProvider(cls._get_config_root_path() / "birkenbihl.db")
-                cls._storage.save(settings)
+                if self._storage is None:
+                    self._storage = SettingsStorageProvider(self._db_path)
+                self._storage.save(self._settings)
             else:
-                cls._save_settings_to_file(settings, settings_file)
-            cls._settings = settings
+                self._save_settings_to_file(self._settings, settings_file)
 
-    @classmethod
-    def get_default_provider(cls) -> ProviderConfig | None:
+    def get_default_provider(self) -> ProviderConfig | None:
         """Get default provider configuration.
 
         Delegates to Settings.get_default_provider() for business logic.
@@ -256,46 +250,11 @@ class SettingsService:
 
         Returns:
             Default ProviderConfig or None if no providers exist
+
+        Raises:
+            RuntimeError: If settings not loaded yet
         """
-        return cls.get_settings().get_default_provider()
-
-    @classmethod
-    def get_current_provider(cls) -> ProviderConfig | None:
-        """Get currently active provider configuration.
-
-        Returns the provider currently selected for translation operations.
-        If not set, initializes to default provider from settings.
-
-        Returns:
-            Current ProviderConfig or None if no providers exist
-        """
-        with cls._lock:
-            if cls._current_provider is None:
-                cls._current_provider = cls.get_settings().get_default_provider()
-            return cls._current_provider
-
-    @classmethod
-    def set_current_provider(cls, provider: ProviderConfig) -> None:
-        """Set currently active provider for translation operations.
-
-        Updates the active provider without modifying persisted settings.
-        Thread-safe operation ensures consistency during concurrent access.
-
-        Args:
-            provider: ProviderConfig to set as current active provider
-        """
-        with cls._lock:
-            cls._current_provider = provider
-
-    @classmethod
-    def reset_current_provider(cls) -> None:
-        """Reset current provider to default provider from settings.
-
-        Reverts active provider selection to the configured default.
-        Thread-safe operation ensures consistency during concurrent access.
-        """
-        with cls._lock:
-            cls._current_provider = cls.get_settings().get_default_provider()
+        return self.get_settings().get_default_provider()
 
     @staticmethod
     def _load_settings_from_file(settings_path: str | Path) -> Settings:
@@ -341,19 +300,3 @@ class SettingsService:
 
         with config_path.open("w") as file:
             yaml.safe_dump(data, file, default_flow_style=False, sort_keys=False)
-
-    @classmethod
-    def get_instance(cls) -> Self:
-        """Get or create singleton instance of SettingsService.
-
-        Thread-safe singleton creation. Returns existing instance if available.
-
-        Returns:
-            Singleton SettingsService instance
-        """
-        if cls._instance is None:
-            with cls._lock:
-                if cls._instance is None:
-                    instance = cls.__new__(cls)
-                    cls._instance = instance
-        return cls._instance

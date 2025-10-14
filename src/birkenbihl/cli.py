@@ -8,7 +8,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from birkenbihl.app import get_service
+from birkenbihl.app import get_translator
 from birkenbihl.models.translation import Translation
 from birkenbihl.services import language_service as ls
 from birkenbihl.services.settings_service import SettingsService
@@ -76,7 +76,7 @@ def cli():
 @click.option(
     "--provider",
     "-p",
-    help="Provider name from settings.yaml (uses current/default if not specified)",
+    help="Provider name from settings.yaml (uses default if not specified)",
 )
 @click.option(
     "--storage",
@@ -99,9 +99,14 @@ def translate(
         birkenbihl translate "Hello" -p "Claude Sonnet"
     """
     try:
-        # Select provider if specified
+        # Load settings
+        settings_service = SettingsService()
+        settings_service.load_settings()
+        settings = settings_service.get_settings()
+
+        # Select provider from CLI args or use default
+        selected_provider = None
         if provider:
-            settings = SettingsService.get_settings()
             matching_providers = [p for p in settings.providers if p.name == provider]
             if not matching_providers:
                 console.print(f"[bold red]Error:[/bold red] Provider '{provider}' not found in settings.yaml")
@@ -109,10 +114,19 @@ def translate(
                 for p in settings.providers:
                     console.print(f"  - {p.name}")
                 raise click.Abort()
-            SettingsService.set_current_provider(matching_providers[0])
+            selected_provider = matching_providers[0]
+        else:
+            selected_provider = settings_service.get_default_provider()
+            if selected_provider is None:
+                console.print("[bold red]Error:[/bold red] No provider configured in settings.yaml")
+                raise click.Abort()
 
         with console.status("[bold green]Translating...", spinner="dots"):
-            service = get_service(storage)
+            translator = get_translator(selected_provider)
+            from birkenbihl.storage import JsonStorageProvider
+            from birkenbihl.services.translation_service import TranslationService
+            storage_provider = JsonStorageProvider(storage)
+            service = TranslationService(translator, storage_provider)
 
             target_language = ls.get_language_by(target)
             if source:
@@ -127,10 +141,6 @@ def translate(
     except Exception as exc:
         console.print(f"[bold red]Error:[/bold red] {exc}")
         raise click.Abort() from exc
-    finally:
-        # Reset provider to default after command
-        if provider:
-            SettingsService.reset_current_provider()
 
 
 @cli.command()
@@ -142,7 +152,10 @@ def translate(
 def list(storage: Path | None):
     """List all saved translations."""
     try:
-        service = get_service(storage_path=storage)
+        from birkenbihl.storage import JsonStorageProvider
+        from birkenbihl.services.translation_service import TranslationService
+        storage_provider = JsonStorageProvider(storage)
+        service = TranslationService(None, storage_provider)
         translations = service.list_all_translations()
 
         if not translations:
@@ -188,7 +201,10 @@ def show(translation_id: str, storage: Path | None):
     TRANSLATION_ID can be the full UUID or just the first 8 characters.
     """
     try:
-        service = get_service(storage_path=storage)
+        from birkenbihl.storage import JsonStorageProvider
+        from birkenbihl.services.translation_service import TranslationService
+        storage_provider = JsonStorageProvider(storage)
+        service = TranslationService(None, storage_provider)
 
         # Try to find by partial ID if not full UUID
         if len(translation_id) < 36:
@@ -238,7 +254,10 @@ def delete(translation_id: str, storage: Path | None):
     TRANSLATION_ID can be the full UUID or just the first 8 characters.
     """
     try:
-        service = get_service(storage_path=storage)
+        from birkenbihl.storage import JsonStorageProvider
+        from birkenbihl.services.translation_service import TranslationService
+        storage_provider = JsonStorageProvider(storage)
+        service = TranslationService(None, storage_provider)
 
         # Try to find by partial ID if not full UUID
         if len(translation_id) < 36:

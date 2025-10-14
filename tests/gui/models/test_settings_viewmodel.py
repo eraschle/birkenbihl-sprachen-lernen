@@ -75,12 +75,35 @@ def test_add_provider(qtbot: QtBot, viewmodel: SettingsViewModel, mock_service: 
         api_key="new-key",
     )
 
+    # Mock service to return updated settings after add
+    updated_settings = Settings(
+        providers=[
+            ProviderConfig(
+                name="Provider1",
+                provider_type="openai",
+                model="gpt-4",
+                api_key="key1",
+                is_default=True,
+            ),
+            ProviderConfig(
+                name="Provider2",
+                provider_type="anthropic",
+                model="claude-3",
+                api_key="key2",
+            ),
+            new_provider,
+        ],
+        target_language="de",
+    )
+    mock_service.get_settings.return_value = updated_settings
+
     with qtbot.waitSignal(viewmodel.provider_added, timeout=1000):
         viewmodel.add_provider(new_provider)
 
     assert len(viewmodel.state.providers) == 3
     assert viewmodel.state.has_unsaved_changes
     mock_service.validate_provider_config.assert_called_once_with(new_provider)
+    mock_service.add_provider.assert_called_once_with(new_provider)
 
 
 def test_add_provider_validation_error(qtbot: QtBot, viewmodel: SettingsViewModel, mock_service: MagicMock):
@@ -100,7 +123,7 @@ def test_add_provider_validation_error(qtbot: QtBot, viewmodel: SettingsViewMode
     assert len(viewmodel.state.providers) == 2  # Not added
 
 
-def test_update_provider(viewmodel: SettingsViewModel):
+def test_update_provider(viewmodel: SettingsViewModel, mock_service: MagicMock):
     """Test update provider."""
     viewmodel.load_settings()
     updated = ProviderConfig(
@@ -110,10 +133,26 @@ def test_update_provider(viewmodel: SettingsViewModel):
         api_key="new-key",
     )
 
+    # Mock service to return updated settings
+    updated_settings = Settings(
+        providers=[
+            updated,
+            ProviderConfig(
+                name="Provider2",
+                provider_type="anthropic",
+                model="claude-3",
+                api_key="key2",
+            ),
+        ],
+        target_language="de",
+    )
+    mock_service.get_settings.return_value = updated_settings
+
     viewmodel.update_provider(0, updated)
 
     assert viewmodel.state.providers[0].name == "Updated"
     assert viewmodel.state.has_unsaved_changes
+    mock_service.update_provider.assert_called_once_with(0, updated)
 
 
 def test_update_provider_invalid_index(viewmodel: SettingsViewModel):
@@ -132,15 +171,30 @@ def test_update_provider_invalid_index(viewmodel: SettingsViewModel):
     assert viewmodel.state.providers[0].name == "Provider1"
 
 
-def test_delete_provider(qtbot: QtBot, viewmodel: SettingsViewModel):
+def test_delete_provider(qtbot: QtBot, viewmodel: SettingsViewModel, mock_service: MagicMock):
     """Test delete provider."""
     viewmodel.load_settings()
+
+    # Mock service to return updated settings after delete
+    updated_settings = Settings(
+        providers=[
+            ProviderConfig(
+                name="Provider2",
+                provider_type="anthropic",
+                model="claude-3",
+                api_key="key2",
+            ),
+        ],
+        target_language="de",
+    )
+    mock_service.get_settings.return_value = updated_settings
 
     with qtbot.waitSignal(viewmodel.provider_deleted, timeout=1000):
         viewmodel.delete_provider(0)
 
     assert len(viewmodel.state.providers) == 1
     assert viewmodel.state.has_unsaved_changes
+    mock_service.delete_provider.assert_called_once_with(0)
 
 
 def test_delete_provider_invalid_index(viewmodel: SettingsViewModel):
@@ -190,7 +244,8 @@ def test_save_settings(qtbot: QtBot, viewmodel: SettingsViewModel, mock_service:
         viewmodel.save_settings()
 
     assert not viewmodel.state.has_unsaved_changes
-    mock_service.save_settings.assert_called_once()
+    # Should call save_settings without parameters
+    mock_service.save_settings.assert_called_once_with()
 
 
 def test_save_settings_error(qtbot: QtBot, viewmodel: SettingsViewModel, mock_service: MagicMock):

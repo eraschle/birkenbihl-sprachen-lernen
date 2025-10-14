@@ -18,6 +18,7 @@ from birkenbihl.gui.widgets.progress_widget import ProgressWidget
 from birkenbihl.gui.widgets.provider_selector import ProviderSelector
 from birkenbihl.models.settings import ProviderConfig, Settings
 from birkenbihl.models.translation import Translation
+from birkenbihl.services.settings_service import SettingsService
 
 
 class TranslationView(QWidget):
@@ -28,17 +29,25 @@ class TranslationView(QWidget):
     Delegates business logic to TranslationCreationViewModel.
     """
 
-    def __init__(self, viewmodel: TranslationCreationViewModel, settings: Settings, parent: QWidget | None = None):
+    def __init__(
+        self,
+        viewmodel: TranslationCreationViewModel,
+        settings: Settings,
+        settings_service: SettingsService | None = None,
+        parent: QWidget | None = None,
+    ):
         """Initialize view.
 
         Args:
             viewmodel: TranslationCreationViewModel instance
             settings: Settings for providers and default language
+            settings_service: Optional SettingsService for reloading settings
             parent: Parent widget
         """
         super().__init__(parent)
         self._viewmodel = viewmodel
         self._settings = settings
+        self._settings_service = settings_service
         self.setup_ui()
         self.bind_viewmodel()
         self._viewmodel.initialize()
@@ -133,10 +142,10 @@ class TranslationView(QWidget):
 
     def _reload_settings(self) -> None:
         """Reload settings and update UI components."""
-        from birkenbihl.services.settings_service import SettingsService
+        if self._settings_service is None:
+            return
 
-        settings_service = SettingsService.get_instance()
-        updated_settings = settings_service.get_settings()
+        updated_settings = self._settings_service.get_settings()
 
         self._settings = updated_settings
         self._target_lang_selector.set_language(self._settings.target_language)

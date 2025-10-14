@@ -14,13 +14,14 @@ from birkenbihl.services.translation_service import TranslationService
 from birkenbihl.storage import JsonStorageProvider
 
 
-def get_translator(provider: ProviderConfig | None = None):
+def get_translator(provider: ProviderConfig | None = None, settings_service: SettingsService | None = None):
     """Create translator based on provider configuration.
 
-    Uses SettingsService to get current provider if not specified.
+    Uses SettingsService to get default provider if not specified.
 
     Args:
-        provider: Provider configuration (defaults to current provider from settings)
+        provider: Provider configuration (defaults to default provider from settings)
+        settings_service: Optional SettingsService instance (creates new if not provided)
 
     Returns:
         Configured translator instance
@@ -29,7 +30,10 @@ def get_translator(provider: ProviderConfig | None = None):
         ValueError: If no provider configured
     """
     if provider is None:
-        provider = SettingsService.get_current_provider()
+        if settings_service is None:
+            settings_service = SettingsService()
+            settings_service.load_settings()
+        provider = settings_service.get_default_provider()
 
     if provider is None:
         raise ValueError("No provider configured in settings.yaml")
@@ -37,17 +41,21 @@ def get_translator(provider: ProviderConfig | None = None):
     return PydanticAITranslator(provider)
 
 
-def get_service(storage_path: Path | None = None) -> TranslationService:
+def get_service(storage_path: Path | None = None, settings_service: SettingsService | None = None) -> TranslationService:
     """Create translation service with configured providers.
 
     Uses SettingsService for provider configuration.
 
     Args:
         storage_path: Optional storage path (defaults to ~/.birkenbihl)
+        settings_service: Optional SettingsService instance (creates new if not provided)
 
     Returns:
         Configured TranslationService instance
     """
-    translator = get_translator()
+    if settings_service is None:
+        settings_service = SettingsService()
+        settings_service.load_settings()
+    translator = get_translator(settings_service=settings_service)
     storage = JsonStorageProvider(storage_path)
     return TranslationService(translator, storage)
