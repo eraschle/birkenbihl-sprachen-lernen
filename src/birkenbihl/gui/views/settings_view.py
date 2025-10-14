@@ -205,7 +205,6 @@ class SettingsView(QWidget):
         layout = QVBoxLayout(self)
         layout.addWidget(self._create_provider_section())
         layout.addWidget(self._create_general_section())
-        layout.addWidget(self._create_save_button())
 
     def _create_provider_section(self) -> QGroupBox:
         group = QGroupBox("Provider Management")
@@ -258,11 +257,6 @@ class SettingsView(QWidget):
         if language:
             self._view_model.update_target_language(language.code)
 
-    def _create_save_button(self) -> QPushButton:
-        save_btn = QPushButton("Save Settings")
-        save_btn.clicked.connect(self._view_model.save_settings)
-        return save_btn
-
     def _connect_signals(self) -> None:
         self._view_model.settings_loaded.connect(self._on_settings_loaded)
         self._view_model.settings_saved.connect(self._on_settings_saved)
@@ -277,7 +271,8 @@ class SettingsView(QWidget):
         self._language_combo.set_language(self._view_model.target_language)
 
     def _on_settings_saved(self) -> None:
-        QMessageBox.information(self, "Success", "Settings saved successfully")
+        """Settings saved - auto-save, no user notification needed."""
+        pass
 
     def _on_provider_added(self, _: ProviderConfig) -> None:
         self._refresh_provider_list()

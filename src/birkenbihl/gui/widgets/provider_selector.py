@@ -60,7 +60,7 @@ class ProviderSelector(QWidget):
         Returns:
             Formatted text (e.g., "OpenAI - gpt-4 [default]")
         """
-        text = f"{provider.name} - {provider.model}"
+        text = provider.name
         if provider.is_default:
             text += " [default]"
         return text

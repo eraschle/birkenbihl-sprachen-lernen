@@ -150,15 +150,24 @@ class TranslationCreationViewModel(QObject):
         Returns:
             Translation result
         """
+        from birkenbihl.providers.pydantic_ai_translator import PydanticAITranslator
+
         source_lang = self._state.source_language
         target_lang = self._state.target_language
         text = self._state.source_text
         title = self._state.title
+        provider = self._state.selected_provider
+
+        if not provider:
+            raise ValueError("No provider selected")
+
+        translator = PydanticAITranslator(provider)
+        temp_service = TranslationService(translator, self._service._storage)
 
         if ls.is_auto_detect(source_lang.code):
-            return self._service.auto_detect_and_translate(text, target_lang, title)
+            return temp_service.auto_detect_and_translate(text, target_lang, title)
         else:
-            return self._service.translate_and_save(text, source_lang, target_lang, title)
+            return temp_service.translate_and_save(text, source_lang, target_lang, title)
 
     def _on_translation_completed(self, translation: Translation) -> None:
         """Handle translation completion.

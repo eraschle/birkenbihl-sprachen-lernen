@@ -44,7 +44,10 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Birkenbihl Sprachtrainer")
         self._stacked_widget = QStackedWidget()  # type: ignore[reportUninitializedInstanceVariable]
         self.setCentralWidget(self._stacked_widget)
+        self._previous_view_index = -1
+        self._settings_view_index = -1  # type: ignore[reportUninitializedInstanceVariable]
         self._create_views()
+        self._stacked_widget.currentChanged.connect(self._on_view_changed)
 
     def _create_views(self) -> None:
         """Create and add all views."""
@@ -70,9 +73,25 @@ class MainWindow(QMainWindow):
 
     def _create_settings_view(self) -> None:
         """Create settings view."""
-        view_model = SettingsViewModel(self._settings_service, parent=self)
-        self._settings_view = SettingsView(view_model, parent=self)  # type: ignore[reportUninitializedInstanceVariable]
+        self._settings_viewmodel = SettingsViewModel(  # type: ignore[reportUninitializedInstanceVariable]
+            self._settings_service, parent=self
+        )
+        self._settings_view = SettingsView(  # type: ignore[reportUninitializedInstanceVariable]
+            self._settings_viewmodel, parent=self
+        )
         self._stacked_widget.addWidget(self._settings_view)
+        self._settings_view_index = self._stacked_widget.count() - 1  # type: ignore[reportUninitializedInstanceVariable]
+
+    def _on_view_changed(self, current_index: int) -> None:
+        """Handle view change - auto-save settings when leaving settings view.
+
+        Args:
+            current_index: Index of the newly active view
+        """
+        if self._previous_view_index == self._settings_view_index:
+            self._settings_viewmodel.save_settings()
+
+        self._previous_view_index = current_index
 
     def _create_menu_bar(self) -> None:
         """Create menu bar."""
@@ -127,5 +146,7 @@ class MainWindow(QMainWindow):
         self.setMinimumSize(800, 600)
 
     def closeEvent(self, event) -> None:  # type: ignore
-        """Handle window close event."""
+        """Handle window close event - save settings if currently in settings view."""
+        if self._stacked_widget.currentIndex() == self._settings_view_index:
+            self._settings_viewmodel.save_settings()
         event.accept()
