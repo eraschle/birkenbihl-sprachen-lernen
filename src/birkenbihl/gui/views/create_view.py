@@ -1,7 +1,6 @@
 """CreateTranslationView for translation creation UI."""
 
 from PySide6.QtWidgets import (
-    QComboBox,
     QFormLayout,
     QHBoxLayout,
     QLineEdit,

@@ -2,6 +2,7 @@
 
 import sys
 import traceback
+import types
 from pathlib import Path
 
 from PySide6.QtWidgets import QApplication, QMessageBox
@@ -69,7 +70,9 @@ def setup_exception_handler() -> None:
         app: QApplication instance
     """
 
-    def handle_exception(exc_type, exc_value, exc_traceback):
+    def handle_exception(
+        exc_type: type[BaseException], exc_value: BaseException, exc_traceback: types.TracebackType | None
+    ) -> None:
         """Handle uncaught exceptions."""
         if issubclass(exc_type, KeyboardInterrupt):
             sys.__excepthook__(exc_type, exc_value, exc_traceback)
