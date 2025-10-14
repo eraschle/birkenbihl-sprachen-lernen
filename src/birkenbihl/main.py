@@ -42,21 +42,34 @@ def configure_logging() -> None:
 def main() -> None:
     """Main function to start the app.
 
-    By default, launches the CLI interface. In the future, this can be
-    extended to support GUI mode via command-line arguments.
+    Launches either CLI or UI based on command-line arguments.
 
-    Example future usage:
-        birkenbihl           # Launch CLI (default)
-        birkenbihl --gui     # Launch GUI
+    Example usage:
+        birkenbihl                    # Launch CLI (default)
+        birkenbihl translate          # Launch CLI with subcommand
+        birkenbihl --ui               # Launch UI
     """
-    # For now, always launch CLI
-    # Future: Parse args to determine CLI vs GUI
+    # Check if --ui is in arguments to determine mode early
+    if "--ui" in sys.argv:
+        # Remove --ui from args and launch GUI
+        sys.argv.remove("--ui")
+        exit_code = launch_gui()
+        sys.exit(exit_code)
+
+    # Default: launch CLI with all arguments
+    launch_cli()
+
+
+def launch_cli() -> None:
+    """Launch CLI interface."""
+    configure_logging()
+
     from birkenbihl.cli import cli
 
     cli()
 
 
-def main_gui() -> int:
+def launch_gui() -> int:
     """Entry point for GUI mode using PySide6.
 
     Launches the native Qt desktop GUI for the Birkenbihl application.
