@@ -2,6 +2,7 @@
 
 from pathlib import Path
 from threading import Lock
+from typing import Self
 from uuid import UUID
 
 from birkenbihl.models.languages import Language
@@ -19,7 +20,7 @@ class TranslationUIService:
     Encapsulates storage/service initialization.
     """
 
-    _instance: "TranslationUIService | None" = None
+    _instance: Self | None = None
     _lock: Lock = Lock()
 
     def __init__(self):
@@ -29,7 +30,7 @@ class TranslationUIService:
         self._service: TranslationService | None = None
 
     @classmethod
-    def get_instance(cls) -> "TranslationUIService":
+    def get_instance(cls) -> Self:
         if cls._instance is None:
             with cls._lock:
                 if cls._instance is None:

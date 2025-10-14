@@ -4,6 +4,7 @@ import os
 import sys
 from pathlib import Path
 from threading import Lock
+from typing import Self
 
 import yaml
 
@@ -20,7 +21,7 @@ class SettingsService:
     Tracks currently active provider for translation operations.
     """
 
-    _instance: "SettingsService | None" = None
+    _instance: Self | None = None
     _settings: Settings | None = None
     _current_provider: ProviderConfig | None = None
     _storage: SettingsStorageProvider | None = None
@@ -259,7 +260,7 @@ class SettingsService:
             yaml.safe_dump(data, file, default_flow_style=False, sort_keys=False)
 
     @classmethod
-    def get_instance(cls) -> "SettingsService":
+    def get_instance(cls) -> Self:
         """Get or create singleton instance of SettingsService.
 
         Thread-safe singleton creation. Returns existing instance if available.
