@@ -1,5 +1,6 @@
 """Translation creation view."""
 
+from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
     QGroupBox,
     QHBoxLayout,
@@ -28,6 +29,8 @@ class TranslationView(QWidget):
     Displays progress during translation.
     Delegates business logic to TranslationCreationViewModel.
     """
+
+    translation_created = Signal(object)  # Translation
 
     def __init__(
         self,
@@ -204,12 +207,12 @@ class TranslationView(QWidget):
 
     def _on_translation_started(self) -> None:
         """Handle translation start."""
-        self._progress_widget.start("Übersetze...")
+        self._progress_widget.start("Übersetze...", indeterminate=True)
 
     def _on_translation_completed(self, translation: Translation) -> None:
         """Handle translation completion."""
         self._progress_widget.finish()
-        # In real app: navigate to editor or show success
+        self.translation_created.emit(translation)
         print(f"✓ Translation created: {translation.title}")
 
     def _on_translation_failed(self, error: str) -> None:

@@ -1,13 +1,12 @@
 """Service for managing application settings and provider configurations."""
 
-import os
-import sys
 from pathlib import Path
 from threading import Lock
 
 import yaml
 
 from birkenbihl.models.settings import ProviderConfig, Settings
+from birkenbihl.services import path_service as ps
 from birkenbihl.storage.settings_storage import SettingsStorageProvider
 
 
@@ -19,7 +18,7 @@ class SettingsService:
     Thread-safe operations ensure consistent configuration access.
     """
 
-    def __init__(self, db_path: Path | None = None):
+    def __init__(self, file_path: Path):
         """Initialize SettingsService with empty state.
 
         Call load_settings() to load configuration from file or database.
@@ -30,36 +29,7 @@ class SettingsService:
         self._settings: Settings | None = None
         self._storage: SettingsStorageProvider | None = None
         self._lock = Lock()
-        self._db_path = db_path if db_path else self._get_config_root_path() / "birkenbihl.db"
-
-    @staticmethod
-    def _ensure_exists(path: Path) -> Path:
-        if path.exists():
-            return path
-        dir_path = path
-        if path.is_file():
-            dir_path = path.parent
-        if not dir_path.exists():
-            dir_path.mkdir()
-        return path
-
-    @staticmethod
-    def _get_config_root_path() -> Path:
-        birkenbihl_path = None
-        if sys.platform == "win32":
-            env_value = os.getenv("APPDATA", os.environ["USERPROFILE"])
-            birkenbihl_path = Path(env_value) / "birkenbihl"
-        elif sys.platform == "linux":
-            birkenbihl_path = Path.home() / ".birkenbihl"
-        else:
-            raise NotImplementedError(f"Platform not supported {sys.plattform}")
-        return SettingsService._ensure_exists(birkenbihl_path)
-
-    @staticmethod
-    def _get_setting_path(file_path_or_name: str | Path) -> Path:
-        if isinstance(file_path_or_name, str):
-            return SettingsService._get_config_root_path() / file_path_or_name
-        return file_path_or_name
+        self._file_path = file_path if file_path else ps.get_setting_path()
 
     def get_settings(self) -> Settings:
         """Get current settings.
@@ -74,14 +44,13 @@ class SettingsService:
             raise RuntimeError("Settings not loaded. Call load_settings() first.")
         return self._settings
 
-    def load_settings(self, settings_file: str | Path = "settings.yaml", use_database: bool = False) -> Settings:
+    def load_settings(self, use_database: bool = False) -> Settings:
         """Load settings from specified settings file or database.
 
         Replaces current settings with newly loaded configuration.
         Thread-safe operation ensures consistency during concurrent access.
 
         Args:
-            settings_file: Path to settings file (defaults to settings.yaml in current directory)
             use_database: If True, load from database instead of YAML file
 
         Returns:
@@ -90,11 +59,10 @@ class SettingsService:
         with self._lock:
             if use_database:
                 if self._storage is None:
-                    self._storage = SettingsStorageProvider(self._db_path)
+                    self._storage = SettingsStorageProvider(self._file_path)
                 self._settings = self._storage.load()
             else:
-                settings_path = self._get_setting_path(settings_file)
-                self._settings = self._load_settings_from_file(settings_path)
+                self._settings = self._load_settings_from_file()
         return self._settings
 
     @staticmethod
@@ -210,14 +178,13 @@ class SettingsService:
         if was_default and self._settings.providers:
             self._settings.providers[0].is_default = True
 
-    def save_settings(self, settings_file: str | Path = "settings.yaml", use_database: bool = False) -> None:
+    def save_settings(self, use_database: bool = False) -> None:
         """Save settings to specified settings file or database.
 
         Persists current settings to file or database.
         Thread-safe operation prevents race conditions during save.
 
         Args:
-            settings_file: Path to settings file (defaults to settings.yaml in current directory)
             use_database: If True, save to database instead of YAML file
 
         Raises:
@@ -236,10 +203,10 @@ class SettingsService:
         with self._lock:
             if use_database:
                 if self._storage is None:
-                    self._storage = SettingsStorageProvider(self._db_path)
+                    self._storage = SettingsStorageProvider(self._file_path)
                 self._storage.save(self._settings)
             else:
-                self._save_settings_to_file(self._settings, settings_file)
+                self._save_settings_to_file()
 
     def get_default_provider(self) -> ProviderConfig | None:
         """Get default provider configuration.
@@ -256,8 +223,7 @@ class SettingsService:
         """
         return self.get_settings().get_default_provider()
 
-    @staticmethod
-    def _load_settings_from_file(settings_path: str | Path) -> Settings:
+    def _load_settings_from_file(self) -> Settings:
         """Load settings from specified YAML file.
 
         Reads YAML configuration file and constructs Settings instance.
@@ -269,11 +235,10 @@ class SettingsService:
         Returns:
             Settings instance populated from YAML or defaults
         """
-        config_path = Path(settings_path)
-        if not config_path.exists():
+        if not self._file_path.exists():
             return Settings()
 
-        with config_path.open("r") as file:
+        with self._file_path.open("r") as file:
             data = yaml.safe_load(file) or {}
 
         providers_data = data.get("providers", [])
@@ -282,8 +247,7 @@ class SettingsService:
 
         return Settings(providers=providers, target_language=target_language)
 
-    @staticmethod
-    def _save_settings_to_file(settings: Settings, settings_file: str | Path) -> None:
+    def _save_settings_to_file(self) -> None:
         """Save settings to specified YAML file.
 
         Converts Settings instance to dictionary and writes to YAML file.
@@ -292,11 +256,16 @@ class SettingsService:
         Args:
             settings: Settings instance to persist
             settings_file: Path to YAML settings file
+
+        Raises:
+            RuntimeError: If settings not loaded yet
         """
-        config_path = Path(settings_file)
-        config_path.parent.mkdir(parents=True, exist_ok=True)
+        if self._settings is None:
+            raise RuntimeError("No settings are available")
 
-        data = settings.model_dump()
+        if not self._file_path.parent.exists():
+            self._file_path.parent.mkdir(parents=True, exist_ok=True)
 
-        with config_path.open("w") as file:
+        data = self._settings.model_dump()
+        with self._file_path.open("w") as file:
             yaml.safe_dump(data, file, default_flow_style=False, sort_keys=False)

@@ -9,6 +9,7 @@ from pathlib import Path
 
 from birkenbihl.models.settings import ProviderConfig
 from birkenbihl.providers import PydanticAITranslator
+from birkenbihl.services import path_service as ps
 from birkenbihl.services.settings_service import SettingsService
 from birkenbihl.services.translation_service import TranslationService
 from birkenbihl.storage import JsonStorageProvider
@@ -31,7 +32,7 @@ def get_translator(provider: ProviderConfig | None = None, settings_service: Set
     """
     if provider is None:
         if settings_service is None:
-            settings_service = SettingsService()
+            settings_service = SettingsService(ps.get_setting_path())
             settings_service.load_settings()
         provider = settings_service.get_default_provider()
 
@@ -41,7 +42,9 @@ def get_translator(provider: ProviderConfig | None = None, settings_service: Set
     return PydanticAITranslator(provider)
 
 
-def get_service(storage_path: Path | None = None, settings_service: SettingsService | None = None) -> TranslationService:
+def get_service(
+    storage_path: Path | None = None, settings_service: SettingsService | None = None
+) -> TranslationService:
     """Create translation service with configured providers.
 
     Uses SettingsService for provider configuration.
@@ -54,7 +57,7 @@ def get_service(storage_path: Path | None = None, settings_service: SettingsServ
         Configured TranslationService instance
     """
     if settings_service is None:
-        settings_service = SettingsService()
+        settings_service = SettingsService(ps.get_setting_path())
         settings_service.load_settings()
     translator = get_translator(settings_service=settings_service)
     storage = JsonStorageProvider(storage_path)

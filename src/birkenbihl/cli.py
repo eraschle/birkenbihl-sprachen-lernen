@@ -11,6 +11,7 @@ from rich.table import Table
 from birkenbihl.app import get_translator
 from birkenbihl.models.translation import Translation
 from birkenbihl.services import language_service as ls
+from birkenbihl.services import path_service as ps
 from birkenbihl.services.settings_service import SettingsService
 
 console = Console()
@@ -100,7 +101,7 @@ def translate(
     """
     try:
         # Load settings
-        settings_service = SettingsService()
+        settings_service = SettingsService(ps.get_setting_path())
         settings_service.load_settings()
         settings = settings_service.get_settings()
 
@@ -122,9 +123,10 @@ def translate(
                 raise click.Abort()
 
         with console.status("[bold green]Translating...", spinner="dots"):
-            translator = get_translator(selected_provider)
-            from birkenbihl.storage import JsonStorageProvider
             from birkenbihl.services.translation_service import TranslationService
+            from birkenbihl.storage import JsonStorageProvider
+
+            translator = get_translator(selected_provider)
             storage_provider = JsonStorageProvider(storage)
             service = TranslationService(translator, storage_provider)
 
@@ -152,8 +154,9 @@ def translate(
 def list(storage: Path | None):
     """List all saved translations."""
     try:
-        from birkenbihl.storage import JsonStorageProvider
         from birkenbihl.services.translation_service import TranslationService
+        from birkenbihl.storage import JsonStorageProvider
+
         storage_provider = JsonStorageProvider(storage)
         service = TranslationService(None, storage_provider)
         translations = service.list_all_translations()
@@ -201,8 +204,9 @@ def show(translation_id: str, storage: Path | None):
     TRANSLATION_ID can be the full UUID or just the first 8 characters.
     """
     try:
-        from birkenbihl.storage import JsonStorageProvider
         from birkenbihl.services.translation_service import TranslationService
+        from birkenbihl.storage import JsonStorageProvider
+
         storage_provider = JsonStorageProvider(storage)
         service = TranslationService(None, storage_provider)
 
@@ -254,8 +258,9 @@ def delete(translation_id: str, storage: Path | None):
     TRANSLATION_ID can be the full UUID or just the first 8 characters.
     """
     try:
-        from birkenbihl.storage import JsonStorageProvider
         from birkenbihl.services.translation_service import TranslationService
+        from birkenbihl.storage import JsonStorageProvider
+
         storage_provider = JsonStorageProvider(storage)
         service = TranslationService(None, storage_provider)
 

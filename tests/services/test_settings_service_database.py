@@ -51,7 +51,7 @@ class TestSettingsServiceDatabaseIntegration:
 
     def test_save_to_database(self, temp_db: Path, sample_settings: Settings) -> None:
         """Test saving settings to database via service."""
-        service = SettingsService(db_path=temp_db)
+        service = SettingsService(file_path=temp_db)
 
         # Load sample settings by adding providers
         service.load_settings()  # Load defaults
@@ -76,7 +76,7 @@ class TestSettingsServiceDatabaseIntegration:
         storage.save(sample_settings)
 
         # Load settings via service
-        service = SettingsService(db_path=temp_db)
+        service = SettingsService(file_path=temp_db)
         loaded = service.load_settings(use_database=True)
 
         assert loaded.target_language == "de"
@@ -85,14 +85,14 @@ class TestSettingsServiceDatabaseIntegration:
 
     def test_load_from_empty_database_raises_error(self, temp_db: Path) -> None:
         """Test loading from empty database raises NotFoundError."""
-        service = SettingsService(db_path=temp_db)
+        service = SettingsService(file_path=temp_db)
 
         with pytest.raises(NotFoundError):
             service.load_settings(use_database=True)
 
     def test_save_and_load_roundtrip(self, temp_db: Path, sample_settings: Settings) -> None:
         """Test full roundtrip: save to database and load back."""
-        service1 = SettingsService(db_path=temp_db)
+        service1 = SettingsService(file_path=temp_db)
 
         # Load and configure settings
         service1.load_settings()
@@ -104,7 +104,7 @@ class TestSettingsServiceDatabaseIntegration:
         service1.save_settings(use_database=True)
 
         # Load settings back with new service instance
-        service2 = SettingsService(db_path=temp_db)
+        service2 = SettingsService(file_path=temp_db)
         loaded = service2.load_settings(use_database=True)
 
         assert loaded.target_language == sample_settings.target_language
@@ -114,7 +114,7 @@ class TestSettingsServiceDatabaseIntegration:
 
     def test_update_settings_in_database(self, temp_db: Path, sample_settings: Settings) -> None:
         """Test updating settings in database."""
-        service = SettingsService(db_path=temp_db)
+        service = SettingsService(file_path=temp_db)
 
         # Load and save initial settings
         service.load_settings()
@@ -124,7 +124,7 @@ class TestSettingsServiceDatabaseIntegration:
         service.save_settings(use_database=True)
 
         # Update settings
-        service2 = SettingsService(db_path=temp_db)
+        service2 = SettingsService(file_path=temp_db)
         service2.load_settings()
         service2.add_provider(
             ProviderConfig(
@@ -139,7 +139,7 @@ class TestSettingsServiceDatabaseIntegration:
         service2.save_settings(use_database=True)
 
         # Load and verify
-        service3 = SettingsService(db_path=temp_db)
+        service3 = SettingsService(file_path=temp_db)
         loaded = service3.load_settings(use_database=True)
 
         assert loaded.target_language == "es"
@@ -148,7 +148,7 @@ class TestSettingsServiceDatabaseIntegration:
 
     def test_validate_provider_before_database_save(self, temp_db: Path) -> None:
         """Test that provider validation occurs before database save."""
-        service = SettingsService(db_path=temp_db)
+        service = SettingsService(file_path=temp_db)
         service.load_settings()
 
         # Add invalid provider (unsupported type)
@@ -172,7 +172,7 @@ class TestSettingsServiceDatabaseIntegration:
 
     def test_database_persistence_across_service_resets(self, temp_db: Path, sample_settings: Settings) -> None:
         """Test that database persists settings across service resets."""
-        service1 = SettingsService(db_path=temp_db)
+        service1 = SettingsService(file_path=temp_db)
 
         # Save settings
         service1.load_settings()
@@ -182,7 +182,7 @@ class TestSettingsServiceDatabaseIntegration:
         service1.save_settings(use_database=True)
 
         # Create new service instance
-        service2 = SettingsService(db_path=temp_db)
+        service2 = SettingsService(file_path=temp_db)
 
         # Load settings - should still be there
         loaded = service2.load_settings(use_database=True)
@@ -195,15 +195,15 @@ class TestSettingsServiceDatabaseIntegration:
         yaml_file = tmp_path / "settings.yaml"
 
         # Save to YAML
-        service1 = SettingsService()
+        service1 = SettingsService(yaml_file)
         service1.load_settings()
         for provider in sample_settings.providers:
             service1.add_provider(provider)
         service1.get_settings().target_language = sample_settings.target_language
-        service1.save_settings(settings_file=yaml_file, use_database=False)
+        service1.save_settings(use_database=False)
 
         # Modify and save to database
-        service2 = SettingsService(db_path=temp_db)
+        service2 = SettingsService(file_path=temp_db)
         service2.load_settings()
         service2.add_provider(
             ProviderConfig(
@@ -217,13 +217,13 @@ class TestSettingsServiceDatabaseIntegration:
         service2.save_settings(use_database=True)
 
         # Load from YAML
-        service3 = SettingsService()
-        yaml_loaded = service3.load_settings(settings_file=yaml_file, use_database=False)
+        service3 = SettingsService(yaml_file)
+        yaml_loaded = service3.load_settings(use_database=False)
         assert yaml_loaded.target_language == "de"
         assert len(yaml_loaded.providers) == 2
 
         # Load from database
-        service4 = SettingsService(db_path=temp_db)
+        service4 = SettingsService(file_path=temp_db)
         db_loaded = service4.load_settings(use_database=True)
         assert db_loaded.target_language == "fr"
         assert len(db_loaded.providers) == 1

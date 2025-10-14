@@ -1,6 +1,5 @@
 """UI service layer for GUI (encapsulates storage/service initialization)."""
 
-from pathlib import Path
 from threading import Lock
 from typing import Self
 from uuid import UUID
@@ -9,6 +8,7 @@ from birkenbihl.models.languages import Language
 from birkenbihl.models.settings import ProviderConfig
 from birkenbihl.models.translation import Translation
 from birkenbihl.providers.pydantic_ai_translator import PydanticAITranslator
+from birkenbihl.services import path_service as ps
 from birkenbihl.services.translation_service import TranslationService
 from birkenbihl.storage.json_storage import JsonStorageProvider
 
@@ -40,7 +40,7 @@ class TranslationUIService:
 
     def _ensure_initialized(self) -> None:
         if self._storage is None:
-            storage_dir = Path.home() / ".birkenbihl" / "translations"
+            storage_dir = ps.get_translation_path("translations")
             self._storage = JsonStorageProvider(storage_dir)
         if self._service is None:
             self._service = TranslationService(None, self._storage)

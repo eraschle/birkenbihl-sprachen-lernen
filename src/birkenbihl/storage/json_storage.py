@@ -6,6 +6,7 @@ from uuid import UUID
 
 from birkenbihl.models import dateutils
 from birkenbihl.models.translation import Translation
+from birkenbihl.services import path_service as ps
 
 
 class JsonStorageProvider:
@@ -15,10 +16,14 @@ class JsonStorageProvider:
     Each translation is serialized using Pydantic's model_dump().
 
     Args:
-        file_path: Path to JSON storage file (default: ~/.birkenbihl/translations.json)
+        file_path: Path to JSON storage file or directory.
+                  If None, uses ~/.birkenbihl/translations.json
+                  If directory, uses directory/translations.json
 
     Example:
-        storage = JsonStorageProvider()
+        storage = JsonStorageProvider()  # Uses default path
+        storage = JsonStorageProvider("my_storage.json")  # Custom file
+        storage = JsonStorageProvider("/path/to/dir")  # Uses dir/translations.json
         storage.save(translation)
     """
 
@@ -26,11 +31,20 @@ class JsonStorageProvider:
         """Initialize JSON storage provider.
 
         Args:
-            file_path: Path to storage file. If None, uses ~/.birkenbihl/translations.json
+            file_path: Path to storage file or directory.
+                      If None, uses platform-specific default from path_service
+                      If directory, uses directory/translations.json
         """
         if file_path is None:
-            file_path = Path.home() / ".birkenbihl" / "translations.json"
-        self._file_path = Path(file_path)
+            file_path = ps.get_translation_path()
+
+        path = Path(file_path)
+
+        # If path is a directory, append default filename
+        if path.is_dir() or (not path.exists() and not path.suffix):
+            path = path / "translations.json"
+
+        self._file_path = path
         self._file_path.parent.mkdir(parents=True, exist_ok=True)
         if not self._file_path.exists():
             self._write_translations([])

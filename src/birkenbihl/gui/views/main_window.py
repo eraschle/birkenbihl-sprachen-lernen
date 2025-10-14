@@ -14,6 +14,7 @@ from birkenbihl.gui.viewmodels.settings_vm import SettingsViewModel
 from birkenbihl.gui.views.editor_view import EditorView
 from birkenbihl.gui.views.settings_view import SettingsView
 from birkenbihl.gui.views.translation_view import TranslationView
+from birkenbihl.models.translation import Translation
 from birkenbihl.services.settings_service import SettingsService
 from birkenbihl.services.translation_service import TranslationService
 
@@ -44,7 +45,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Birkenbihl Sprachtrainer")
         self._stacked_widget = QStackedWidget()  # type: ignore[reportUninitializedInstanceVariable]
         self.setCentralWidget(self._stacked_widget)
-        self._previous_view_index = -1
+        self._previous_view_index = -1  # type: ignore[reportUninitializedInstanceVariable]
         self._settings_view_index = -1  # type: ignore[reportUninitializedInstanceVariable]
         self._create_views()
         self._stacked_widget.currentChanged.connect(self._on_view_changed)
@@ -61,6 +62,7 @@ class MainWindow(QMainWindow):
         self._translation_view = TranslationView(  # type: ignore[reportUninitializedInstanceVariable]
             view_model, self._settings, self._settings_service, parent=self
         )
+        self._translation_view.translation_created.connect(self._on_translation_created)
         self._stacked_widget.addWidget(self._translation_view)
 
     def _create_editor_view(self) -> None:
@@ -80,7 +82,7 @@ class MainWindow(QMainWindow):
             self._settings_viewmodel, parent=self
         )
         self._stacked_widget.addWidget(self._settings_view)
-        self._settings_view_index = self._stacked_widget.count() - 1  # type: ignore[reportUninitializedInstanceVariable]
+        self._settings_view_index = self._stacked_widget.count() - 1
 
     def _on_view_changed(self, current_index: int) -> None:
         """Handle view change - auto-save settings when leaving settings view.
@@ -92,6 +94,17 @@ class MainWindow(QMainWindow):
             self._settings_viewmodel.save_settings()
 
         self._previous_view_index = current_index
+
+    def _on_translation_created(self, translation: Translation) -> None:
+        """Handle translation creation completion.
+
+        Navigate to editor view and load the newly created translation.
+
+        Args:
+            translation: Newly created translation
+        """
+        self._editor_view.load_translation(translation.uuid)
+        self.show_editor_view()
 
     def _create_menu_bar(self) -> None:
         """Create menu bar."""

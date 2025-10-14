@@ -3,7 +3,6 @@
 import sys
 import traceback
 import types
-from pathlib import Path
 
 from PySide6.QtWidgets import QApplication, QMessageBox
 
@@ -12,6 +11,7 @@ from birkenbihl.gui.views.main_window import MainWindow
 from birkenbihl.providers.pydantic_ai_translator import (
     PydanticAITranslator,
 )
+from birkenbihl.services import path_service as ps
 from birkenbihl.services.settings_service import SettingsService
 from birkenbihl.services.translation_service import TranslationService
 from birkenbihl.storage.json_storage import JsonStorageProvider
@@ -35,7 +35,7 @@ def create_settings_service() -> SettingsService:
     Returns:
         SettingsService instance
     """
-    return SettingsService()
+    return SettingsService(ps.get_setting_path())
 
 
 def create_translation_service(service: SettingsService) -> TranslationService:
@@ -47,14 +47,11 @@ def create_translation_service(service: SettingsService) -> TranslationService:
     Returns:
         TranslationService instance
     """
-    storage_dir = Path.home() / ".birkenbihl" / "translations"
-    storage_dir.mkdir(parents=True, exist_ok=True)
+    storage_dir = ps.get_translation_path("translations")
     storage = JsonStorageProvider(storage_dir)
-    setting_file_name = "settings.yaml"
-    if not service.load_settings(setting_file_name):
-        raise RuntimeError(f"No settings {setting_file_name} found.")
-
-    settings = service.get_settings()
+    settings = service.load_settings()
+    if not settings:
+        raise RuntimeError(f"Failed to load settings from {service._file_path}")
 
     provider = None
     if provider_config := settings.get_default_provider():

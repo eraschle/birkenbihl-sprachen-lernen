@@ -62,14 +62,14 @@ class TestSettingsWorkflowIntegration:
             yaml.safe_dump(yaml_settings, f)
 
         # Load from YAML via service
-        service1 = SettingsService(db_path=temp_db)
-        service1.load_settings(settings_file=temp_yaml, use_database=False)
+        service1 = SettingsService(file_path=temp_db)
+        service1.load_settings(use_database=False)
 
         # Migrate to database
         service1.save_settings(use_database=True)
 
         # Load from database and verify
-        service2 = SettingsService(db_path=temp_db)
+        service2 = SettingsService(file_path=temp_db)
         loaded_from_db = service2.load_settings(use_database=True)
 
         assert loaded_from_db.target_language == "de"
@@ -80,7 +80,7 @@ class TestSettingsWorkflowIntegration:
     def test_database_to_yaml_export(self, temp_db: Path, temp_yaml: Path) -> None:
         """Test exporting settings from database to YAML."""
         # Create settings in database
-        service1 = SettingsService(db_path=temp_db)
+        service1 = SettingsService(file_path=temp_db)
         service1.load_settings()
         service1.add_provider(
             ProviderConfig(
@@ -95,11 +95,11 @@ class TestSettingsWorkflowIntegration:
         service1.save_settings(use_database=True)
 
         # Load from database
-        service2 = SettingsService(db_path=temp_db)
+        service2 = SettingsService(file_path=temp_db)
         service2.load_settings(use_database=True)
 
         # Export to YAML
-        service2.save_settings(settings_file=temp_yaml, use_database=False)
+        service2.save_settings(use_database=False)
 
         # Verify YAML file contents
         with temp_yaml.open("r") as f:
@@ -112,7 +112,7 @@ class TestSettingsWorkflowIntegration:
     def test_complete_user_workflow_add_provider(self, temp_db: Path) -> None:
         """Test complete workflow: load settings, add provider, save back."""
         # Initial settings
-        service1 = SettingsService(db_path=temp_db)
+        service1 = SettingsService(file_path=temp_db)
         service1.load_settings()
         service1.add_provider(
             ProviderConfig(
@@ -126,7 +126,7 @@ class TestSettingsWorkflowIntegration:
         service1.save_settings(use_database=True)
 
         # Load settings
-        service2 = SettingsService(db_path=temp_db)
+        service2 = SettingsService(file_path=temp_db)
         service2.load_settings(use_database=True)
 
         # Add new provider
@@ -143,7 +143,7 @@ class TestSettingsWorkflowIntegration:
         service2.save_settings(use_database=True)
 
         # Verify changes
-        service3 = SettingsService(db_path=temp_db)
+        service3 = SettingsService(file_path=temp_db)
         final = service3.load_settings(use_database=True)
 
         assert len(final.providers) == 2
@@ -153,7 +153,7 @@ class TestSettingsWorkflowIntegration:
     def test_complete_user_workflow_change_default_provider(self, temp_db: Path) -> None:
         """Test workflow: change default provider."""
         # Initial settings with two providers
-        service1 = SettingsService(db_path=temp_db)
+        service1 = SettingsService(file_path=temp_db)
         service1.load_settings()
         service1.add_provider(
             ProviderConfig(
@@ -176,7 +176,7 @@ class TestSettingsWorkflowIntegration:
         service1.save_settings(use_database=True)
 
         # Change default to Provider B
-        service2 = SettingsService(db_path=temp_db)
+        service2 = SettingsService(file_path=temp_db)
         service2.load_settings(use_database=True)
 
         # Update provider at index 1 to be default
@@ -191,7 +191,7 @@ class TestSettingsWorkflowIntegration:
         service2.save_settings(use_database=True)
 
         # Verify default provider changed
-        service3 = SettingsService(db_path=temp_db)
+        service3 = SettingsService(file_path=temp_db)
         final = service3.load_settings(use_database=True)
 
         assert final.providers[0].is_default is False
@@ -205,7 +205,7 @@ class TestSettingsWorkflowIntegration:
     def test_complete_user_workflow_remove_provider(self, temp_db: Path) -> None:
         """Test workflow: remove a provider."""
         # Initial settings with three providers
-        service1 = SettingsService(db_path=temp_db)
+        service1 = SettingsService(file_path=temp_db)
         service1.load_settings()
         service1.add_provider(ProviderConfig(name="Provider 1", provider_type="openai", model="gpt-4o", api_key="key1"))
         service1.add_provider(
@@ -215,7 +215,7 @@ class TestSettingsWorkflowIntegration:
         service1.save_settings(use_database=True)
 
         # Remove Provider 2
-        service2 = SettingsService(db_path=temp_db)
+        service2 = SettingsService(file_path=temp_db)
         service2.load_settings(use_database=True)
 
         # Find and delete Provider 2
@@ -223,7 +223,7 @@ class TestSettingsWorkflowIntegration:
         service2.save_settings(use_database=True)
 
         # Verify provider removed
-        service3 = SettingsService(db_path=temp_db)
+        service3 = SettingsService(file_path=temp_db)
         final = service3.load_settings(use_database=True)
 
         assert len(final.providers) == 2
@@ -233,7 +233,7 @@ class TestSettingsWorkflowIntegration:
     def test_complete_user_workflow_change_language(self, temp_db: Path) -> None:
         """Test workflow: change target language."""
         # Initial settings
-        service1 = SettingsService(db_path=temp_db)
+        service1 = SettingsService(file_path=temp_db)
         service1.load_settings()
         service1.add_provider(
             ProviderConfig(
@@ -246,14 +246,14 @@ class TestSettingsWorkflowIntegration:
         service1.save_settings(use_database=True)
 
         # Change language to Spanish
-        service2 = SettingsService(db_path=temp_db)
+        service2 = SettingsService(file_path=temp_db)
         loaded = service2.load_settings(use_database=True)
 
         loaded.target_language = "es"
         service2.save_settings(use_database=True)
 
         # Verify language changed
-        service3 = SettingsService(db_path=temp_db)
+        service3 = SettingsService(file_path=temp_db)
         final = service3.load_settings(use_database=True)
 
         assert final.target_language == "es"
@@ -262,7 +262,7 @@ class TestSettingsWorkflowIntegration:
     def test_complete_user_workflow_update_api_key(self, temp_db: Path) -> None:
         """Test workflow: update API key for a provider."""
         # Initial settings
-        service1 = SettingsService(db_path=temp_db)
+        service1 = SettingsService(file_path=temp_db)
         service1.load_settings()
         service1.add_provider(
             ProviderConfig(
@@ -276,7 +276,7 @@ class TestSettingsWorkflowIntegration:
         service1.save_settings(use_database=True)
 
         # Update API key
-        service2 = SettingsService(db_path=temp_db)
+        service2 = SettingsService(file_path=temp_db)
         loaded = service2.load_settings(use_database=True)
 
         updated_provider = ProviderConfig(
@@ -292,7 +292,7 @@ class TestSettingsWorkflowIntegration:
         service2.save_settings(use_database=True)
 
         # Verify API key updated
-        service3 = SettingsService(db_path=temp_db)
+        service3 = SettingsService(file_path=temp_db)
         final = service3.load_settings(use_database=True)
 
         assert final.providers[0].api_key == "new-key"
@@ -300,12 +300,12 @@ class TestSettingsWorkflowIntegration:
     def test_multi_step_configuration_workflow(self, temp_db: Path) -> None:
         """Test multi-step configuration workflow."""
         # Step 1: Initialize with basic settings
-        service1 = SettingsService(db_path=temp_db)
+        service1 = SettingsService(file_path=temp_db)
         service1.load_settings()  # Defaults (no providers)
         service1.save_settings(use_database=True)
 
         # Step 2: Add first provider
-        service2 = SettingsService(db_path=temp_db)
+        service2 = SettingsService(file_path=temp_db)
         service2.load_settings(use_database=True)
         service2.add_provider(
             ProviderConfig(
@@ -319,7 +319,7 @@ class TestSettingsWorkflowIntegration:
         service2.save_settings(use_database=True)
 
         # Step 3: Add second provider
-        service3 = SettingsService(db_path=temp_db)
+        service3 = SettingsService(file_path=temp_db)
         service3.load_settings(use_database=True)
         service3.add_provider(
             ProviderConfig(
@@ -332,13 +332,13 @@ class TestSettingsWorkflowIntegration:
         service3.save_settings(use_database=True)
 
         # Step 4: Change target language
-        service4 = SettingsService(db_path=temp_db)
+        service4 = SettingsService(file_path=temp_db)
         loaded3 = service4.load_settings(use_database=True)
         loaded3.target_language = "es"
         service4.save_settings(use_database=True)
 
         # Verify final state
-        service5 = SettingsService(db_path=temp_db)
+        service5 = SettingsService(file_path=temp_db)
         final = service5.load_settings(use_database=True)
 
         assert final.target_language == "es"
@@ -349,7 +349,7 @@ class TestSettingsWorkflowIntegration:
     def test_settings_persistence_across_sessions(self, temp_db: Path) -> None:
         """Test that settings persist across different 'sessions'."""
         # Session 1: Create and save settings
-        service1 = SettingsService(db_path=temp_db)
+        service1 = SettingsService(file_path=temp_db)
         service1.load_settings()
         service1.add_provider(
             ProviderConfig(
@@ -363,7 +363,7 @@ class TestSettingsWorkflowIntegration:
         service1.save_settings(use_database=True)
 
         # Session 2: Load settings (simulate new session with new service instance)
-        service2 = SettingsService(db_path=temp_db)
+        service2 = SettingsService(file_path=temp_db)
         loaded = service2.load_settings(use_database=True)
 
         assert loaded.target_language == "de"
@@ -373,7 +373,7 @@ class TestSettingsWorkflowIntegration:
     def test_error_recovery_workflow(self, temp_db: Path) -> None:
         """Test recovery from errors during workflow."""
         # Save valid settings
-        service1 = SettingsService(db_path=temp_db)
+        service1 = SettingsService(file_path=temp_db)
         service1.load_settings()
         service1.add_provider(
             ProviderConfig(
@@ -386,7 +386,7 @@ class TestSettingsWorkflowIntegration:
         service1.save_settings(use_database=True)
 
         # Attempt to save invalid settings (should fail validation)
-        service2 = SettingsService(db_path=temp_db)
+        service2 = SettingsService(file_path=temp_db)
         service2.load_settings()
         service2.add_provider(
             ProviderConfig(
@@ -401,7 +401,7 @@ class TestSettingsWorkflowIntegration:
             service2.save_settings(use_database=True)
 
         # Verify original settings still intact
-        service3 = SettingsService(db_path=temp_db)
+        service3 = SettingsService(file_path=temp_db)
         recovered = service3.load_settings(use_database=True)
 
         assert recovered.target_language == "de"

@@ -39,6 +39,7 @@ class ProgressWidget(QWidget):
         self._progress_bar = QProgressBar()  # type: ignore[reportUninitializedInstanceVariable]
         self._progress_bar.setRange(0, 100)
         self._progress_bar.setValue(0)
+        self._is_indeterminate = False  # type: ignore[reportUninitializedInstanceVariable]
 
         button_layout = QHBoxLayout()
         button_layout.addStretch()
@@ -70,19 +71,31 @@ class ProgressWidget(QWidget):
         """
         self._message_label.setText(message)
 
-    def start(self, message: str = "Übersetzen...") -> None:
+    def start(self, message: str = "Übersetzen...", indeterminate: bool = False) -> None:
         """Start progress display.
 
         Args:
             message: Initial message
+            indeterminate: If True, show busy indicator instead of progress bar
         """
         self.set_message(message)
-        self.set_progress(0.0)
+        if indeterminate:
+            self._progress_bar.setRange(0, 0)
+            self._is_indeterminate = True
+        else:
+            self._progress_bar.setRange(0, 100)
+            self._progress_bar.setValue(0)
+            self._is_indeterminate = False
         self.show()
 
     def finish(self) -> None:
         """Finish progress and hide widget."""
-        self.set_progress(1.0)
+        if not self._is_indeterminate:
+            self.set_progress(1.0)
+        else:
+            self._progress_bar.setRange(0, 100)
+            self._progress_bar.setValue(100)
+            self._is_indeterminate = False
         self.hide()
 
     def _on_cancel_clicked(self) -> None:

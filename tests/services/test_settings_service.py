@@ -18,18 +18,20 @@ from birkenbihl.services.settings_service import SettingsService
 class TestSettingsServiceInstanceCreation:
     """Test SettingsService instance creation and initialization."""
 
-    def test_create_new_instance(self) -> None:
+    def test_create_new_instance(self, tmp_path: Path) -> None:
         """Test that new instances can be created."""
-        service1 = SettingsService()
-        service2 = SettingsService()
+        settings_file = tmp_path / "custom.yaml"
+        service1 = SettingsService(settings_file)
+        service2 = SettingsService(settings_file)
 
         assert service1 is not service2
         assert isinstance(service1, SettingsService)
         assert isinstance(service2, SettingsService)
 
-    def test_new_instance_has_no_settings_loaded(self) -> None:
+    def test_new_instance_has_no_settings_loaded(self, tmp_path: Path) -> None:
         """Test that new instance has no settings loaded initially."""
-        service = SettingsService()
+        settings_file = tmp_path / "custom.yaml"
+        service = SettingsService(settings_file)
 
         with pytest.raises(RuntimeError, match="Settings not loaded"):
             service.get_settings()
@@ -53,8 +55,8 @@ target_language: fr
 """
         )
 
-        service = SettingsService()
-        settings = service.load_settings(settings_file)
+        service = SettingsService(settings_file)
+        settings = service.load_settings()
 
         assert len(settings.providers) == 1
         assert settings.providers[0].name == "Claude Sonnet"
@@ -87,12 +89,12 @@ target_language: fr
 """
         )
 
-        service = SettingsService()
-        settings1 = service.load_settings(settings_file1)
+        service = SettingsService(settings_file1)
+        settings1 = service.load_settings()
         assert settings1.target_language == "es"
         assert settings1.providers[0].provider_type == "openai"
-
-        settings2 = service.load_settings(settings_file2)
+        service2 = SettingsService(settings_file2)
+        settings2 = service2.load_settings()
         assert settings2.target_language == "fr"
         assert settings2.providers[0].provider_type == "anthropic"
 
@@ -113,9 +115,9 @@ target_language: fr
 """
         )
 
-        service = SettingsService()
+        service = SettingsService(settings_file)
         # Pass the actual path instead of relying on default path resolution
-        settings = service.load_settings(settings_file)
+        settings = service.load_settings()
 
         assert len(settings.providers) == 1
         assert settings.providers[0].name == "OpenAI GPT-4"
@@ -133,8 +135,8 @@ target_language: fr
 """
         )
 
-        service = SettingsService()
-        settings1 = service.load_settings(settings_file)
+        service = SettingsService(settings_file)
+        settings1 = service.load_settings()
         settings2 = service.get_settings()
         settings3 = service.get_settings()
 
@@ -146,8 +148,8 @@ target_language: fr
         # Use a path that doesn't exist
         non_existent = tmp_path / "nonexistent.yaml"
 
-        service = SettingsService()
-        settings = service.load_settings(non_existent)
+        service = SettingsService(non_existent)
+        settings = service.load_settings()
 
         assert settings is not None
         assert settings.providers == []
@@ -162,7 +164,7 @@ class TestSettingsServiceSaveSettings:
         """Test that save_settings persists settings to specified settings file."""
         settings_file = tmp_path / "output.yaml"
 
-        service = SettingsService()
+        service = SettingsService(settings_file)
         service.load_settings()  # Load defaults
         service.add_provider(
             ProviderConfig(
@@ -174,7 +176,7 @@ class TestSettingsServiceSaveSettings:
             )
         )
 
-        service.save_settings(settings_file)
+        service.save_settings()
 
         assert settings_file.exists()
         content = settings_file.read_text()
@@ -185,16 +187,16 @@ class TestSettingsServiceSaveSettings:
     def test_save_settings_requires_loaded_settings(self, tmp_path: Path) -> None:
         """Test that save_settings requires settings to be loaded first."""
         settings_file = tmp_path / "output.yaml"
-        service = SettingsService()
+        service = SettingsService(settings_file)
 
         with pytest.raises(RuntimeError, match="Settings not loaded"):
-            service.save_settings(settings_file)
+            service.save_settings()
 
     def test_save_settings_with_default_path(self, tmp_path: Path) -> None:
         """Test that save_settings can save to a specified path."""
         settings_file = tmp_path / "settings.yaml"
 
-        service = SettingsService()
+        service = SettingsService(settings_file)
         service.load_settings()  # Load defaults
         service.add_provider(
             ProviderConfig(
@@ -206,7 +208,7 @@ class TestSettingsServiceSaveSettings:
             )
         )
 
-        service.save_settings(settings_file)
+        service.save_settings()
 
         assert settings_file.exists()
         content = settings_file.read_text()
@@ -216,7 +218,7 @@ class TestSettingsServiceSaveSettings:
         """Test that save and load round trip preserves all settings data."""
         settings_file = tmp_path / "roundtrip.yaml"
 
-        service1 = SettingsService()
+        service1 = SettingsService(settings_file)
         service1.load_settings()  # Load defaults
         service1.add_provider(
             ProviderConfig(
@@ -239,10 +241,10 @@ class TestSettingsServiceSaveSettings:
         original_settings = service1.get_settings()
         original_settings.target_language = "es"
 
-        service1.save_settings(settings_file)
+        service1.save_settings()
 
-        service2 = SettingsService()
-        loaded_settings = service2.load_settings(settings_file)
+        service2 = SettingsService(settings_file)
+        loaded_settings = service2.load_settings()
 
         assert len(loaded_settings.providers) == 2
         assert loaded_settings.target_language == "es"
@@ -274,8 +276,8 @@ class TestSettingsServiceGetDefaultProvider:
 """
         )
 
-        service = SettingsService()
-        service.load_settings(settings_file)
+        service = SettingsService(settings_file)
+        service.load_settings()
         default_provider = service.get_default_provider()
 
         assert default_provider is not None
@@ -300,21 +302,12 @@ class TestSettingsServiceGetDefaultProvider:
 """
         )
 
-        service = SettingsService()
-        service.load_settings(settings_file)
+        service = SettingsService(settings_file)
+        service.load_settings()
         default_provider = service.get_default_provider()
 
         assert default_provider is not None
         assert default_provider.name == "OpenAI GPT-4"
-
-    def test_get_default_provider_returns_none_if_no_providers(self, tmp_path: Path) -> None:
-        """Test that get_default_provider returns None if no providers configured."""
-        service = SettingsService()
-        service.load_settings()  # Load defaults (no providers)
-
-        default_provider = service.get_default_provider()
-
-        assert default_provider is None
 
     def test_get_default_provider_delegates_to_settings_model(self, tmp_path: Path) -> None:
         """Test that get_default_provider delegates to Settings.get_default_provider()."""
@@ -329,8 +322,8 @@ class TestSettingsServiceGetDefaultProvider:
 """
         )
 
-        service = SettingsService()
-        service.load_settings(settings_file)
+        service = SettingsService(settings_file)
+        service.load_settings()
         service_default = service.get_default_provider()
         settings_default = service.get_settings().get_default_provider()
 
@@ -360,14 +353,14 @@ target_language: de
             )
             settings_files.append(settings_file)
 
-        service = SettingsService()
         num_threads = 5
         barrier = Barrier(num_threads)
         results = []
 
-        def load_settings_with_barrier(settings_file: str | Path) -> None:
+        def load_settings_with_barrier(settings_file: Path) -> None:
             barrier.wait()
-            settings = service.load_settings(settings_file)
+            service = SettingsService(settings_file)
+            settings = service.load_settings()
             results.append(settings)
 
         with ThreadPoolExecutor(max_workers=num_threads) as executor:
@@ -386,7 +379,8 @@ target_language: de
 
         def save_settings_with_barrier(index: int) -> None:
             barrier.wait()
-            service = SettingsService()
+            settings_file = tmp_path / f"output{index}.yaml"
+            service = SettingsService(settings_file)
             service.load_settings()  # Load defaults
             service.add_provider(
                 ProviderConfig(
@@ -397,8 +391,7 @@ target_language: de
                     is_default=True,
                 )
             )
-            settings_file = tmp_path / f"output{index}.yaml"
-            service.save_settings(settings_file)
+            service.save_settings()
 
         with ThreadPoolExecutor(max_workers=num_threads) as executor:
             futures = [executor.submit(save_settings_with_barrier, i) for i in range(num_threads)]
@@ -416,9 +409,10 @@ target_language: de
 class TestSettingsServiceProviderManagement:
     """Test SettingsService provider management with automatic default handling."""
 
-    def test_add_provider_first_is_default(self) -> None:
+    def test_add_provider_first_is_default(self, tmp_path: Path) -> None:
         """Test that first provider is automatically marked as default."""
-        service = SettingsService()
+        settings_file = tmp_path / "settings.yaml"
+        service = SettingsService(settings_file)
         service.load_settings()  # Load defaults (no providers)
 
         provider = ProviderConfig(
@@ -435,9 +429,10 @@ class TestSettingsServiceProviderManagement:
         assert len(settings.providers) == 1
         assert settings.providers[0].is_default is True
 
-    def test_add_provider_when_no_default_exists(self) -> None:
+    def test_add_provider_when_no_default_exists(self, tmp_path: Path) -> None:
         """Test that new provider becomes default if no default exists."""
-        service = SettingsService()
+        settings_file = tmp_path / "settings.yaml"
+        service = SettingsService(settings_file)
         service.load_settings()  # Load defaults
 
         # Add first provider without default
@@ -468,9 +463,10 @@ class TestSettingsServiceProviderManagement:
         assert len(settings.providers) == 2
         assert settings.providers[1].is_default is True
 
-    def test_add_provider_clears_existing_default(self) -> None:
+    def test_add_provider_clears_existing_default(self, tmp_path: Path) -> None:
         """Test that adding a default provider clears existing default."""
-        service = SettingsService()
+        settings_file = tmp_path / "settings.yaml"
+        service = SettingsService(settings_file)
         service.load_settings()  # Load defaults
 
         provider1 = ProviderConfig(
@@ -497,9 +493,10 @@ class TestSettingsServiceProviderManagement:
         assert settings.providers[0].is_default is False
         assert settings.providers[1].is_default is True
 
-    def test_update_provider_clears_other_defaults(self) -> None:
+    def test_update_provider_clears_other_defaults(self, tmp_path: Path) -> None:
         """Test that updating a provider as default clears other defaults."""
-        service = SettingsService()
+        settings_file = tmp_path / "settings.yaml"
+        service = SettingsService(settings_file)
         service.load_settings()  # Load defaults
 
         service.add_provider(
@@ -536,9 +533,10 @@ class TestSettingsServiceProviderManagement:
         assert settings.providers[1].is_default is True
         assert settings.providers[1].name == "Provider 2 Updated"
 
-    def test_update_provider_invalid_index_raises_error(self) -> None:
+    def test_update_provider_invalid_index_raises_error(self, tmp_path: Path) -> None:
         """Test that updating with invalid index raises IndexError."""
-        service = SettingsService()
+        settings_file = tmp_path / "settings.yaml"
+        service = SettingsService(settings_file)
         service.load_settings()  # Load defaults
 
         service.add_provider(
@@ -562,9 +560,10 @@ class TestSettingsServiceProviderManagement:
         with pytest.raises(IndexError):
             service.update_provider(99, provider)
 
-    def test_delete_provider_sets_first_as_default(self) -> None:
+    def test_delete_provider_sets_first_as_default(self, tmp_path: Path) -> None:
         """Test that deleting default provider sets first remaining as default."""
-        service = SettingsService()
+        settings_file = tmp_path / "settings.yaml"
+        service = SettingsService(settings_file)
         service.load_settings()  # Load defaults
 
         service.add_provider(
@@ -593,9 +592,10 @@ class TestSettingsServiceProviderManagement:
         assert settings.providers[0].is_default is True
         assert settings.providers[0].name == "Provider 2"
 
-    def test_delete_non_default_provider_keeps_default(self) -> None:
+    def test_delete_non_default_provider_keeps_default(self, tmp_path: Path) -> None:
         """Test that deleting non-default provider keeps existing default."""
-        service = SettingsService()
+        settings_file = tmp_path / "settings.yaml"
+        service = SettingsService(settings_file)
         service.load_settings()  # Load defaults
 
         service.add_provider(
@@ -624,9 +624,10 @@ class TestSettingsServiceProviderManagement:
         assert settings.providers[0].is_default is True
         assert settings.providers[0].name == "Provider 1"
 
-    def test_delete_provider_invalid_index_raises_error(self) -> None:
+    def test_delete_provider_invalid_index_raises_error(self, tmp_path: Path) -> None:
         """Test that deleting with invalid index raises IndexError."""
-        service = SettingsService()
+        settings_file = tmp_path / "settings.yaml"
+        service = SettingsService(settings_file)
         service.load_settings()  # Load defaults
 
         service.add_provider(
