@@ -56,3 +56,15 @@ class ProviderSelector(QComboBox):
         """Get currently selected provider."""
         index = self.currentIndex()
         return self.itemData(index) if index >= 0 else None
+
+    def update_context(self, context: ProviderSelectorContext) -> None:
+        """Update provider list with new context.
+
+        Args:
+            context: New provider selector context with updated providers
+        """
+        self._providers = context.providers
+        self.clear()
+        self._populate_providers()
+        self._set_default_provider(context.default_provider)
+        self.setEnabled(not context.disabled)

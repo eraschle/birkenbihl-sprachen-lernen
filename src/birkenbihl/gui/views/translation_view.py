@@ -126,6 +126,26 @@ class TranslationView(QWidget):
         self._viewmodel.translation_completed.connect(self._on_translation_completed)
         self._viewmodel.translation_failed.connect(self._on_translation_failed)
 
+    def showEvent(self, event) -> None:  # type: ignore
+        """Handle show event by reloading settings."""
+        super().showEvent(event)
+        self._reload_settings()
+
+    def _reload_settings(self) -> None:
+        """Reload settings and update UI components."""
+        from birkenbihl.services.settings_service import SettingsService
+
+        settings_service = SettingsService.get_instance()
+        updated_settings = settings_service.get_settings()
+
+        self._settings = updated_settings
+        self._target_lang_selector.set_language(self._settings.target_language)
+        self._provider_selector.update_data(self._settings.providers)
+
+        default_provider = self._settings.get_default_provider()
+        if default_provider:
+            self._viewmodel.set_provider(default_provider)
+
     def _on_title_changed(self, text: str) -> None:
         """Handle title change."""
         self._viewmodel.set_title(text)

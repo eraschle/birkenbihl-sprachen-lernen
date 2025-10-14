@@ -136,6 +136,18 @@ class EditorView(QWidget):
         self._viewmodel.sentence_updated.connect(self._on_sentence_updated)
         self._viewmodel.error_occurred.connect(self._on_error)
 
+    def showEvent(self, event) -> None:  # type: ignore
+        """Handle show event by reloading settings."""
+        super().showEvent(event)
+        self._reload_settings()
+
+    def _reload_settings(self) -> None:
+        """Reload settings and update UI components."""
+        from birkenbihl.services.settings_service import SettingsService
+
+        settings_service = SettingsService.get_instance()
+        self._settings = settings_service.get_settings()
+
     def load_translation(self, translation_id: UUID) -> None:
         """Load translation into editor.
 

@@ -118,6 +118,26 @@ class CreateTranslationView(QWidget):
         self._viewmodel.load_settings()
         self._selected_provider = self._viewmodel.selected_provider
 
+    def showEvent(self, event) -> None:  # type: ignore
+        """Handle show event by reloading settings."""
+        super().showEvent(event)
+        self._reload_settings()
+
+    def _reload_settings(self) -> None:
+        """Reload settings and update UI components."""
+        self._viewmodel.load_settings()
+        self._selected_provider = self._viewmodel.selected_provider
+        self._refresh_provider_selector()
+
+    def _refresh_provider_selector(self) -> None:
+        """Refresh provider selector with updated providers."""
+        context = ProviderSelectorContext(
+            providers=self._viewmodel.providers,
+            default_provider=self._viewmodel.selected_provider,
+            disabled=False,
+        )
+        self._provider_selector.update_context(context)
+
     def _on_translate_clicked(self) -> None:
         """Handle translate button click."""
         text = self._text_input.toPlainText()
@@ -189,4 +209,3 @@ class CreateTranslationView(QWidget):
         """Handle progress update from viewmodel."""
         self._progress_widget.update_progress(progress)
         self._progress_widget.set_message(message)
-

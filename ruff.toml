@@ -24,6 +24,9 @@ select = [
     "C416",    # Unnecessary list comprehension (list() is less readable in tests)
     "UP043",   # Unnecessary default type arguments (explicit is better in tests)
 ]
+"src/birkenbihl/gui/**/*.py" = [
+    "N802",    # Function name should be lowercase (Qt methods use camelCase)
+]
 
 [format]
 quote-style = "double"
