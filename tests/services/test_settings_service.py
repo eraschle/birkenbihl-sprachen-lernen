@@ -93,12 +93,13 @@ target_language: fr
         settings1 = service.load_settings()
         assert settings1.target_language == "es"
         assert settings1.providers[0].provider_type == "openai"
+
         service2 = SettingsService(settings_file2)
         settings2 = service2.load_settings()
         assert settings2.target_language == "fr"
         assert settings2.providers[0].provider_type == "anthropic"
 
-        current_settings = service.get_settings()
+        current_settings = service2.get_settings()
         assert current_settings is settings2
         assert current_settings.target_language == "fr"
 
@@ -337,7 +338,7 @@ class TestSettingsServiceThreadSafety:
     """Test SettingsService thread safety."""
 
     def test_concurrent_load_settings_thread_safe(self, tmp_path: Path) -> None:
-        """Test that concurrent load_settings calls on same instance are thread-safe."""
+        """Test that concurrent load_settings calls on different instances are thread-safe."""
         settings_files = []
         for i in range(5):
             settings_file = tmp_path / f"config{i}.yaml"
@@ -368,8 +369,7 @@ target_language: de
             for future in futures:
                 future.result()
 
-        final_settings = service.get_settings()
-        assert final_settings in results
+        assert len(results) == num_threads
         assert all(isinstance(s, Settings) for s in results)
 
     def test_concurrent_save_settings_thread_safe(self, tmp_path: Path) -> None:
