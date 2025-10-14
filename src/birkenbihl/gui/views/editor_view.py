@@ -45,7 +45,7 @@ class EditorView(QWidget):
             parent: Parent widget
         """
         super().__init__(parent)
-        self._viewmodel = viewmodel or TranslationEditorViewModel(None, Settings())  # type: ignore
+        self._viewmodel = viewmodel or TranslationEditorViewModel(None, Settings())  # type: ignore[reportArgumentType,reportArgumentType]
         self._settings = settings or Settings()
         self._settings_service = settings_service
         self._sentence_cards = {}

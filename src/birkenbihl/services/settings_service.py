@@ -44,19 +44,25 @@ class SettingsService:
             raise RuntimeError("Settings not loaded. Call load_settings() first.")
         return self._settings
 
-    def load_settings(self, use_database: bool = False) -> Settings:
+    def load_settings(self, use_database: bool = False, force_reload: bool = False) -> Settings:
         """Load settings from specified settings file or database.
 
-        Replaces current settings with newly loaded configuration.
+        Uses cached settings if already loaded unless force_reload=True.
         Thread-safe operation ensures consistency during concurrent access.
 
         Args:
             use_database: If True, load from database instead of YAML file
+            force_reload: If True, reload from disk even if already cached
 
         Returns:
             Loaded Settings instance
         """
         with self._lock:
+            # Return cached settings if available and not forcing reload
+            if self._settings is not None and not force_reload:
+                return self._settings
+
+            # Load from storage
             if use_database:
                 if self._storage is None:
                     self._storage = SettingsStorageProvider(self._file_path)

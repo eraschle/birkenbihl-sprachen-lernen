@@ -148,7 +148,8 @@ def test_update_natural_no_sentence_selected(
     with qtbot.waitSignal(viewmodel.error_occurred, timeout=1000) as blocker:
         viewmodel.update_natural_translation("New", provider)
 
-    assert "No sentence selected" in blocker.args[0]  # type: ignore[reportOptionalSubscript]
+    assert blocker.args
+    assert "No sentence selected" in blocker.args[0]
 
 
 def test_update_alignment_no_sentence_selected(qtbot: QtBot, viewmodel: TranslationEditorViewModel):

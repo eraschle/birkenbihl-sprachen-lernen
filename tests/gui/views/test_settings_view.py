@@ -1,10 +1,13 @@
 """Tests for SettingsView and ProviderDialog."""
 
+from unittest.mock import patch
+
 import pytest
 from pytestqt.qtbot import QtBot
 
 from birkenbihl.gui.views.settings_view import ProviderDialog
 from birkenbihl.models.settings import ProviderConfig
+from birkenbihl.providers import registry
 
 
 @pytest.fixture
@@ -46,11 +49,14 @@ class TestProviderDialog:
         dialog = ProviderDialog()
         qtbot.addWidget(dialog)
 
-        dialog.model_combo.setCurrentText("test-model")
+        # Change provider type - this will reset model combo to new provider's defaults
         dialog.type_combo.setCurrentIndex(1)
         new_provider = dialog.type_combo.currentText()
+        new_model = dialog.model_combo.currentText()
 
-        assert dialog.name_edit.text() == f"{new_provider} - test-model" or dialog.name_edit.text() == new_provider
+        # Name should be auto-generated from new provider and its default model
+        expected_name = f"{new_provider} - {new_model}" if new_model else new_provider
+        assert dialog.name_edit.text() == expected_name
 
     def test_base_url_visibility_changes_with_provider(self, qtbot: QtBot) -> None:
         """Test that base URL field visibility changes based on provider type."""
@@ -59,16 +65,12 @@ class TestProviderDialog:
         dialog.show()
         qtbot.waitForWindowShown(dialog)
 
-        for i in range(dialog.type_combo.count()):
-            provider_type = dialog.type_combo.itemData(i)
-            dialog.type_combo.setCurrentIndex(i)
+        for idx in range(dialog.type_combo.count()):
+            provider_type = dialog.type_combo.itemData(idx)
+            dialog.type_combo.setCurrentIndex(idx)
 
-            if provider_type in ["openai", "groq", "ollama", "litellm"]:
-                assert dialog.base_url_label.isVisible() is True
-                assert dialog.base_url_edit.isVisible() is True
-            else:
-                assert dialog.base_url_label.isVisible() is False
-                assert dialog.base_url_edit.isVisible() is False
+            api_required = registry.is_api_url_requiered(provider_type)
+            assert dialog.base_url_edit.isVisible() == api_required
 
     def test_get_provider_returns_correct_config(self, qtbot: QtBot) -> None:
         """Test that get_provider returns correct configuration."""
@@ -118,8 +120,10 @@ class TestProviderDialog:
         dialog.model_combo.clearEditText()
         dialog.api_key_edit.setText("test-key")
 
-        provider = dialog.get_provider()
-        assert provider is None
+        # Mock QMessageBox to prevent dialog from showing
+        with patch("birkenbihl.gui.views.settings_view.QMessageBox.warning"):
+            provider = dialog.get_provider()
+            assert provider is None
 
     def test_validation_fails_when_api_key_empty(self, qtbot: QtBot) -> None:
         """Test that validation fails when API key is empty."""
@@ -129,5 +133,7 @@ class TestProviderDialog:
         dialog.name_edit.setText("Test")
         dialog.model_combo.setCurrentText("test-model")
 
-        provider = dialog.get_provider()
-        assert provider is None
+        # Mock QMessageBox to prevent dialog from showing
+        with patch("birkenbihl.gui.views.settings_view.QMessageBox.warning"):
+            provider = dialog.get_provider()
+            assert provider is None

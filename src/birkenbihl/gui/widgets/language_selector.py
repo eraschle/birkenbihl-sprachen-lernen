@@ -65,10 +65,6 @@ class LanguageSelector(QWidget):
         """Populate combo box with languages."""
         self._combo.clear()
 
-        if self._show_auto_detect:
-            source_lang = ls.get_default_source_language()
-            self._combo.addItem(source_lang.name_de, source_lang.code)
-
         for lang in ls.get_languages(self._show_auto_detect):
             self._combo.addItem(lang.name_de, lang.code)
 

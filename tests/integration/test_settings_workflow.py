@@ -62,15 +62,17 @@ class TestSettingsWorkflowIntegration:
             yaml.safe_dump(yaml_settings, f)
 
         # Load from YAML via service
-        service1 = SettingsService(file_path=temp_db)
-        service1.load_settings(use_database=False)
+        service1 = SettingsService(file_path=temp_yaml)
+        settings = service1.load_settings(use_database=False)
 
         # Migrate to database
-        service1.save_settings(use_database=True)
+        service2 = SettingsService(file_path=temp_db)
+        service2._settings = settings  # Transfer settings to new service
+        service2.save_settings(use_database=True)
 
         # Load from database and verify
-        service2 = SettingsService(file_path=temp_db)
-        loaded_from_db = service2.load_settings(use_database=True)
+        service3 = SettingsService(file_path=temp_db)
+        loaded_from_db = service3.load_settings(use_database=True)
 
         assert loaded_from_db.target_language == "de"
         assert len(loaded_from_db.providers) == 2
@@ -96,10 +98,12 @@ class TestSettingsWorkflowIntegration:
 
         # Load from database
         service2 = SettingsService(file_path=temp_db)
-        service2.load_settings(use_database=True)
+        settings = service2.load_settings(use_database=True)
 
         # Export to YAML
-        service2.save_settings(use_database=False)
+        service3 = SettingsService(file_path=temp_yaml)
+        service3._settings = settings  # Transfer settings to new service
+        service3.save_settings(use_database=False)
 
         # Verify YAML file contents
         with temp_yaml.open("r") as f:

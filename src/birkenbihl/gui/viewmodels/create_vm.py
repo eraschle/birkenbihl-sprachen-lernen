@@ -120,15 +120,13 @@ class CreateTranslationViewModel(BaseViewModel):
     def load_settings(self) -> None:
         """Load settings from SettingsService.
 
-        Triggers settings reload and emits appropriate signals.
+        Loads settings synchronously from cache or file.
+        Does not set loading state as this is a quick cached operation.
         """
         try:
-            self._set_loading(True)
             self._settings_service.load_settings()
         except Exception as e:
             self._emit_error(f"Failed to load settings: {e}")
-        finally:
-            self._set_loading(False)
 
     def translate(self, text: str, source_lang: Language, title: str, provider: ProviderConfig) -> None:
         """Start async translation operation.

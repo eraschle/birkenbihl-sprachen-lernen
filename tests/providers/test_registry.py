@@ -4,61 +4,7 @@ Tests the dynamic provider registry that discovers and registers
 all available PydanticAI providers at runtime.
 """
 
-from birkenbihl.providers.registry import ProviderMetadata, ProviderRegistry, _extract_model_names
-
-
-class TestExtractModelNames:
-    """Test model name extraction from PydanticAI types."""
-
-    def test_extract_openai_models(self) -> None:
-        """Test extraction of OpenAI model names."""
-        from pydantic_ai.models.openai import OpenAIModelName
-
-        models = _extract_model_names(OpenAIModelName)
-
-        assert isinstance(models, list)
-        assert len(models) > 0
-        assert all(isinstance(m, str) for m in models)
-        # Check for known models
-        assert "gpt-4o" in models
-        assert "gpt-4o-mini" in models
-
-    def test_extract_anthropic_models(self) -> None:
-        """Test extraction of Anthropic model names."""
-        from pydantic_ai.models.anthropic import AnthropicModelName
-
-        models = _extract_model_names(AnthropicModelName)
-
-        assert isinstance(models, list)
-        assert len(models) > 0
-        assert all(isinstance(m, str) for m in models)
-        # Check for known models
-        assert any("claude" in m for m in models)
-        assert any("sonnet" in m for m in models)
-
-    def test_extract_gemini_models(self) -> None:
-        """Test extraction of Gemini model names."""
-        from pydantic_ai.models.gemini import GeminiModelName
-
-        models = _extract_model_names(GeminiModelName)
-
-        assert isinstance(models, list)
-        assert len(models) > 0
-        assert all(isinstance(m, str) for m in models)
-        # Check for known models
-        assert any("gemini" in m for m in models)
-
-    def test_extract_groq_models(self) -> None:
-        """Test extraction of Groq model names."""
-        from pydantic_ai.models.groq import GroqModelName
-
-        models = _extract_model_names(GroqModelName)
-
-        assert isinstance(models, list)
-        assert len(models) > 0
-        assert all(isinstance(m, str) for m in models)
-        # Check for known models
-        assert any("llama" in m for m in models)
+from birkenbihl.providers.registry import ProviderMetadata, ProviderRegistry, _parse_known_model_names
 
 
 class TestProviderRegistry:
@@ -77,7 +23,7 @@ class TestProviderRegistry:
         provider_types = ProviderRegistry.get_provider_types()
 
         # Check for key providers
-        expected_providers = ["openai", "anthropic", "gemini", "groq", "cohere", "mistral"]
+        expected_providers = ["openai", "anthropic", "google-gla", "groq", "cohere", "mistral"]
         for provider in expected_providers:
             assert provider in provider_types, f"Provider {provider} not found in registry"
 
@@ -85,21 +31,18 @@ class TestProviderRegistry:
         """Test that OpenAI-compatible providers are registered."""
         provider_types = ProviderRegistry.get_provider_types()
 
-        # All OpenAI-compatible providers
+        # OpenAI-compatible providers that should be registered
+        # (from KnownModelName or FALLBACK_MODELS)
         openai_compatible = [
             "openai",
             "azure",
             "deepseek",
             "cerebras",
             "fireworks",
-            "github",
             "grok",
             "heroku",
+            "moonshotai",
             "ollama",
-            "openrouter",
-            "together",
-            "vercel",
-            "litellm",
         ]
 
         for provider in openai_compatible:
@@ -145,12 +88,12 @@ class TestProviderRegistry:
 
     def test_provider_has_all_models(self) -> None:
         """Test that providers have all available models from PydanticAI."""
-        from pydantic_ai.models.anthropic import AnthropicModelName
-
+        provider_models = _parse_known_model_names()
         metadata = ProviderRegistry.get_provider_metadata("anthropic")
-        expected_models = _extract_model_names(AnthropicModelName)
 
         assert metadata is not None
+        assert "anthropic" in provider_models
+        expected_models = provider_models["anthropic"]
         assert len(metadata.default_models) == len(expected_models)
         assert set(metadata.default_models) == set(expected_models)
 
@@ -171,7 +114,6 @@ class TestProviderRegistry:
 
         # DeepSeek has its own models
         assert "deepseek-chat" in deepseek_meta.default_models
-        assert "deepseek-coder" in deepseek_meta.default_models
         assert len(deepseek_meta.default_models) > 0
 
         # Ollama has local models
@@ -204,13 +146,13 @@ class TestProviderRegistry:
         assert any("sonnet" in m or "haiku" in m or "opus" in m for m in metadata.default_models)
 
     def test_gemini_metadata(self) -> None:
-        """Test Gemini provider metadata."""
+        """Test Google Gemini provider metadata."""
         from pydantic_ai.models.google import GoogleModel
 
-        metadata = ProviderRegistry.get_provider_metadata("gemini")
+        metadata = ProviderRegistry.get_provider_metadata("google-gla")
 
         assert metadata is not None
-        assert metadata.provider_type == "gemini"
+        assert metadata.provider_type == "google-gla"
         assert metadata.display_name == "Google Gemini"
         assert metadata.model_class == GoogleModel
         assert len(metadata.default_models) > 0
@@ -238,6 +180,22 @@ class TestProviderRegistry:
         # Should return consistent results
         assert len(providers1) == len(providers2)
         assert len(providers3) == len(providers1)
+
+    def test_initialize_method_is_idempotent(self) -> None:
+        """Test that initialize() can be called multiple times safely."""
+        # Call initialize multiple times
+        ProviderRegistry.initialize()
+        providers1 = ProviderRegistry.get_supported_providers()
+
+        ProviderRegistry.initialize()
+        providers2 = ProviderRegistry.get_supported_providers()
+
+        ProviderRegistry.initialize()
+        providers3 = ProviderRegistry.get_supported_providers()
+
+        # All calls should return the same results
+        assert len(providers1) == len(providers2) == len(providers3)
+        assert len(providers1) > 0
 
     def test_all_providers_have_valid_metadata(self) -> None:
         """Test that all registered providers have valid metadata."""

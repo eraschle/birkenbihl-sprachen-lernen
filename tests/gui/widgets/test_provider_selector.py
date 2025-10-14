@@ -1,6 +1,7 @@
 """Tests for ProviderSelector widget."""
 
 import pytest
+from PySide6.QtWidgets import QApplication
 from pytestqt.qtbot import QtBot
 
 from birkenbihl.gui.widgets.provider_selector import ProviderSelector
@@ -15,21 +16,21 @@ class TestProviderSelector:
         """Provide test providers."""
         return [
             ProviderConfig(
-                name="OpenAI",
+                name="OpenAI - gpt-4",
                 provider_type="openai",
                 model="gpt-4",
                 api_key="test-key-1",
                 is_default=True,
             ),
             ProviderConfig(
-                name="Anthropic",
+                name="Anthropic - claude-3",
                 provider_type="anthropic",
                 model="claude-3",
                 api_key="test-key-2",
             ),
         ]
 
-    def test_widget_creation(self, providers: list[ProviderConfig]):
+    def test_widget_creation(self, qapp: QApplication, providers: list[ProviderConfig]):
         """Test widget creation."""
         widget = ProviderSelector(providers)
         assert widget is not None
@@ -47,7 +48,7 @@ class TestProviderSelector:
         assert len(selected) == 1
         assert selected[0] == providers[1]
 
-    def test_get_selected_provider(self, providers: list[ProviderConfig]):
+    def test_get_selected_provider(self, qapp: QApplication, providers: list[ProviderConfig]):
         """Test getting selected provider."""
         widget = ProviderSelector(providers)
         widget._combo.setCurrentIndex(0)
@@ -55,7 +56,7 @@ class TestProviderSelector:
         selected = widget.get_selected_provider()
         assert selected == providers[0]
 
-    def test_update_data(self, providers: list[ProviderConfig]):
+    def test_update_data(self, qapp: QApplication, providers: list[ProviderConfig]):
         """Test updating providers list."""
         widget = ProviderSelector(providers[:1])
         assert widget._combo.count() == 1
@@ -63,7 +64,7 @@ class TestProviderSelector:
         widget.update_data(providers)
         assert widget._combo.count() == 2
 
-    def test_format_provider_text(self, providers: list[ProviderConfig]):
+    def test_format_provider_text(self, qapp: QApplication, providers: list[ProviderConfig]):
         """Test provider text formatting."""
         widget = ProviderSelector(providers)
 

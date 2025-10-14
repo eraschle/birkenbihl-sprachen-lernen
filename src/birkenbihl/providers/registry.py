@@ -1,14 +1,15 @@
 """Dynamic provider registry for PydanticAI models.
 
-Discovers and registers all available PydanticAI providers at runtime,
-eliminating the need for separate provider classes for each AI service.
-Uses PydanticAI's KnownModelName types to extract valid model names.
+Discovers and registers all available PydanticAI providers at runtime by parsing
+KnownModelName from pydantic_ai.models. This approach avoids heavy imports at startup
+and stays automatically synchronized with pydantic_ai updates.
 """
 
+import re
 from dataclasses import dataclass
-from typing import Any, get_args
+from typing import get_args
 
-from pydantic_ai.models import Model
+from pydantic_ai.models import KnownModelName, Model
 
 from birkenbihl.models.settings import ProviderConfig
 
@@ -20,271 +21,274 @@ class ProviderMetadata:
     Attributes:
         provider_type: Provider identifier (openai, anthropic, gemini, etc.)
         display_name: Human-readable name for UI
-        model_class: PydanticAI Model class to instantiate
+        model_class_path: Import path to Model class (lazy loaded)
         default_models: Suggested model identifiers for this provider
         requires_api_key: Whether provider requires API key authentication
     """
 
     provider_type: str
     display_name: str
-    model_class: type[Model]
+    model_class_path: str
     default_models: list[str]
     requires_api_key: bool = True
     requires_api_url: bool = False
     api_url: str | None = None
 
+    @property
+    def model_class(self) -> type[Model]:
+        """Lazy load Model class to avoid heavy imports."""
+        module_path, class_name = self.model_class_path.rsplit(".", 1)
+        module = __import__(module_path, fromlist=[class_name])
+        return getattr(module, class_name)
 
-def _extract_model_names(model_name_type: Any) -> list[str]:
-    """Extract all valid model names from a ModelName Union type.
 
-    Extracts model names from Union[str, Literal[model1, model2, ...]] types
-    used by PydanticAI for model name validation.
+def _model_sort_key(model_name: str) -> tuple[int, str]:
+    """Extract sort key for model names: (version_number, full_name).
 
-    Args:
-        model_name_type: Union type (e.g., OpenAIModelName, AnthropicModelName)
-                         typically Union[str, Literal[...]]
+    Models with version numbers are sorted numerically first, then alphabetically.
+    Models without version numbers come last, sorted alphabetically.
+
+    Examples:
+        "claude-3-5-sonnet" -> (3, "claude-3-5-sonnet")
+        "gpt-4o" -> (4, "gpt-4o")
+        "gemini-2.0-flash" -> (2, "gemini-2.0-flash")
+        "llama3.1" -> (3, "llama3.1")
+        "mistral" -> (999999, "mistral")  # No version, comes last
+    """
+    match = re.search(r"[-.](\d+)", model_name)
+    version = int(match.group(1)) if match else 999999
+    return (version, model_name)
+
+
+def _parse_known_model_names() -> dict[str, list[str]]:
+    """Parse KnownModelName to extract provider:model mappings.
 
     Returns:
-        List of valid model name strings extracted from Literal types
+        Dict mapping provider_type to list of model names
     """
-    result = []
-    args = get_args(model_name_type)
+    provider_models: dict[str, list[str]] = {}
 
-    for arg in args:
-        if hasattr(arg, "__args__"):  # It's a Literal type with concrete model names
-            literal_values = get_args(arg)
-            result.extend(literal_values)
-        elif arg is not str:  # Skip the generic str fallback
-            result.append(arg)
+    # KnownModelName is a TypeAliasType, need __value__ to get the Literal
+    actual_type = KnownModelName.__value__
+    model_names = get_args(actual_type)
 
-    # Filter to ensure we only return string values
-    return [model for model in result if isinstance(model, str)]
+    for model_name in model_names:
+        if isinstance(model_name, str) and ":" in model_name:
+            provider, model = model_name.split(":", 1)
+            if provider not in provider_models:
+                provider_models[provider] = []
+            provider_models[provider].append(model)
 
-
-# import os
-# from openai import OpenAI
-
-# client = OpenAI(
-#     base_url="https://router.huggingface.co/v1",
-#     api_key=os.environ["HF_TOKEN"],
-# )
-
-# completion = client.chat.completions.create(
-#     model="swiss-ai/Apertus-70B-Instruct-2509:publicai",
-#     messages=[
-#         {
-#             "role": "user",
-#             "content": "What is the capital of France?"
-#         }
-#     ],
-# )
-
-# print(completion.choices[0].message)
+    return provider_models
 
 
-def _create_openai_models() -> dict[str, ProviderMetadata]:
-    from pydantic_ai.models.openai import OpenAIChatModel, OpenAIModelName
+# Provider display names
+PROVIDER_DISPLAY_NAMES = {
+    "openai": "OpenAI",
+    "anthropic": "Anthropic Claude",
+    "google-gla": "Google Gemini",
+    "google-vertex": "Google Gemini (Vertex)",
+    "groq": "Groq",
+    "cohere": "Cohere",
+    "mistral": "Mistral AI",
+    "bedrock": "AWS Bedrock",
+    "huggingface": "HuggingFace",
+    "azure": "Azure OpenAI",
+    "deepseek": "DeepSeek",
+    "cerebras": "Cerebras",
+    "fireworks": "Fireworks AI",
+    "github": "GitHub Models",
+    "grok": "Grok (xAI)",
+    "heroku": "Heroku",
+    "moonshotai": "Moonshot AI",
+    "ollama": "Ollama (Local)",
+    "openrouter": "OpenRouter",
+    "together": "Together AI",
+    "vercel": "Vercel AI",
+    "litellm": "LiteLLM",
+}
 
-    openai_models = _extract_model_names(OpenAIModelName)
+DEFAULT_MODEL_CLASS_PATH = "pydantic_ai.models.openai.OpenAIChatModel"
 
-    # Provider-specific model mappings
-    # OpenAI and Azure use all OpenAI models
-    # Other providers have their own model lists
-    provider_configs = [
-        ("openai", "OpenAI", openai_models),
-        ("azure", "Azure OpenAI", openai_models),
-        ("deepseek", "DeepSeek", ["deepseek-chat", "deepseek-coder"]),
-        ("cerebras", "Cerebras", ["llama3.1-8b", "llama3.1-70b"]),
-        ("fireworks", "Fireworks AI", ["llama-v3p1-70b-instruct", "mixtral-8x7b-instruct"]),
-        ("github", "GitHub Models", openai_models),  # GitHub hosts OpenAI models
-        ("grok", "Grok (xAI)", ["grok-beta", "grok-2-1212"]),
-        ("heroku", "Heroku", openai_models),
-        ("ollama", "Ollama (Local)", ["llama3.1", "llama3.1:70b", "mistral", "codellama"]),
-        ("openrouter", "OpenRouter", openai_models),  # Supports many models
-        # ("publicai", "PublicAI", ["swiss-ai/apertus-8b-instruct"]),
-        (
-            "hugginface",
-            "HuggingFace",
-            ["swiss-ai/Apertus-70B-Instruct-2509", "swiss-ai/Apertus-70B-2509"],
-        ),  # Supports many models
-        ("together", "Together AI", ["llama-3.3-70b-turbo", "mixtral-8x7b-instruct"]),
-        ("vercel", "Vercel AI", openai_models),
-        ("litellm", "LiteLLM", openai_models),  # Proxy for multiple providers
-    ]
+# Provider to Model class mapping (from infer_model() in pydantic_ai)
+# Only list providers that use non-OpenAI model classes
+# All other providers default to OpenAIChatModel
+PROVIDER_MODEL_CLASSES = {
+    "cohere": "pydantic_ai.models.cohere.CohereModel",
+    "google-gla": "pydantic_ai.models.google.GoogleModel",
+    "google-vertex": "pydantic_ai.models.google.GoogleModel",
+    "groq": "pydantic_ai.models.groq.GroqModel",
+    "mistral": "pydantic_ai.models.mistral.MistralModel",
+    "anthropic": "pydantic_ai.models.anthropic.AnthropicModel",
+    "bedrock": "pydantic_ai.models.bedrock.BedrockConverseModel",
+    "huggingface": "pydantic_ai.models.huggingface.HuggingFaceModel",
+}
 
-    provider_metadata = {}
-    for provider_type, display_name, models in provider_configs:
-        provider_metadata[provider_type] = ProviderMetadata(
-            provider_type=provider_type,
-            display_name=display_name,
-            model_class=OpenAIChatModel,
-            default_models=models,
-            requires_api_url=False,
-        )
-    return provider_metadata
+# Fallback models for providers not in KnownModelName or with provider-specific models
+# These providers use OpenAI-compatible API but aren't listed in KnownModelName
+FALLBACK_MODELS = {
+    "ollama": ["llama3.1", "llama3.1:70b", "mistral", "codellama", "qwen2.5:72b"],
+    "fireworks": ["llama-v3p1-70b-instruct", "mixtral-8x7b-instruct", "qwen2.5-72b-instruct"],
+}
 
+# Providers that should use OpenAI's model list as fallback
+USE_OPENAI_MODELS = {"azure"}
 
-def _create_anthropic_models() -> dict[str, ProviderMetadata]:
-    from pydantic_ai.models.anthropic import AnthropicModel, AnthropicModelName
-
-    all_models = _extract_model_names(AnthropicModelName)
-
-    return {
-        "anthropic": ProviderMetadata(
-            provider_type="anthropic",
-            display_name="Anthropic Claude",
-            model_class=AnthropicModel,
-            default_models=all_models,
-            requires_api_url=False,
-        )
-    }
+# Providers that require custom base URL
+PROVIDERS_REQUIRING_URL = {"litellm", "ollama"}
 
 
-def _create_gemini_models() -> dict[str, ProviderMetadata]:
-    from pydantic_ai.models.google import GoogleModel, GoogleModelName
-
-    all_models = _extract_model_names(GoogleModelName)
-
-    return {
-        "gemini": ProviderMetadata(
-            provider_type="gemini",
-            display_name="Google Gemini",
-            model_class=GoogleModel,
-            default_models=all_models,
-            requires_api_url=False,
-        )
-    }
+def _get_provider_type_by(provider_name: str) -> str | None:
+    for prov_type, prov_name in PROVIDER_DISPLAY_NAMES.items():
+        if prov_name != provider_name:
+            continue
+        return prov_type
+    return None
 
 
-def _create_groq_models() -> dict[str, ProviderMetadata]:
-    from pydantic_ai.models.groq import GroqModel, GroqModelName
+def is_api_url_requiered(provider_type: str) -> bool:
+    if provider_type not in PROVIDERS_REQUIRING_URL:
+        prov_type = _get_provider_type_by(provider_type)
+        if prov_type is None:
+            return False
+        provider_type = prov_type
 
-    all_models = _extract_model_names(GroqModelName)
-
-    return {
-        "groq": ProviderMetadata(
-            provider_type="groq",
-            display_name="Groq",
-            model_class=GroqModel,
-            default_models=all_models,
-            requires_api_url=False,
-        )
-    }
+    return provider_type in PROVIDERS_REQUIRING_URL
 
 
-def _create_cohere_models() -> dict[str, ProviderMetadata]:
-    from pydantic_ai.models.cohere import CohereModel, CohereModelName
+def _create_provider_metadata(
+    provider_type: str, models: list[str], model_class_path: str | None = None
+) -> ProviderMetadata:
+    """Create ProviderMetadata for a single provider.
 
-    all_models = _extract_model_names(CohereModelName)
+    Args:
+        provider_type: Provider identifier (openai, anthropic, etc.)
+        models: List of model names for this provider
+        model_class_path: Optional custom model class path
 
-    return {
-        "cohere": ProviderMetadata(
-            provider_type="cohere",
-            display_name="Cohere",
-            model_class=CohereModel,
-            default_models=all_models,
-            requires_api_url=False,
-        )
-    }
+    Returns:
+        ProviderMetadata instance
+    """
+    if model_class_path is None:
+        model_class_path = PROVIDER_MODEL_CLASSES.get(provider_type, DEFAULT_MODEL_CLASS_PATH)
 
+    display_name = PROVIDER_DISPLAY_NAMES.get(provider_type, provider_type.title())
+    requires_url = is_api_url_requiered(provider_type=provider_type)
 
-def _create_mistral_models() -> dict[str, ProviderMetadata]:
-    from pydantic_ai.models.mistral import MistralModel, MistralModelName
-
-    all_models = _extract_model_names(MistralModelName)
-
-    return {
-        "mistral": ProviderMetadata(
-            provider_type="mistral",
-            display_name="Mistral AI",
-            model_class=MistralModel,
-            default_models=all_models,
-            requires_api_url=False,
-        )
-    }
+    return ProviderMetadata(
+        provider_type=provider_type,
+        display_name=display_name,
+        model_class_path=model_class_path,
+        default_models=models,
+        requires_api_url=requires_url,
+    )
 
 
-def _create_bedrock_models() -> dict[str, ProviderMetadata]:
-    from pydantic_ai.models.bedrock import BedrockConverseModel
+def _add_providers_from_dict(
+    providers: dict[str, ProviderMetadata], source: dict[str, list[str]], skip_existing: bool = False
+) -> None:
+    """Add providers from a source dictionary to registry.
 
-    # Bedrock uses ARNs, keep manual list
-    return {
-        "bedrock": ProviderMetadata(
-            provider_type="bedrock",
-            display_name="AWS Bedrock",
-            model_class=BedrockConverseModel,
-            default_models=["anthropic.claude-3-sonnet", "anthropic.claude-3-haiku"],
-            requires_api_url=False,
-        )
-    }
+    Args:
+        providers: Target provider registry
+        source: Dict mapping provider_type to list of models
+        skip_existing: If True, skip providers already in registry
+    """
+    for provider_type, models in source.items():
+        if skip_existing and provider_type in providers:
+            continue
+        sorted_models = sorted(models, key=_model_sort_key)
+        providers[provider_type] = _create_provider_metadata(provider_type, sorted_models)
+
+
+def _create_providers_from_known_models() -> dict[str, ProviderMetadata]:
+    """Create provider registry from KnownModelName without heavy imports.
+
+    Orchestrates creation of provider metadata from multiple sources:
+    1. Known providers from pydantic_ai's KnownModelName
+    2. Fallback providers (ollama, fireworks)
+    3. OpenAI-compatible providers (azure)
+
+    Returns:
+        Dict mapping provider_type to ProviderMetadata
+    """
+    provider_models = _parse_known_model_names()
+    providers: dict[str, ProviderMetadata] = {}
+
+    # Add providers from KnownModelName
+    _add_providers_from_dict(providers, provider_models)
+
+    # Add fallback providers
+    _add_providers_from_dict(providers, FALLBACK_MODELS, skip_existing=True)
+
+    # Add OpenAI-compatible providers (azure) with OpenAI's model list
+    openai_models = providers.get("openai", _create_provider_metadata("openai", [])).default_models
+    for provider_type in USE_OPENAI_MODELS:
+        if provider_type not in providers:
+            providers[provider_type] = _create_provider_metadata(provider_type, openai_models)
+
+    return providers
 
 
 class ProviderRegistry:
     """Registry for PydanticAI providers.
 
-    Maintains mapping of provider_type → ProviderMetadata.
-    Provides discovery and instantiation methods for UI and factory.
+    Parses pydantic_ai's KnownModelName to discover all providers and models.
+    Model classes are lazy-loaded to avoid heavy imports at startup.
 
     Thread-safe singleton pattern ensures consistent provider access.
-    Uses PydanticAI's ModelName types to auto-discover valid models.
+    Automatically stays synchronized with pydantic_ai updates.
     """
 
-    _providers: dict[str, ProviderMetadata] = {}
-    _initialized: bool = False
+    _instance: "ProviderRegistry | None" = None
+    _lock = __import__("threading").Lock()
+
+    def __init__(self) -> None:
+        """Private constructor - use get_instance() instead."""
+        self._providers: dict[str, ProviderMetadata] = {}
+        self._initialized = False
 
     @classmethod
-    def _initialize(cls) -> None:
-        """Initialize registry with all available PydanticAI providers.
+    def get_instance(cls) -> "ProviderRegistry":
+        """Get singleton instance of ProviderRegistry.
 
-        Discovers provider modules dynamically and registers metadata.
-        Falls back gracefully if modules are unavailable.
+        Thread-safe lazy initialization ensures instance is created only once.
+
+        Returns:
+            Singleton ProviderRegistry instance
         """
-        if cls._initialized:
+        if cls._instance is None:
+            with cls._lock:
+                if cls._instance is None:
+                    cls._instance = cls()
+        return cls._instance
+
+    def _ensure_initialized(self) -> None:
+        """Ensure registry is initialized by parsing KnownModelName.
+
+        Parses pydantic_ai's KnownModelName exactly once.
+        No heavy imports - Model classes are lazy-loaded when accessed.
+        Thread-safe - safe to call multiple times.
+        """
+        if self._initialized:
             return
 
-        # OpenAI and OpenAI-compatible providers
-        try:
-            cls._providers.update(_create_openai_models())
-        except ImportError:
-            pass
+        with self._lock:
+            if self._initialized:
+                return
 
-        # Anthropic
-        try:
-            cls._providers.update(_create_anthropic_models())
-        except ImportError:
-            pass
+            self._providers = _create_providers_from_known_models()
+            self._initialized = True
 
-        # Google Gemini
-        try:
-            cls._providers.update(_create_gemini_models())
-        except ImportError:
-            pass
+    @classmethod
+    def initialize(cls) -> None:
+        """Initialize registry with all available providers.
 
-        # Groq
-        try:
-            cls._providers.update(_create_groq_models())
-        except ImportError:
-            pass
-
-        # Cohere
-        try:
-            cls._providers.update(_create_cohere_models())
-        except ImportError:
-            pass
-
-        # Mistral
-        try:
-            cls._providers.update(_create_mistral_models())
-        except ImportError:
-            pass
-
-        # AWS Bedrock
-        try:
-            cls._providers.update(_create_bedrock_models())
-        except ImportError:
-            pass
-
-        cls._initialized = True
+        Safe to call multiple times - subsequent calls are no-op.
+        Useful for pre-loading providers at application startup.
+        """
+        instance = cls.get_instance()
+        instance._ensure_initialized()
 
     @classmethod
     def get_supported_providers(cls) -> list[ProviderMetadata]:
@@ -293,8 +297,9 @@ class ProviderRegistry:
         Returns:
             List of ProviderMetadata for all available providers
         """
-        cls._initialize()
-        return sorted(cls._providers.values(), key=lambda prv: prv.display_name)
+        instance = cls.get_instance()
+        instance._ensure_initialized()
+        return sorted(instance._providers.values(), key=lambda prv: prv.display_name)
 
     @classmethod
     def get_provider_types(cls) -> list[str]:
@@ -303,8 +308,9 @@ class ProviderRegistry:
         Returns:
             List of provider_type strings (openai, anthropic, etc.)
         """
-        cls._initialize()
-        return list(cls._providers.keys())
+        instance = cls.get_instance()
+        instance._ensure_initialized()
+        return list(instance._providers.keys())
 
     @classmethod
     def get_provider_metadata(cls, provider_type: str) -> ProviderMetadata | None:
@@ -316,8 +322,9 @@ class ProviderRegistry:
         Returns:
             ProviderMetadata if found, None otherwise
         """
-        cls._initialize()
-        return cls._providers.get(provider_type)
+        instance = cls.get_instance()
+        instance._ensure_initialized()
+        return instance._providers.get(provider_type)
 
     @classmethod
     def get_model_class(cls, provider_type: str) -> type[Model] | None:
@@ -342,8 +349,9 @@ class ProviderRegistry:
         Returns:
             True if provider is registered, False otherwise
         """
-        cls._initialize()
-        return provider_type in cls._providers
+        instance = cls.get_instance()
+        instance._ensure_initialized()
+        return provider_type in instance._providers
 
     @classmethod
     def supports_streaming(cls, config: ProviderConfig) -> bool:

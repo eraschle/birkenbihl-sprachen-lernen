@@ -119,13 +119,12 @@ class CreateTranslationView(QWidget):
         self._selected_provider = self._viewmodel.selected_provider
 
     def showEvent(self, event) -> None:  # type: ignore
-        """Handle show event by reloading settings."""
+        """Handle show event by refreshing UI without reloading settings."""
         super().showEvent(event)
-        self._reload_settings()
+        self._refresh_ui_from_cached_settings()
 
-    def _reload_settings(self) -> None:
-        """Reload settings and update UI components."""
-        self._viewmodel.load_settings()
+    def _refresh_ui_from_cached_settings(self) -> None:
+        """Refresh UI components from already loaded settings without file I/O."""
         self._selected_provider = self._viewmodel.selected_provider
         self._refresh_provider_selector()
 

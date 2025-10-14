@@ -156,6 +156,50 @@ target_language: fr
         assert settings.providers == []
         assert settings.target_language == "de"
 
+    def test_load_settings_caches_settings_on_subsequent_calls(self, tmp_path: Path) -> None:
+        """Test that load_settings uses cache on subsequent calls without force_reload."""
+        settings_file = tmp_path / "test.yaml"
+        settings_file.write_text(
+            """providers:
+  - name: Claude Sonnet
+    provider_type: anthropic
+    model: claude-3-5-sonnet-20241022
+    api_key: sk-ant-test
+    is_default: true
+target_language: de
+"""
+        )
+
+        service = SettingsService(settings_file)
+
+        # First load should read from file
+        settings1 = service.load_settings()
+        assert settings1.target_language == "de"
+        assert len(settings1.providers) == 1
+
+        # Modify file content
+        settings_file.write_text(
+            """providers:
+  - name: OpenAI GPT-4
+    provider_type: openai
+    model: gpt-4o
+    api_key: sk-test
+    is_default: true
+target_language: fr
+"""
+        )
+
+        # Second load should return cached settings (not read modified file)
+        settings2 = service.load_settings()
+        assert settings2 is settings1
+        assert settings2.target_language == "de"  # Still old value from cache
+
+        # Force reload should read modified file
+        settings3 = service.load_settings(force_reload=True)
+        assert settings3 is not settings1
+        assert settings3.target_language == "fr"  # New value from file
+        assert settings3.providers[0].provider_type == "openai"
+
 
 @pytest.mark.unit
 class TestSettingsServiceSaveSettings:
