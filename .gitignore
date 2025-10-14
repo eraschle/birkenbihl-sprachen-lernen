@@ -7,6 +7,7 @@
 *.el
 settings.yaml
 **zuweisung
+screenshots
 
 ### Python ###
 # Byte-compiled / optimized / DLL files
