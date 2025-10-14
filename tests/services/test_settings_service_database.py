@@ -125,12 +125,12 @@ class TestSettingsServiceDatabaseIntegration:
 
         # Update settings
         service2 = SettingsService(file_path=temp_db)
-        service2.load_settings()
+        service2.load_settings(use_database=True)
         service2.add_provider(
             ProviderConfig(
                 name="Gemini Flash",
-                provider_type="gemini",
-                model="gemini-2.0-flash",
+                provider_type="google-gla",
+                model="gemini-2.0-flash-exp",
                 api_key="gemini-key",
                 is_default=True,
             )
@@ -143,8 +143,9 @@ class TestSettingsServiceDatabaseIntegration:
         loaded = service3.load_settings(use_database=True)
 
         assert loaded.target_language == "es"
-        assert len(loaded.providers) == 1
-        assert loaded.providers[0].name == "Gemini Flash"
+        assert len(loaded.providers) == 3
+        assert loaded.providers[2].name == "Gemini Flash"
+        assert loaded.providers[2].is_default is True
 
     def test_validate_provider_before_database_save(self, temp_db: Path) -> None:
         """Test that provider validation occurs before database save."""

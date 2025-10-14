@@ -31,7 +31,7 @@ class ProviderMetadata:
     model_class_path: str
     default_models: list[str]
     requires_api_key: bool = True
-    requires_api_url: bool = False
+    requires_api_url_input: bool = False
     api_url: str | None = None
 
     @property
@@ -180,7 +180,7 @@ def _create_provider_metadata(
         display_name=display_name,
         model_class_path=model_class_path,
         default_models=models,
-        requires_api_url=requires_url,
+        requires_api_url_input=requires_url,
     )
 
 

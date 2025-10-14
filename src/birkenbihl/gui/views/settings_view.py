@@ -160,9 +160,9 @@ class ProviderDialog(QDialog):
         label_item = self._form_layout.itemAt(self.base_url_row_index, QFormLayout.ItemRole.LabelRole)
         field_item = self._form_layout.itemAt(self.base_url_row_index, QFormLayout.ItemRole.FieldRole)
         if label_widget := label_item.widget():
-            label_widget.setVisible(provider_meta.requires_api_url)
+            label_widget.setVisible(provider_meta.requires_api_url_input)
         if combobox_widget := field_item.widget():
-            combobox_widget.setVisible(provider_meta.requires_api_url)
+            combobox_widget.setVisible(provider_meta.requires_api_url_input)
 
     def get_provider(self) -> ProviderConfig | None:
         if not self._validate_input():

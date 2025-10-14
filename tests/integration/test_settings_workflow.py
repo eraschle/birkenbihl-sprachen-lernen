@@ -87,8 +87,8 @@ class TestSettingsWorkflowIntegration:
         service1.add_provider(
             ProviderConfig(
                 name="Gemini Flash",
-                provider_type="gemini",
-                model="gemini-2.0-flash",
+                provider_type="google-gla",
+                model="gemini-2.0-flash-exp",
                 api_key="gemini-key",
                 is_default=True,
             )
@@ -215,7 +215,7 @@ class TestSettingsWorkflowIntegration:
         service1.add_provider(
             ProviderConfig(name="Provider 2", provider_type="anthropic", model="claude", api_key="key2")
         )
-        service1.add_provider(ProviderConfig(name="Provider 3", provider_type="gemini", model="gemini", api_key="key3"))
+        service1.add_provider(ProviderConfig(name="Provider 3", provider_type="google-gla", model="gemini-2.0-flash-exp", api_key="key3"))
         service1.save_settings(use_database=True)
 
         # Remove Provider 2
@@ -391,7 +391,7 @@ class TestSettingsWorkflowIntegration:
 
         # Attempt to save invalid settings (should fail validation)
         service2 = SettingsService(file_path=temp_db)
-        service2.load_settings()
+        service2.load_settings(use_database=True)
         service2.add_provider(
             ProviderConfig(
                 name="Invalid Provider",

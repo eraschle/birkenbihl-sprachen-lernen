@@ -58,6 +58,7 @@ class TestProviderRegistry:
         assert metadata.display_name == "OpenAI"
         assert len(metadata.default_models) > 0
         assert metadata.requires_api_key is True
+        assert metadata.requires_api_url_input is False
 
     def test_get_provider_metadata_nonexistent(self) -> None:
         """Test getting metadata for nonexistent provider returns None."""
@@ -209,9 +210,37 @@ class TestProviderRegistry:
             assert isinstance(provider.default_models, list)
             assert len(provider.default_models) > 0
             assert isinstance(provider.requires_api_key, bool)
+            assert isinstance(provider.requires_api_url_input, bool)
 
             # All models should be strings
             assert all(isinstance(m, str) for m in provider.default_models)
+
+    def test_providers_requiring_api_url(self) -> None:
+        """Test that providers requiring API URL have correct metadata."""
+        from birkenbihl.providers.registry import is_api_url_requiered
+
+        # Test ollama (requires API URL)
+        ollama_meta = ProviderRegistry.get_provider_metadata("ollama")
+        assert ollama_meta is not None
+        assert ollama_meta.requires_api_url_input is True
+        assert is_api_url_requiered("ollama") is True
+
+        # Test providers that don't require API URL
+        openai_meta = ProviderRegistry.get_provider_metadata("openai")
+        anthropic_meta = ProviderRegistry.get_provider_metadata("anthropic")
+        azure_meta = ProviderRegistry.get_provider_metadata("azure")
+
+        assert openai_meta is not None
+        assert openai_meta.requires_api_url_input is False
+        assert is_api_url_requiered("openai") is False
+
+        assert anthropic_meta is not None
+        assert anthropic_meta.requires_api_url_input is False
+        assert is_api_url_requiered("anthropic") is False
+
+        assert azure_meta is not None
+        assert azure_meta.requires_api_url_input is False
+        assert is_api_url_requiered("azure") is False
 
     def test_no_duplicate_provider_types(self) -> None:
         """Test that there are no duplicate provider types."""
