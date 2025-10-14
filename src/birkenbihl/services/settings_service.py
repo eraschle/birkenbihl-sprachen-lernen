@@ -132,6 +132,89 @@ class SettingsService:
         return None
 
     @classmethod
+    def clean_default_provider(cls, settings: Settings) -> None:
+        for prov in settings.providers:
+            prov.is_default = False
+
+    @classmethod
+    def add_provider(cls, settings: Settings, provider: ProviderConfig) -> None:
+        """Add a provider to settings with automatic default management.
+
+        Applies business rules:
+        - If no providers exist or no default exists, mark new provider as default
+        - If new provider is marked as default, clear other defaults
+
+        Args:
+            settings: Settings instance to modify
+            provider: Provider configuration to add
+        """
+        # Check if any provider is already marked as default
+        has_default = any(p.is_default for p in settings.providers)
+
+        # Auto-set as default if no providers exist or no default exists
+        if not settings.providers or not has_default:
+            provider.is_default = True
+
+        # If new provider is default, clear other defaults
+        if provider.is_default:
+            for prov in settings.providers:
+                prov.is_default = False
+
+        settings.providers.append(provider)
+
+    @classmethod
+    def update_provider(cls, settings: Settings, index: int, provider: ProviderConfig) -> None:
+        """Update a provider with automatic default management.
+
+        Applies business rules:
+        - If updated provider is marked as default, clear other defaults
+
+        Args:
+            settings: Settings instance to modify
+            index: Index of provider to update
+            provider: New provider configuration
+
+        Raises:
+            IndexError: If index is out of range
+        """
+        if index < 0 or index >= len(settings.providers):
+            raise IndexError(f"Provider index {index} out of range")
+
+        # If updated provider is set as default, clear other defaults
+        if provider.is_default:
+            for idx, prov in enumerate(settings.providers):
+                if idx != index:
+                    prov.is_default = False
+
+        settings.providers[index] = provider
+
+    @classmethod
+    def delete_provider(cls, settings: Settings, index: int) -> None:
+        """Delete a provider with automatic default management.
+
+        Applies business rules:
+        - If deleted provider was default and providers remain, set first as default
+
+        Args:
+            settings: Settings instance to modify
+            index: Index of provider to delete
+
+        Raises:
+            IndexError: If index is out of range
+        """
+        if index < 0 or index >= len(settings.providers):
+            raise IndexError(f"Provider index {index} out of range")
+
+        # Check if deleted provider was default
+        was_default = settings.providers[index].is_default
+
+        del settings.providers[index]
+
+        # If default was deleted and providers remain, set first as default
+        if was_default and settings.providers:
+            settings.providers[0].is_default = True
+
+    @classmethod
     def save_settings(
         cls, settings: Settings, settings_file: str | Path = "settings.yaml", use_database: bool = False
     ) -> None:

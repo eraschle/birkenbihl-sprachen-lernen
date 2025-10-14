@@ -73,7 +73,10 @@ class SettingsViewModel(BaseViewModel):
             return
 
         assert self._settings is not None
-        self._settings.providers.append(provider)
+
+        # Apply default provider logic via service
+        self._service.add_provider(self._settings, provider)
+
         self.provider_added.emit(provider)
 
     def update_provider(self, index: int, provider: ProviderConfig) -> None:
@@ -86,7 +89,10 @@ class SettingsViewModel(BaseViewModel):
             return
 
         assert self._settings is not None
-        self._settings.providers[index] = provider
+
+        # Apply default provider logic via service
+        self._service.update_provider(self._settings, index, provider)
+
         self.provider_updated.emit(index)
 
     def delete_provider(self, index: int) -> None:
@@ -94,7 +100,10 @@ class SettingsViewModel(BaseViewModel):
             return
 
         assert self._settings is not None
-        del self._settings.providers[index]
+
+        # Apply default provider logic via service
+        self._service.delete_provider(self._settings, index)
+
         self.provider_deleted.emit(index)
 
     def set_default_provider(self, index: int) -> None:

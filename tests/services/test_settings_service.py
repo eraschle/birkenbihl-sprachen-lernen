@@ -751,3 +751,217 @@ target_language: de
             assert settings_file.exists()
             content = settings_file.read_text()
             assert f"name: Provider {i}" in content
+
+
+@pytest.mark.unit
+class TestSettingsServiceProviderManagement:
+    """Test SettingsService provider management with automatic default handling."""
+
+    def test_add_provider_first_is_default(self) -> None:
+        """Test that first provider is automatically marked as default."""
+        settings = Settings(providers=[], target_language="de")
+        provider = ProviderConfig(
+            name="Test Provider",
+            provider_type="openai",
+            model="gpt-4",
+            api_key="test-key",
+            is_default=False,
+        )
+
+        SettingsService.add_provider(settings, provider)
+
+        assert len(settings.providers) == 1
+        assert settings.providers[0].is_default is True
+
+    def test_add_provider_when_no_default_exists(self) -> None:
+        """Test that new provider becomes default if no default exists."""
+        settings = Settings(
+            providers=[
+                ProviderConfig(
+                    name="Provider 1",
+                    provider_type="openai",
+                    model="gpt-4",
+                    api_key="key1",
+                    is_default=False,
+                )
+            ],
+            target_language="de",
+        )
+
+        new_provider = ProviderConfig(
+            name="Provider 2",
+            provider_type="anthropic",
+            model="claude-3",
+            api_key="key2",
+            is_default=False,
+        )
+
+        SettingsService.add_provider(settings, new_provider)
+
+        assert len(settings.providers) == 2
+        assert settings.providers[1].is_default is True
+
+    def test_add_provider_clears_existing_default(self) -> None:
+        """Test that adding a default provider clears existing default."""
+        settings = Settings(
+            providers=[
+                ProviderConfig(
+                    name="Provider 1",
+                    provider_type="openai",
+                    model="gpt-4",
+                    api_key="key1",
+                    is_default=True,
+                )
+            ],
+            target_language="de",
+        )
+
+        new_provider = ProviderConfig(
+            name="Provider 2",
+            provider_type="anthropic",
+            model="claude-3",
+            api_key="key2",
+            is_default=True,
+        )
+
+        SettingsService.add_provider(settings, new_provider)
+
+        assert len(settings.providers) == 2
+        assert settings.providers[0].is_default is False
+        assert settings.providers[1].is_default is True
+
+    def test_update_provider_clears_other_defaults(self) -> None:
+        """Test that updating a provider as default clears other defaults."""
+        settings = Settings(
+            providers=[
+                ProviderConfig(
+                    name="Provider 1",
+                    provider_type="openai",
+                    model="gpt-4",
+                    api_key="key1",
+                    is_default=True,
+                ),
+                ProviderConfig(
+                    name="Provider 2",
+                    provider_type="anthropic",
+                    model="claude-3",
+                    api_key="key2",
+                    is_default=False,
+                ),
+            ],
+            target_language="de",
+        )
+
+        updated_provider = ProviderConfig(
+            name="Provider 2 Updated",
+            provider_type="anthropic",
+            model="claude-3",
+            api_key="key2",
+            is_default=True,
+        )
+
+        SettingsService.update_provider(settings, 1, updated_provider)
+
+        assert settings.providers[0].is_default is False
+        assert settings.providers[1].is_default is True
+        assert settings.providers[1].name == "Provider 2 Updated"
+
+    def test_update_provider_invalid_index_raises_error(self) -> None:
+        """Test that updating with invalid index raises IndexError."""
+        settings = Settings(
+            providers=[
+                ProviderConfig(
+                    name="Provider 1",
+                    provider_type="openai",
+                    model="gpt-4",
+                    api_key="key1",
+                    is_default=True,
+                )
+            ],
+            target_language="de",
+        )
+
+        provider = ProviderConfig(
+            name="Test",
+            provider_type="openai",
+            model="gpt-4",
+            api_key="key",
+            is_default=False,
+        )
+
+        with pytest.raises(IndexError):
+            SettingsService.update_provider(settings, 99, provider)
+
+    def test_delete_provider_sets_first_as_default(self) -> None:
+        """Test that deleting default provider sets first remaining as default."""
+        settings = Settings(
+            providers=[
+                ProviderConfig(
+                    name="Provider 1",
+                    provider_type="openai",
+                    model="gpt-4",
+                    api_key="key1",
+                    is_default=True,
+                ),
+                ProviderConfig(
+                    name="Provider 2",
+                    provider_type="anthropic",
+                    model="claude-3",
+                    api_key="key2",
+                    is_default=False,
+                ),
+            ],
+            target_language="de",
+        )
+
+        SettingsService.delete_provider(settings, 0)
+
+        assert len(settings.providers) == 1
+        assert settings.providers[0].is_default is True
+        assert settings.providers[0].name == "Provider 2"
+
+    def test_delete_non_default_provider_keeps_default(self) -> None:
+        """Test that deleting non-default provider keeps existing default."""
+        settings = Settings(
+            providers=[
+                ProviderConfig(
+                    name="Provider 1",
+                    provider_type="openai",
+                    model="gpt-4",
+                    api_key="key1",
+                    is_default=True,
+                ),
+                ProviderConfig(
+                    name="Provider 2",
+                    provider_type="anthropic",
+                    model="claude-3",
+                    api_key="key2",
+                    is_default=False,
+                ),
+            ],
+            target_language="de",
+        )
+
+        SettingsService.delete_provider(settings, 1)
+
+        assert len(settings.providers) == 1
+        assert settings.providers[0].is_default is True
+        assert settings.providers[0].name == "Provider 1"
+
+    def test_delete_provider_invalid_index_raises_error(self) -> None:
+        """Test that deleting with invalid index raises IndexError."""
+        settings = Settings(
+            providers=[
+                ProviderConfig(
+                    name="Provider 1",
+                    provider_type="openai",
+                    model="gpt-4",
+                    api_key="key1",
+                    is_default=True,
+                )
+            ],
+            target_language="de",
+        )
+
+        with pytest.raises(IndexError):
+            SettingsService.delete_provider(settings, 99)
