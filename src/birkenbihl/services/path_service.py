@@ -33,23 +33,26 @@ def _get_config_root_path() -> Path:
     Returns:
         Path to Birkenbihl config directory:
         - Windows: %APPDATA%/birkenbihl or %USERPROFILE%/birkenbihl
-        - Linux: ~/.birkenbihl
+        - Linux: ~/.config/birkenbihl (XDG Base Directory)
 
     Raises:
         NotImplementedError: If platform is not Windows or Linux
     """
-    if sys.platform == "win32":
-        env_value = os.getenv("APPDATA", os.environ["USERPROFILE"])
-        birkenbihl_path = Path(env_value) / "birkenbihl"
-    elif sys.platform == "linux":
-        birkenbihl_path = Path.home() / ".birkenbihl"
-    else:
-        raise NotImplementedError(f"Platform not supported: {sys.platform}")
+    root_path = None
+    match sys.platform:
+        case "win32":
+            root_path = os.getenv("APPDATA", None)
+        case "linux":
+            root_path = os.getenv("XDG_CONFIG_HOME", None)
+        case _:
+            raise NotImplementedError(f"Platform not supported: {sys.platform}")
+    if root_path is None:
+        root_path = Path.home()
+    root_path = Path(root_path) / "birkenbihl"
+    return _ensure_exists(root_path)
 
-    return _ensure_exists(birkenbihl_path)
 
-
-def get_app_path(file_path_or_name: str | Path) -> Path:
+def get_app_path(file_path_or_name: str) -> Path:
     """Get full path for application file or directory.
 
     Resolves relative paths against the platform-specific config root.
@@ -63,9 +66,9 @@ def get_app_path(file_path_or_name: str | Path) -> Path:
 
     Examples:
         >>> get_app_path("settings.yaml")
-        PosixPath('/home/user/.birkenbihl/settings.yaml')
+        PosixPath('/home/user/.config/birkenbihl/settings.yaml')
         >>> get_app_path("translations/data.json")
-        PosixPath('/home/user/.birkenbihl/translations/data.json')
+        PosixPath('/home/user/.config/birkenbihl/translations/data.json')
     """
     return _get_config_root_path() / file_path_or_name
 
@@ -81,9 +84,9 @@ def get_setting_path(filename: str = "settings.yaml") -> Path:
 
     Examples:
         >>> get_setting_path()
-        PosixPath('/home/user/.birkenbihl/settings.yaml')
+        PosixPath('/home/user/.config/birkenbihl/settings.yaml')
         >>> get_setting_path("dev-settings.yaml")
-        PosixPath('/home/user/.birkenbihl/dev-settings.yaml')
+        PosixPath('/home/user/.config/birkenbihl/dev-settings.yaml')
     """
     return get_app_path(filename)
 
@@ -99,8 +102,8 @@ def get_translation_path(filename: str = "translations.json") -> Path:
 
     Examples:
         >>> get_translation_path()
-        PosixPath('/home/user/.birkenbihl/translations.json')
+        PosixPath('/home/user/.config/birkenbihl/translations.json')
         >>> get_translation_path("translations")
-        PosixPath('/home/user/.birkenbihl/translations')
+        PosixPath('/home/user/.config/birkenbihl/translations')
     """
     return get_app_path(filename)
