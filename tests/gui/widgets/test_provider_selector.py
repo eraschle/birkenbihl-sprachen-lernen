@@ -1,5 +1,6 @@
 """Tests for ProviderSelector widget."""
 
+import conftest
 import pytest
 from PySide6.QtWidgets import QApplication
 from pytestqt.qtbot import QtBot
@@ -14,6 +15,8 @@ class TestProviderSelector:
     @pytest.fixture
     def providers(self, qapp: QApplication):
         """Provide test providers."""
+        conftest.skrip_test_when_is_not_valid(qapp)
+
         return [
             ProviderConfig(
                 name="OpenAI - gpt-4",

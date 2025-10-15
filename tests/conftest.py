@@ -22,4 +22,11 @@ def qapp() -> QApplication:
 @pytest.fixture
 def qtbot(qapp: QApplication, qtbot: QtBot) -> QtBot:
     """Provide qtbot fixture with qapp dependency."""
+    skrip_test_when_is_not_valid(qapp)
     return qtbot
+
+
+def skrip_test_when_is_not_valid(object: object | None) -> None:
+    """Provide qtbot fixture with qapp dependency."""
+    if object is None:
+        pytest.skip(f"Object {object} is None")

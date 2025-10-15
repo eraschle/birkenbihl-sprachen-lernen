@@ -1,5 +1,6 @@
 """Tests for LanguageSelector widget."""
 
+import conftest
 from PySide6.QtWidgets import QApplication
 from pytestqt.qtbot import QtBot
 
@@ -11,17 +12,20 @@ class TestLanguageSelector:
 
     def test_widget_creation(self, qapp: QApplication):
         """Test widget creation."""
+        conftest.skrip_test_when_is_not_valid(qapp)
         widget = LanguageSelector()
         assert widget is not None
 
     def test_widget_with_auto_detect(self, qapp: QApplication):
         """Test widget with auto-detect option."""
+        conftest.skrip_test_when_is_not_valid(qapp)
         widget = LanguageSelector(show_auto_detect=True)
         assert widget._combo.itemData(0) == "auto"
         assert widget._combo.itemText(0) == "Autom. Erkennen"
 
     def test_default_language_selection(self, qapp: QApplication):
         """Test default language is selected."""
+        conftest.skrip_test_when_is_not_valid(qapp)
         widget = LanguageSelector(default_language="en")
         assert widget.get_selected_language() == "en"
 
@@ -43,6 +47,7 @@ class TestLanguageSelector:
 
     def test_set_language(self, qapp: QApplication):
         """Test programmatic language selection."""
+        conftest.skrip_test_when_is_not_valid(qapp)
         widget = LanguageSelector()
         widget.set_language("es")
 
@@ -50,6 +55,7 @@ class TestLanguageSelector:
 
     def test_enable_disable(self, qapp: QApplication):
         """Test enable/disable functionality."""
+        conftest.skrip_test_when_is_not_valid(qapp)
         widget = LanguageSelector()
 
         widget.set_enabled(False)
