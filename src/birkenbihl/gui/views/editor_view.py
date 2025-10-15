@@ -58,33 +58,29 @@ class EditorView(QWidget):
         """Setup UI components."""
         layout = QHBoxLayout(self)
 
-        # Left column: Translation list
+        # Left column: Translation ComboBox + Sentence list
         left_panel = QWidget()
         left_layout = QVBoxLayout(left_panel)
         left_layout.setContentsMargins(0, 0, 0, 0)
 
+        # Translation ComboBox (replaces QListWidget)
         translations_label = QLabel("<b>Gespeicherte Übersetzungen</b>")
         left_layout.addWidget(translations_label)
 
-        self._translation_list = QListWidget()  # type: ignore[reportUninitializedInstanceVariable]
-        self._translation_list.currentRowChanged.connect(self._on_translation_selected)
-        left_layout.addWidget(self._translation_list)
+        self._translation_combo = QComboBox()  # type: ignore[reportUninitializedInstanceVariable]
+        self._translation_combo.currentIndexChanged.connect(self._on_translation_selected)
+        left_layout.addWidget(self._translation_combo)
 
-        layout.addWidget(left_panel, 1)
-
-        # Middle column: Sentence list
-        middle_panel = QWidget()
-        middle_layout = QVBoxLayout(middle_panel)
-        middle_layout.setContentsMargins(0, 0, 0, 0)
-
+        # Sentence list
+        left_layout.addSpacing(10)
         sentences_label = QLabel("<b>Sätze</b>")
-        middle_layout.addWidget(sentences_label)
+        left_layout.addWidget(sentences_label)
 
         self._sentence_list = QListWidget()  # type: ignore[reportUninitializedInstanceVariable]
         self._sentence_list.currentRowChanged.connect(self._on_sentence_selected)
-        middle_layout.addWidget(self._sentence_list)
+        left_layout.addWidget(self._sentence_list)
 
-        layout.addWidget(middle_panel, 1)
+        layout.addWidget(left_panel, 1)
 
         # Right: Edit panel
         edit_panel = QWidget()
@@ -117,21 +113,29 @@ class EditorView(QWidget):
 
         # Action buttons
         button_layout = QHBoxLayout()
-        self._edit_button = QPushButton("Bearbeiten")  # type: ignore[reportUninitializedInstanceVariable]
-        self._edit_button.clicked.connect(self._on_edit_clicked)
+
+        # Two edit buttons: Translation and Alignment
+        self._edit_translation_button = QPushButton("Übersetzung bearbeiten")  # type: ignore[reportUninitializedInstanceVariable]
+        self._edit_translation_button.clicked.connect(self._on_edit_translation_clicked)
+
+        self._edit_alignment_button = QPushButton("Zuordnung bearbeiten")  # type: ignore[reportUninitializedInstanceVariable]
+        self._edit_alignment_button.clicked.connect(self._on_edit_alignment_clicked)
+
         self._back_button = QPushButton("Zurück")  # type: ignore[reportUninitializedInstanceVariable]
         self._back_button.clicked.connect(self._on_back_clicked)
+
         self._save_button = QPushButton("Speichern")  # type: ignore[reportUninitializedInstanceVariable]
         self._save_button.clicked.connect(self._on_save_clicked)
 
         button_layout.addStretch()
         button_layout.addWidget(self._back_button)
-        button_layout.addWidget(self._edit_button)
+        button_layout.addWidget(self._edit_translation_button)
+        button_layout.addWidget(self._edit_alignment_button)
         button_layout.addWidget(self._save_button)
 
         edit_layout.addLayout(button_layout)
 
-        layout.addWidget(edit_panel, 2)
+        layout.addWidget(edit_panel, 3)  # Edit panel gets 3x more space
 
     def _create_view_widget(self) -> QWidget:
         """Create view mode widget."""
@@ -184,6 +188,7 @@ class EditorView(QWidget):
 
         self._alignment_editor = AlignmentEditor()  # type: ignore[reportUninitializedInstanceVariable]
         self._alignment_editor.alignment_changed.connect(self._on_alignment_changed)
+        self._alignment_editor.validation_failed.connect(self._on_alignment_validation_failed)
         layout.addWidget(self._alignment_editor)
 
         return widget
@@ -210,44 +215,44 @@ class EditorView(QWidget):
         self._settings = self._settings_service.get_settings()
 
     def _load_translations_list(self) -> None:
-        """Load list of all translations from storage."""
+        """Load list of all translations from storage into combo box."""
         try:
             translations = self._viewmodel._service.list_all_translations()
-            self._translation_list.clear()
+            self._translation_combo.clear()
 
             if not translations:
-                self._translation_list.addItem("Keine Übersetzungen vorhanden")
-                self._translation_list.setEnabled(False)
+                self._translation_combo.addItem("Keine Übersetzungen vorhanden", None)
+                self._translation_combo.setEnabled(False)
                 return
 
-            self._translation_list.setEnabled(True)
+            self._translation_combo.setEnabled(True)
             self._translation_ids = []  # type: ignore[reportUninitializedInstanceVariable]
 
             for translation in translations:
                 title = translation.title or "Ohne Titel"
                 item_text = f"{title} ({len(translation.sentences)} Sätze)"
-                self._translation_list.addItem(item_text)
+                self._translation_combo.addItem(item_text, translation.uuid)
                 self._translation_ids.append(translation.uuid)
 
         except Exception as e:
             print(f"✗ Error loading translations: {e}")
-            self._translation_list.clear()
-            self._translation_list.addItem("Fehler beim Laden")
-            self._translation_list.setEnabled(False)
+            self._translation_combo.clear()
+            self._translation_combo.addItem("Fehler beim Laden", None)
+            self._translation_combo.setEnabled(False)
 
-    def _on_translation_selected(self, row: int) -> None:
-        """Handle translation selection from list.
+    def _on_translation_selected(self, index: int) -> None:
+        """Handle translation selection from combo box.
 
         Args:
-            row: Selected row index
+            index: Selected combo box index
         """
-        if row < 0 or not hasattr(self, "_translation_ids"):
+        if index < 0 or not hasattr(self, "_translation_ids"):
             return
 
-        if row >= len(self._translation_ids):
+        if index >= len(self._translation_ids):
             return
 
-        translation_id = self._translation_ids[row]
+        translation_id = self._translation_ids[index]
         self.load_translation(translation_id)
 
     def load_translation(self, translation_id: UUID) -> None:
@@ -273,9 +278,13 @@ class EditorView(QWidget):
             sentence = state.translation.sentences[row]
             self._viewmodel.select_sentence(sentence.uuid)
 
-    def _on_edit_clicked(self) -> None:
-        """Handle edit button click."""
+    def _on_edit_translation_clicked(self) -> None:
+        """Handle edit translation button click."""
         self._viewmodel.set_edit_mode("edit_natural")
+
+    def _on_edit_alignment_clicked(self) -> None:
+        """Handle edit alignment button click."""
+        self._viewmodel.set_edit_mode("edit_alignment")
 
     def _on_back_clicked(self) -> None:
         """Handle back button click."""
@@ -291,6 +300,23 @@ class EditorView(QWidget):
     def _on_alignment_changed(self, alignments: list[WordAlignment]) -> None:
         """Handle alignment change."""
         self._viewmodel.update_alignment(alignments)
+        # Switch back to view mode after successful update
+        self._viewmodel.set_edit_mode("view")
+        # Show temporary success message
+        self._validation_error_label.setText("✓ Zuordnung erfolgreich aktualisiert")
+        self._validation_error_label.setStyleSheet("color: green; font-weight: bold;")
+        self._validation_error_label.setVisible(True)
+
+    def _on_alignment_validation_failed(self, error_message: str) -> None:
+        """Handle alignment validation failure.
+
+        Args:
+            error_message: Validation error message
+        """
+        # Show validation error in the error label
+        self._validation_error_label.setText(f"⚠ {error_message}")
+        self._validation_error_label.setStyleSheet("color: red; font-weight: bold;")
+        self._validation_error_label.setVisible(True)
 
     def _on_save_clicked(self) -> None:
         """Handle save button click."""
@@ -337,7 +363,9 @@ class EditorView(QWidget):
             self._mode_label.setText("<b>Ansicht</b>")
             self._alignment_preview.update_data(sentence.word_alignments)
             self._stacked_widget.setCurrentIndex(0)
-            self._edit_button.setVisible(True)
+            # Show both edit buttons in view mode
+            self._edit_translation_button.setVisible(True)
+            self._edit_alignment_button.setVisible(True)
             self._back_button.setVisible(False)
 
         elif mode == "edit_natural":
@@ -347,14 +375,18 @@ class EditorView(QWidget):
             self._alternatives_combo.clear()
             self._alternatives_combo.setEnabled(False)
             self._stacked_widget.setCurrentIndex(1)
-            self._edit_button.setVisible(False)
+            # Hide edit buttons in edit mode
+            self._edit_translation_button.setVisible(False)
+            self._edit_alignment_button.setVisible(False)
             self._back_button.setVisible(True)
 
         elif mode == "edit_alignment":
             self._mode_label.setText("<b>Zuordnung bearbeiten</b>")
             self._alignment_editor.update_data(sentence)
             self._stacked_widget.setCurrentIndex(2)
-            self._edit_button.setVisible(False)
+            # Hide edit buttons in edit mode
+            self._edit_translation_button.setVisible(False)
+            self._edit_alignment_button.setVisible(False)
             self._back_button.setVisible(True)
 
     def _on_sentence_updated(self) -> None:
@@ -367,14 +399,14 @@ class EditorView(QWidget):
         # Reload translations list to show newly saved translation
         self._load_translations_list()
 
-        # Select the saved translation in the list
+        # Select the saved translation in the combo box
         if hasattr(self, "_translation_ids") and self._viewmodel.state.translation:
             translation_id = self._viewmodel.state.translation.uuid
             try:
                 idx = self._translation_ids.index(translation_id)
-                self._translation_list.blockSignals(True)
-                self._translation_list.setCurrentRow(idx)
-                self._translation_list.blockSignals(False)
+                self._translation_combo.blockSignals(True)
+                self._translation_combo.setCurrentIndex(idx)
+                self._translation_combo.blockSignals(False)
             except (ValueError, AttributeError):
                 pass
 
