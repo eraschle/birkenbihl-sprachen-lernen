@@ -265,18 +265,49 @@ def create_regenerate_alignment_prompt(
     source_name = source_lang.name_en
     target_name = target_lang.name_en
 
-    return f"""Create a word-by-word alignment for the Birkenbihl method based on the given natural translation.
+    # Extract words from natural translation to show them explicitly
+    target_words = natural_translation.split()
+    target_words_list = ", ".join(f'"{word}"' for word in target_words)
 
-Source sentence ({source_name}):
+    return f"""Create a word-by-word alignment for the Birkenbihl method.
+
+**Source sentence ({source_name}):**
 {source_text}
 
-Natural translation ({target_name}):
+**Natural translation ({target_name}):**
 {natural_translation}
 
-Create word alignments that:
-1. Map each source word to its translation in the natural translation
-2. Use hyphens for compound translations (e.g., "vermissen-werde")
-3. Ensure EVERY word from the natural translation appears in the alignments
-4. Follow the source language word order with sequential position numbers (0-indexed)
+**Target words available (from natural translation):**
+{target_words_list}
 
-Provide only the word-by-word alignment, following the Birkenbihl decoding method."""
+**Critical rules:**
+1. **EVERY target word MUST be used EXACTLY ONCE** in the alignments
+2. **Use target words AS THEY APPEAR** in the natural translation (if "werde" and "vermissen" are separate words, keep them separate!)
+3. Map each source word to one or more target words
+4. Use hyphens to connect target words ONLY when mapping multiple target words to ONE source word (e.g., "I've" → "Ich-habe")
+5. **DO NOT create compound words** if the target words appear separately in the natural translation
+6. Follow source word order with sequential position numbers (0-indexed)
+
+**Example 1 (Correct - separate words):**
+Source: "Yo te extrañaré"
+Natural: "Ich werde dich vermissen"
+Target words: "Ich", "werde", "dich", "vermissen"
+
+✓ CORRECT Alignments:
+- Position 0: "Yo" → "Ich"
+- Position 1: "te" → "dich"
+- Position 2: "extrañaré" → "werde-vermissen"  (combines "werde" + "vermissen" for one source word)
+
+✗ WRONG: Do not create "werde vermissen" or omit words!
+
+**Example 2 (Simple 1:1):**
+Source: "Ich mag Hunde"
+Natural: "I like dogs"
+Target words: "I", "like", "dogs"
+
+Alignments:
+- Position 0: "Ich" → "I"
+- Position 1: "mag" → "like"
+- Position 2: "Hunde" → "dogs"
+
+Generate the word-by-word alignment following these rules. Ensure ALL target words are used exactly once."""

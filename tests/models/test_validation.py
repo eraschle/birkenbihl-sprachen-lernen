@@ -50,6 +50,7 @@ class TestValidateAlignmentComplete:
         assert error is not None
         assert "dich" in error.lower()
         assert "fehlende" in error.lower()
+        assert "natürlichen übersetzung fehlen" in error.lower()
 
     def test_validate_alignment_complete_extra_words(self) -> None:
         """Test validation fails when extra words are present."""
@@ -67,6 +68,7 @@ class TestValidateAlignmentComplete:
         assert error is not None
         assert "sehr" in error.lower()
         assert "zusätzliche" in error.lower()
+        assert "alignments, aber nicht in der natürlichen" in error.lower()
 
     def test_validate_alignment_with_punctuation(self) -> None:
         """Test validation ignores punctuation."""
@@ -174,6 +176,7 @@ class TestValidateAlignmentComplete:
         assert "sehr" in error.lower()
         assert "fehlende" in error.lower()
         assert "zusätzliche" in error.lower()
+        assert "wort-für-wort übersetzung muss alle wörter" in error.lower()
 
 
 class TestValidateSourceWordsMapped:

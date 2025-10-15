@@ -3,6 +3,7 @@
 from uuid import UUID
 
 from PySide6.QtWidgets import (
+    QComboBox,
     QHBoxLayout,
     QLabel,
     QListWidget,
@@ -147,9 +148,29 @@ class EditorView(QWidget):
         widget = QWidget()
         layout = QVBoxLayout(widget)
 
+        # Label für natürliche Übersetzung
+        natural_label = QLabel("Natürliche Übersetzung:")
+        layout.addWidget(natural_label)
+
+        # TextEdit für natürliche Übersetzung
         self._natural_edit = QTextEdit()  # type: ignore[reportUninitializedInstanceVariable]
         layout.addWidget(self._natural_edit)
 
+        # ComboBox für alternative Übersetzungen
+        alternatives_label = QLabel("Alternative Übersetzungen:")
+        layout.addWidget(alternatives_label)
+
+        self._alternatives_combo = QComboBox()  # type: ignore[reportUninitializedInstanceVariable]
+        self._alternatives_combo.setEnabled(False)  # Deaktiviert bis Vorschläge geladen
+        self._alternatives_combo.currentTextChanged.connect(self._on_alternative_selected)
+        layout.addWidget(self._alternatives_combo)
+
+        # Button für Alternativen generieren
+        suggest_button = QPushButton("Alternative vorschlagen")
+        suggest_button.clicked.connect(self._on_generate_alternatives)
+        layout.addWidget(suggest_button)
+
+        # Speichern-Button
         save_button = QPushButton("Speichern")
         save_button.clicked.connect(self._on_save_natural)
         layout.addWidget(save_button)
@@ -172,6 +193,7 @@ class EditorView(QWidget):
         self._viewmodel.state_changed.connect(self._on_state_changed)
         self._viewmodel.sentence_updated.connect(self._on_sentence_updated)
         self._viewmodel.translation_saved.connect(self._on_translation_saved)
+        self._viewmodel.suggestions_loaded.connect(self._on_suggestions_loaded)
         self._viewmodel.error_occurred.connect(self._on_error)
 
     def showEvent(self, event) -> None:  # type: ignore
@@ -321,6 +343,9 @@ class EditorView(QWidget):
         elif mode == "edit_natural":
             self._mode_label.setText("<b>Natürliche Übersetzung bearbeiten</b>")
             self._natural_edit.setText(sentence.natural_translation)
+            # ComboBox zurücksetzen beim Moduswechsel
+            self._alternatives_combo.clear()
+            self._alternatives_combo.setEnabled(False)
             self._stacked_widget.setCurrentIndex(1)
             self._edit_button.setVisible(False)
             self._back_button.setVisible(True)
@@ -391,6 +416,35 @@ class EditorView(QWidget):
             self._validation_error_label.setVisible(True)
         else:
             self._validation_error_label.setVisible(False)
+
+    def _on_generate_alternatives(self) -> None:
+        """Handle generate alternatives button click."""
+        provider = self._settings.get_default_provider()
+        if provider:
+            self._viewmodel.generate_suggestions(provider, count=3)
+        else:
+            print("✗ No default provider configured")
+
+    def _on_alternative_selected(self, text: str) -> None:
+        """Handle alternative selection from combo box.
+
+        Args:
+            text: Selected alternative text
+        """
+        if text and text != "Wähle Alternative...":
+            self._natural_edit.setText(text)
+
+    def _on_suggestions_loaded(self, suggestions: list[str]) -> None:
+        """Handle suggestions loaded from ViewModel.
+
+        Args:
+            suggestions: List of alternative translations
+        """
+        self._alternatives_combo.clear()
+        self._alternatives_combo.addItem("Wähle Alternative...")
+        for suggestion in suggestions:
+            self._alternatives_combo.addItem(suggestion)
+        self._alternatives_combo.setEnabled(True)
 
     def _on_error(self, error: str) -> None:
         """Handle error."""

@@ -55,15 +55,18 @@ def validate_alignment_complete(
     extra_words = actual_set - expected_set
 
     if missing_words and extra_words:
-        error_msg = (
-            f"Fehlende Wörter: {', '.join(sorted(missing_words))}; "
-            + f"Zusätzliche Wörter: {', '.join(sorted(extra_words))}"
-        )
+        error_msg = f"Fehlende Wörter: {', '.join(sorted(missing_words))}; "
+        error_msg += f"Zusätzliche Wörter: {', '.join(sorted(extra_words))}. "
+        error_msg += "Die Wort-für-Wort Übersetzung muss ALLE Wörter aus der natürlichen Übersetzung verwenden (keine zusammengesetzten Wörter, wenn diese in der natürlichen Übersetzung separat sind)."
         return (False, error_msg)
     elif missing_words:
-        return (False, f"Fehlende Wörter: {', '.join(sorted(missing_words))}")
+        error_msg = f"Fehlende Wörter: {', '.join(sorted(missing_words))}. "
+        error_msg += "Diese Wörter aus der natürlichen Übersetzung fehlen in den Wort-Alignments."
+        return False, error_msg
     elif extra_words:
-        return (False, f"Zusätzliche Wörter: {', '.join(sorted(extra_words))}")
+        error_msg = f"Zusätzliche Wörter: {', '.join(sorted(extra_words))}. "
+        error_msg += "Diese Wörter sind in den Alignments, aber nicht in der natürlichen Übersetzung."
+        return False, error_msg
 
     return (True, None)
 
