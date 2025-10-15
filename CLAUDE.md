@@ -6,6 +6,29 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Birkenbihl is a Python application that digitizes the Vera F. Birkenbihl language learning method. The app provides dual translations (natural + word-by-word) to help users understand foreign language structure, particularly for English/Spanish → German.
 
+## ⚠️ Pre-Release Project - No Legacy Code Policy
+
+**IMPORTANT: This application has NEVER been released to production or end users.**
+
+**Implications:**
+- ❌ **NO legacy code exists** - There are no users with old versions
+- ❌ **NO backwards compatibility needed** - No migration code required
+- ❌ **NO deprecated features** - Remove unused code immediately
+- ✅ **DELETE unused code** - If a feature/function is not used, delete it
+- ✅ **Clean codebase** - Only include code that is actually executed
+- ✅ **Refactor freely** - Breaking changes are acceptable and encouraged
+
+**Rules:**
+1. **Never implement migration code** for "old" versions that don't exist
+2. **Never keep "backwards compatible" alternatives** - there's nothing to be compatible with
+3. **Delete unused functions/classes immediately** - don't keep "just in case"
+4. **Refactor aggressively** - optimize for current design, not past decisions
+5. **No "legacy" or "deprecated" markers** - if something is old, delete it
+
+**Example:**
+- ❌ BAD: "Let's keep both `translate_and_save()` and `translate()` for backwards compatibility"
+- ✅ GOOD: "The old `translate_and_save()` is not used anymore, delete it"
+
 ## Development Commands
 
 ### Setup
