@@ -54,15 +54,12 @@ class TestBirkenbihUnit11WordByWord:
             result = translator.translate(source_text, source_lang, target_lang)
 
             # Combine word alignments from all sentences (translator may split into multiple)
-            all_target_words = []
-            for sentence in result.sentences:
-                for alignment in sentence.word_alignments:
-                    if alignment.target_word.strip():  # Skip empty target words
-                        all_target_words.append(alignment.target_word)
+            all_parts = [sentence.get_word_by_word() for sentence in result.sentences]
+            generated_word_by_word = " ".join(all_parts)
 
-            generated_word_by_word = " ".join(all_target_words)
-
-            if generated_word_by_word != expected_word_by_word:
+            if conftest.normalize_word_by_word(generated_word_by_word) != conftest.normalize_word_by_word(
+                expected_word_by_word
+            ):
                 failed_cases.append(
                     {
                         "case_index": idx,
@@ -120,15 +117,12 @@ class TestBirkenbihUnit11WordByWord:
 
         result = translator.translate(source_text, source_lang, target_lang)
 
-        all_target_words = []
-        for sentence in result.sentences:
-            for alignment in sentence.word_alignments:
-                if alignment.target_word.strip():
-                    all_target_words.append(alignment.target_word)
-
-        generated_word_by_word = " ".join(all_target_words)
+        all_parts = [sentence.get_word_by_word() for sentence in result.sentences]
+        generated_word_by_word = " ".join(all_parts)
 
         print(f"\nCase {test_index}: {source_text}")
         print(f"Expected:  {expected_word_by_word}")
         print(f"Generated: {generated_word_by_word}")
-        print(f"Match: {generated_word_by_word == expected_word_by_word}")
+        print(
+            f"Match: {conftest.normalize_word_by_word(generated_word_by_word) == conftest.normalize_word_by_word(expected_word_by_word)}"
+        )

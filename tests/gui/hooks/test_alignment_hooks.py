@@ -1,7 +1,5 @@
 """Tests for alignment post-processing hooks."""
 
-import pytest
-
 from birkenbihl.gui.hooks.alignment_hooks import (
     AlignmentHookManager,
     HyphenateMultiWordsHook,

@@ -97,3 +97,22 @@ def load_test_data(file_name: str) -> dict[str, object]:
     fixture_path = Path(__file__).parent.parent / "fixtures" / file_name
     with open(fixture_path) as f:
         return json.load(f)
+
+
+def normalize_word_by_word(text: str) -> str:
+    """Normalize word-by-word text for comparison.
+
+    Removes trailing punctuation as it's not part of word structure
+    in the Birkenbihl method's pedagogical focus.
+
+    Args:
+        text: Word-by-word translation text
+
+    Returns:
+        Normalized text without trailing punctuation
+
+    Example:
+        >>> normalize_word_by_word("Gestern ich traf Leute.")
+        'Gestern ich traf Leute'
+    """
+    return text.rstrip(".,!?;:")

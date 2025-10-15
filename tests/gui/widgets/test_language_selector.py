@@ -1,10 +1,10 @@
 """Tests for LanguageSelector widget."""
 
-import conftest
 from PySide6.QtWidgets import QApplication
 from pytestqt.qtbot import QtBot
 
 from birkenbihl.gui.widgets.language_selector import LanguageSelector
+from tests import conftest
 
 
 class TestLanguageSelector:

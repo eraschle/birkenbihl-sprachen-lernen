@@ -36,6 +36,53 @@ class Sentence(BaseModel):
 
     created_at: datetime = Field(default_factory=dateutils.create_now)
 
+    def get_word_by_word(self, with_punctuation: bool = False) -> str:
+        """Get word-by-word translation as string.
+
+        Args:
+            with_punctuation: If True, preserve punctuation from source text.
+                             TODO: This feature is provisional and should not be used yet.
+
+        Returns:
+            Space-separated word-by-word translation
+
+        Example:
+            >>> sentence.get_word_by_word(with_punctuation=False)
+            'Gestern ich traf Leute'
+            >>> sentence.get_word_by_word(with_punctuation=True)  # TODO: Not ready yet
+            'Gestern ich traf Leute.'
+        """
+        # Sort by position for correct order
+        sorted_alignments = sorted(self.word_alignments, key=lambda a: a.position)
+
+        if not with_punctuation:
+            # Simple case: just join target words
+            return " ".join(a.target_word for a in sorted_alignments if a.target_word.strip())
+
+        # TODO: Punctuation preservation is provisional - do not use yet!
+        import re
+
+        source_words = self.source_text.split()
+        result = []
+
+        for idx, alignment in enumerate(sorted_alignments):
+            if not alignment.target_word.strip():
+                continue
+
+            target_word = alignment.target_word
+
+            # Extract trailing punctuation from source word
+            if idx < len(source_words):
+                source_word_with_punct = source_words[idx]
+                match = re.search(r"[^\w]+$", source_word_with_punct)
+                if match:
+                    punctuation = match.group()
+                    target_word += punctuation
+
+            result.append(target_word)
+
+        return " ".join(result)
+
 
 class Translation(BaseModel):
     """Complete translation document with metadata.

@@ -9,7 +9,11 @@ from birkenbihl.gui.widgets import (
     progress_widget,
     provider_selector,
     sentence_card,
+    tag_container,
+    tag_widget,
 )
+from birkenbihl.gui.widgets.tag_container import TagContainer
+from birkenbihl.gui.widgets.tag_widget import TagWidget
 
 __all__ = [
     "base",
@@ -20,4 +24,8 @@ __all__ = [
     "alignment_preview",
     "alignment_editor",
     "sentence_card",
+    "tag_container",
+    "tag_widget",
+    "TagContainer",
+    "TagWidget",
 ]

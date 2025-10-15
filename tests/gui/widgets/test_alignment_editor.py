@@ -1,133 +1,208 @@
 """Tests for AlignmentEditor widget."""
 
-import pytest
+from uuid import uuid4
+
+from PySide6.QtWidgets import QApplication
+from pytestqt.qtbot import QtBot
 
 from birkenbihl.gui.widgets.alignment_editor import AlignmentEditor
 from birkenbihl.models.translation import Sentence, WordAlignment
+from tests import conftest
 
 
-@pytest.fixture
-def sample_sentence() -> Sentence:
-    """Create sample sentence for testing."""
-    return Sentence(
-        source_text="Yo te extrañaré",
-        natural_translation="Ich werde dich vermissen",
-        word_alignments=[
-            WordAlignment(source_word="Yo", target_word="Ich", position=0),
-            WordAlignment(source_word="te", target_word="dich", position=1),
-            WordAlignment(source_word="extrañaré", target_word="werde-vermissen", position=2),
-        ],
-    )
-
-
-@pytest.mark.ui
 class TestAlignmentEditor:
-    """Test suite for AlignmentEditor widget."""
+    """Tests for AlignmentEditor."""
 
-    def test_init_without_sentence(self, qapp) -> None:
+    def test_init_without_sentence(self, qapp: QApplication):
         """Test initialization without sentence."""
-        if qapp is None:
-            pytest.skip("Qt application not available")
-
+        conftest.skrip_test_when_is_not_valid(qapp)
         editor = AlignmentEditor()
+        assert editor is not None
         assert editor._sentence is None
-        assert editor._target_words == []
-        assert editor._source_mappings == {}
+        assert editor._controller is None
 
-    def test_init_with_sentence(self, qapp, sample_sentence: Sentence) -> None:
+    def test_init_with_sentence(self, qapp: QApplication):
         """Test initialization with sentence."""
-        if qapp is None:
-            pytest.skip("Qt application not available")
+        conftest.skrip_test_when_is_not_valid(qapp)
+        sentence = Sentence(
+            uuid=uuid4(),
+            source_text="Yo te extrañaré",
+            natural_translation="Ich werde dich vermissen",
+            word_alignments=[
+                WordAlignment(source_word="Yo", target_word="Ich", position=0),
+                WordAlignment(source_word="te", target_word="dich", position=1),
+                WordAlignment(source_word="extrañaré", target_word="werde-vermissen", position=2),
+            ],
+        )
 
-        editor = AlignmentEditor(sentence=sample_sentence)
-        assert editor._sentence == sample_sentence
-        assert editor._target_words == ["Ich", "werde", "dich", "vermissen"]
-        assert len(editor._source_mappings) == 3
+        editor = AlignmentEditor(sentence=sentence)
+        assert editor._sentence is sentence
+        assert editor._controller is not None
 
-    def test_build_mappings_splits_hyphens(self, qapp, sample_sentence: Sentence) -> None:
-        """Test that _build_mappings splits hyphenated words."""
-        if qapp is None:
-            pytest.skip("Qt application not available")
+    def test_build_mappings_from_alignments_with_hyphens(self, qapp: QApplication):
+        """Test that hyphenated alignments are split correctly."""
+        conftest.skrip_test_when_is_not_valid(qapp)
+        sentence = Sentence(
+            uuid=uuid4(),
+            source_text="Yo te extrañaré",
+            natural_translation="Ich werde dich vermissen",
+            word_alignments=[
+                WordAlignment(source_word="Yo", target_word="Ich", position=0),
+                WordAlignment(source_word="te", target_word="dich", position=1),
+                WordAlignment(source_word="extrañaré", target_word="werde-vermissen", position=2),
+            ],
+        )
 
-        editor = AlignmentEditor(sentence=sample_sentence)
+        editor = AlignmentEditor(sentence=sentence)
+        mappings = editor._build_mappings_from_alignments()
 
-        # Check that "werde-vermissen" was split into list
-        assert editor._source_mappings["Yo"] == ["Ich"]
-        assert editor._source_mappings["te"] == ["dich"]
-        assert editor._source_mappings["extrañaré"] == ["werde", "vermissen"]
+        assert mappings["Yo"] == ["Ich"]
+        assert mappings["te"] == ["dich"]
+        assert mappings["extrañaré"] == ["werde", "vermissen"]  # Split!
 
-    def test_get_available_target_words_all_available(self, qapp, sample_sentence: Sentence) -> None:
-        """Test _get_available_target_words with no mappings."""
-        if qapp is None:
-            pytest.skip("Qt application not available")
+    def test_build_mappings_bug_fix_multiple_alignments_same_source(self, qapp: QApplication):
+        """Test BUG FIX: Multiple alignments for same source word don't overwrite.
 
-        editor = AlignmentEditor(sentence=sample_sentence)
-        editor._source_mappings = {}  # Clear mappings
+        This is the critical bug fix - when multiple WordAlignments exist
+        for the same source_word, they should be combined, not overwritten.
+        """
+        conftest.skrip_test_when_is_not_valid(qapp)
+        sentence = Sentence(
+            uuid=uuid4(),
+            source_text="extrañaré",
+            natural_translation="werde vermissen",
+            word_alignments=[
+                # Two separate alignments for same source word
+                WordAlignment(source_word="extrañaré", target_word="werde", position=0),
+                WordAlignment(source_word="extrañaré", target_word="vermissen", position=1),
+            ],
+        )
 
-        available = editor._get_available_target_words()
-        assert available == ["Ich", "werde", "dich", "vermissen"]
+        editor = AlignmentEditor(sentence=sentence)
+        mappings = editor._build_mappings_from_alignments()
 
-    def test_get_available_target_words_excludes_mapped(self, qapp, sample_sentence: Sentence) -> None:
-        """Test _get_available_target_words excludes already mapped words."""
-        if qapp is None:
-            pytest.skip("Qt application not available")
+        # Bug fix: Both words should be present
+        assert "werde" in mappings["extrañaré"]
+        assert "vermissen" in mappings["extrañaré"]
+        assert len(mappings["extrañaré"]) == 2
 
-        editor = AlignmentEditor(sentence=sample_sentence)
-        editor._source_mappings = {
-            "Yo": ["Ich"],
-            "te": ["dich"],
-        }
+    def test_controller_created_with_correct_data(self, qapp: QApplication):
+        """Test that controller is created with correct target words and mappings."""
+        conftest.skrip_test_when_is_not_valid(qapp)
+        sentence = Sentence(
+            uuid=uuid4(),
+            source_text="Yo te",
+            natural_translation="Ich dich",
+            word_alignments=[
+                WordAlignment(source_word="Yo", target_word="Ich", position=0),
+                WordAlignment(source_word="te", target_word="dich", position=1),
+            ],
+        )
 
-        available = editor._get_available_target_words()
-        assert available == ["werde", "vermissen"]
+        editor = AlignmentEditor(sentence=sentence)
 
-    def test_get_available_target_words_includes_current_source(self, qapp, sample_sentence: Sentence) -> None:
-        """Test _get_available_target_words includes words from current source."""
-        if qapp is None:
-            pytest.skip("Qt application not available")
+        # Check controller has correct target words
+        assert editor._controller is not None
+        assert editor._controller._target_words == ["Ich", "dich"]
 
-        editor = AlignmentEditor(sentence=sample_sentence)
-        editor._source_mappings = {
-            "Yo": ["Ich", "werde"],
-            "te": ["dich"],
-        }
+        # Check controller has correct initial mappings
+        assert editor._controller.get_assigned_words("Yo") == ["Ich"]
+        assert editor._controller.get_assigned_words("te") == ["dich"]
 
-        # Should include "werde" because it's for the current source word "Yo"
-        available = editor._get_available_target_words(for_source_word="Yo")
-        assert "werde" in available
-        assert "Ich" in available
-        assert "dich" not in available  # Used by "te"
+    def test_build_alignments_uses_hook_system(self, qapp: QApplication):
+        """Test that _build_alignments joins multiple words with hyphens."""
+        conftest.skrip_test_when_is_not_valid(qapp)
+        sentence = Sentence(
+            uuid=uuid4(),
+            source_text="extrañaré",
+            natural_translation="werde vermissen",
+            word_alignments=[],
+        )
 
-    def test_build_alignments_uses_hook_system(self, qapp, sample_sentence: Sentence) -> None:
-        """Test _build_alignments uses hook system correctly."""
-        if qapp is None:
-            pytest.skip("Qt application not available")
+        editor = AlignmentEditor(sentence=sentence)
 
-        editor = AlignmentEditor(sentence=sample_sentence)
-        editor._source_mappings = {
-            "Yo": ["Ich"],
-            "te": ["dich"],
-            "extrañaré": ["werde", "vermissen"],
-        }
+        # Manually add words to controller
+        assert editor._controller is not None
+        editor._controller.add_word("extrañaré", "werde")
+        editor._controller.add_word("extrañaré", "vermissen")
 
+        # Build alignments
         alignments = editor._build_alignments()
 
-        assert len(alignments) == 3
-        assert alignments[0].source_word == "Yo"
-        assert alignments[0].target_word == "Ich"
-        assert alignments[1].source_word == "te"
-        assert alignments[1].target_word == "dich"
-        assert alignments[2].source_word == "extrañaré"
-        assert alignments[2].target_word == "werde-vermissen"  # Hyphenated!
+        # Should join with hyphen
+        assert len(alignments) == 1
+        assert alignments[0].source_word == "extrañaré"
+        assert alignments[0].target_word == "werde-vermissen"
 
-    def test_update_data(self, qapp, sample_sentence: Sentence) -> None:
-        """Test update_data method."""
-        if qapp is None:
-            pytest.skip("Qt application not available")
-
+    def test_update_data(self, qapp: QApplication):
+        """Test update_data reloads sentence."""
+        conftest.skrip_test_when_is_not_valid(qapp)
         editor = AlignmentEditor()
-        assert editor._sentence is None
 
-        editor.update_data(sample_sentence)
-        assert editor._sentence == sample_sentence
-        assert len(editor._source_mappings) == 3
+        sentence = Sentence(
+            uuid=uuid4(),
+            source_text="Yo",
+            natural_translation="Ich",
+            word_alignments=[
+                WordAlignment(source_word="Yo", target_word="Ich", position=0),
+            ],
+        )
+
+        editor.update_data(sentence)
+
+        assert editor._sentence is sentence
+        assert editor._controller is not None
+        assert editor._controller.get_assigned_words("Yo") == ["Ich"]
+
+    def test_validate_button_with_valid_alignments(self, qtbot: QtBot):
+        """Test validate button with valid alignments emits success signal."""
+        sentence = Sentence(
+            uuid=uuid4(),
+            source_text="Yo",
+            natural_translation="Ich",
+            word_alignments=[
+                WordAlignment(source_word="Yo", target_word="Ich", position=0),
+            ],
+        )
+
+        editor = AlignmentEditor(sentence=sentence)
+
+        assert editor is not None
+        # Click validate - should emit validation_succeeded signal
+        with qtbot.waitSignal(editor.validation_succeeded, timeout=1000):
+            editor._on_validate()
+
+    def test_validate_button_with_invalid_alignments(self, qtbot: QtBot):
+        """Test validate button with invalid alignments emits signal."""
+        sentence = Sentence(
+            uuid=uuid4(),
+            source_text="Yo te",
+            natural_translation="Ich werde dich vermissen",
+            word_alignments=[
+                WordAlignment(source_word="Yo", target_word="Ich", position=0),
+                # Missing: te -> dich, werde, vermissen
+            ],
+        )
+
+        editor = AlignmentEditor(sentence=sentence)
+
+        # Click validate - should emit validation_failed
+        with qtbot.waitSignal(editor.validation_failed, timeout=1000):
+            editor._on_validate()
+
+    def test_apply_button_emits_alignments(self, qtbot: QtBot):
+        """Test apply button emits alignment_changed signal."""
+        sentence = Sentence(
+            uuid=uuid4(),
+            source_text="Yo",
+            natural_translation="Ich",
+            word_alignments=[
+                WordAlignment(source_word="Yo", target_word="Ich", position=0),
+            ],
+        )
+
+        editor = AlignmentEditor(sentence=sentence)
+
+        # Click apply - should emit alignment_changed
+        with qtbot.waitSignal(editor.alignment_changed, timeout=1000):
+            editor._on_apply()
