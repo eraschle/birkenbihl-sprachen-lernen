@@ -57,10 +57,33 @@ class EditorView(QWidget):
         """Setup UI components."""
         layout = QHBoxLayout(self)
 
-        # Left: Sentence list
+        # Left column: Translation list
+        left_panel = QWidget()
+        left_layout = QVBoxLayout(left_panel)
+        left_layout.setContentsMargins(0, 0, 0, 0)
+
+        translations_label = QLabel("<b>Gespeicherte Übersetzungen</b>")
+        left_layout.addWidget(translations_label)
+
+        self._translation_list = QListWidget()  # type: ignore[reportUninitializedInstanceVariable]
+        self._translation_list.currentRowChanged.connect(self._on_translation_selected)
+        left_layout.addWidget(self._translation_list)
+
+        layout.addWidget(left_panel, 1)
+
+        # Middle column: Sentence list
+        middle_panel = QWidget()
+        middle_layout = QVBoxLayout(middle_panel)
+        middle_layout.setContentsMargins(0, 0, 0, 0)
+
+        sentences_label = QLabel("<b>Sätze</b>")
+        middle_layout.addWidget(sentences_label)
+
         self._sentence_list = QListWidget()  # type: ignore[reportUninitializedInstanceVariable]
         self._sentence_list.currentRowChanged.connect(self._on_sentence_selected)
-        layout.addWidget(self._sentence_list, 1)
+        middle_layout.addWidget(self._sentence_list)
+
+        layout.addWidget(middle_panel, 1)
 
         # Right: Edit panel
         edit_panel = QWidget()
@@ -152,9 +175,10 @@ class EditorView(QWidget):
         self._viewmodel.error_occurred.connect(self._on_error)
 
     def showEvent(self, event) -> None:  # type: ignore
-        """Handle show event by reloading settings."""
+        """Handle show event by reloading settings and translations list."""
         super().showEvent(event)
         self._reload_settings()
+        self._load_translations_list()
 
     def _reload_settings(self) -> None:
         """Reload settings and update UI components."""
@@ -162,6 +186,47 @@ class EditorView(QWidget):
             return
 
         self._settings = self._settings_service.get_settings()
+
+    def _load_translations_list(self) -> None:
+        """Load list of all translations from storage."""
+        try:
+            translations = self._viewmodel._service.list_all_translations()
+            self._translation_list.clear()
+
+            if not translations:
+                self._translation_list.addItem("Keine Übersetzungen vorhanden")
+                self._translation_list.setEnabled(False)
+                return
+
+            self._translation_list.setEnabled(True)
+            self._translation_ids = []  # type: ignore[reportUninitializedInstanceVariable]
+
+            for translation in translations:
+                title = translation.title or "Ohne Titel"
+                item_text = f"{title} ({len(translation.sentences)} Sätze)"
+                self._translation_list.addItem(item_text)
+                self._translation_ids.append(translation.uuid)
+
+        except Exception as e:
+            print(f"✗ Error loading translations: {e}")
+            self._translation_list.clear()
+            self._translation_list.addItem("Fehler beim Laden")
+            self._translation_list.setEnabled(False)
+
+    def _on_translation_selected(self, row: int) -> None:
+        """Handle translation selection from list.
+
+        Args:
+            row: Selected row index
+        """
+        if row < 0 or not hasattr(self, "_translation_ids"):
+            return
+
+        if row >= len(self._translation_ids):
+            return
+
+        translation_id = self._translation_ids[row]
+        self.load_translation(translation_id)
 
     def load_translation(self, translation_id: UUID) -> None:
         """Load translation into editor from storage.
@@ -274,6 +339,19 @@ class EditorView(QWidget):
     def _on_translation_saved(self) -> None:
         """Handle translation saved."""
         print("✓ Translation saved to storage")
+        # Reload translations list to show newly saved translation
+        self._load_translations_list()
+
+        # Select the saved translation in the list
+        if hasattr(self, "_translation_ids") and self._viewmodel.state.translation:
+            translation_id = self._viewmodel.state.translation.uuid
+            try:
+                idx = self._translation_ids.index(translation_id)
+                self._translation_list.blockSignals(True)
+                self._translation_list.setCurrentRow(idx)
+                self._translation_list.blockSignals(False)
+            except (ValueError, AttributeError):
+                pass
 
     def _update_button_states(self, state: TranslationEditorState) -> None:
         """Update button enabled/disabled states based on validation.
