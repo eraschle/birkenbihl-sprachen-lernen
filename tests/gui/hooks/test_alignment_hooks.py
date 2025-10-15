@@ -4,6 +4,7 @@ from birkenbihl.gui.hooks.alignment_hooks import (
     AlignmentHookManager,
     HyphenateMultiWordsHook,
 )
+from birkenbihl.models.translation import WordAlignment
 
 
 class TestHyphenateMultiWordsHook:
@@ -139,8 +140,10 @@ class TestAlignmentHookManager:
                 self,
                 source_mappings: dict[str, list[str]],
                 target_words: list[str],
-            ) -> list:
+            ) -> list[WordAlignment]:
                 # Just return empty list for testing
+                source_mappings.keys()
+                target_words.copy()
                 return []
 
         manager = AlignmentHookManager()
@@ -156,8 +159,10 @@ class TestAlignmentHookManager:
                 self,
                 source_mappings: dict[str, list[str]],
                 target_words: list[str],
-            ) -> list:
+            ) -> list[WordAlignment]:
                 # This should NOT be used
+                source_mappings.keys()
+                target_words.copy()
                 return []
 
         class SecondHook:
@@ -165,10 +170,12 @@ class TestAlignmentHookManager:
                 self,
                 source_mappings: dict[str, list[str]],
                 target_words: list[str],
-            ) -> list:
+            ) -> list[WordAlignment]:
                 # This SHOULD be used
                 from birkenbihl.models.translation import WordAlignment
 
+                source_mappings.keys()
+                target_words.copy()
                 return [WordAlignment(source_word="test", target_word="result", position=0)]
 
         manager = AlignmentHookManager()

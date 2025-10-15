@@ -46,11 +46,7 @@ class HyphenateMultiWordsHook:
         Output: WordAlignment(source_word="extrañaré", target_word="werde-vermissen", position=0)
     """
 
-    def process(
-        self,
-        source_mappings: dict[str, list[str]],
-        target_words: list[str],
-    ) -> list[WordAlignment]:
+    def process(self, source_mappings: dict[str, list[str]], target_words: list[str]) -> list[WordAlignment]:
         """Process mappings by hyphenating multiple target words.
 
         Rules:
@@ -118,11 +114,7 @@ class AlignmentHookManager:
         """
         self._hooks.append(hook)
 
-    def process(
-        self,
-        source_mappings: dict[str, list[str]],
-        target_words: list[str],
-    ) -> list[WordAlignment]:
+    def process(self, source_mappings: dict[str, list[str]], target_words: list[str]) -> list[WordAlignment]:
         """Process source mappings through all registered hooks.
 
         Currently applies only the last hook (as we only have one).

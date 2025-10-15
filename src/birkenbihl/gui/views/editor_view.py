@@ -300,12 +300,15 @@ class EditorView(QWidget):
     def _on_alignment_changed(self, alignments: list[WordAlignment]) -> None:
         """Handle alignment change."""
         self._viewmodel.update_alignment(alignments)
+
         # Switch back to view mode after successful update
         self._viewmodel.set_edit_mode("view")
-        # Show temporary success message
-        self._validation_error_label.setText("✓ Zuordnung erfolgreich aktualisiert")
-        self._validation_error_label.setStyleSheet("color: green; font-weight: bold;")
-        self._validation_error_label.setVisible(True)
+
+        # Show temporary success message if no validation errors
+        if not self._viewmodel.state.has_validation_errors:
+            self._validation_error_label.setText("✓ Zuordnung erfolgreich aktualisiert")
+            self._validation_error_label.setStyleSheet("color: green; font-weight: bold;")
+            self._validation_error_label.setVisible(True)
 
     def _on_alignment_validation_failed(self, error_message: str) -> None:
         """Handle alignment validation failure.
@@ -410,6 +413,12 @@ class EditorView(QWidget):
             except (ValueError, AttributeError):
                 pass
 
+    def _can_save(self, state: TranslationEditorState) -> bool:
+        if state.translation is None:
+            return False
+
+        return not state.has_validation_errors and not state.is_saving
+
     def _update_button_states(self, state: TranslationEditorState) -> None:
         """Update button enabled/disabled states based on validation.
 
@@ -420,20 +429,14 @@ class EditorView(QWidget):
         # - Translation exists
         # - No validation errors
         # - Not currently saving
-        can_save = (
-            state.translation is not None
-            and not state.has_validation_errors
-            and not state.is_saving
-        )
-        self._save_button.setEnabled(can_save)
+        self._save_button.setEnabled(self._can_save(state))
 
-        # Set tooltip to show validation errors or saving status
+        # Set tool-tip to show validation errors or saving status
         if state.is_saving:
             self._save_button.setToolTip("Speichert...")
         elif state.has_validation_errors:
-            self._save_button.setToolTip(
-                f"Kann nicht speichern: {state.validation_error_message}"
-            )
+            message = f"Kann nicht speichern: {state.validation_error_message}"
+            self._save_button.setToolTip(message)
         else:
             self._save_button.setToolTip("Translation speichern")
 

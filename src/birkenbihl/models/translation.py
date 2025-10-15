@@ -41,7 +41,6 @@ class Sentence(BaseModel):
 
         Args:
             with_punctuation: If True, preserve punctuation from source text.
-                             TODO: This feature is provisional and should not be used yet.
 
         Returns:
             Space-separated word-by-word translation
@@ -49,7 +48,7 @@ class Sentence(BaseModel):
         Example:
             >>> sentence.get_word_by_word(with_punctuation=False)
             'Gestern ich traf Leute'
-            >>> sentence.get_word_by_word(with_punctuation=True)  # TODO: Not ready yet
+            >>> sentence.get_word_by_word(with_punctuation=True)
             'Gestern ich traf Leute.'
         """
         # Sort by position for correct order

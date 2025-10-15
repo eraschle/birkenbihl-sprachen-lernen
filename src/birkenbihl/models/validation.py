@@ -130,19 +130,32 @@ def validate_source_words_mapped(alignments: list[WordAlignment]) -> tuple[bool,
 def _extract_alignment_words(alignments: list[WordAlignment]) -> list[str]:
     """Extract all words from alignments, splitting hyphenated combinations.
 
+    Removes punctuation (except hyphens used for word combination) to match
+    the normalization done in _extract_words().
+
     Args:
         alignments: List of WordAlignment objects
 
     Returns:
-        List of normalized words (hyphenated words are split)
+        List of normalized words (hyphenated words are split, punctuation removed)
     """
     words = []
     for alignment in alignments:
+        # Normalize: lowercase and remove punctuation (except hyphens between words)
         target_word = alignment.target_word.lower()
+
         if "-" in target_word:
+            # Split hyphenated words first
             parts = target_word.split("-")
-            words.extend([p for p in parts if p])
+            # Remove punctuation from each part
+            for part in parts:
+                clean_part = re.sub(r"[^\w'\-]", "", part)
+                if clean_part:
+                    words.append(clean_part)
         else:
-            words.append(target_word)
+            # Remove punctuation from single word
+            clean_word = re.sub(r"[^\w'\-]", "", target_word)
+            if clean_word:
+                words.append(clean_word)
 
     return words

@@ -9,7 +9,7 @@ class TagWidget(QWidget):
 
     Features:
     - Displays text label
-    - Has a close button (×) that appears on hover
+    - Has a close button (×) that is ALWAYS visible on the right side
     - Emits removed signal when × is clicked
     - Rounded corners with Material Design styling
     """
@@ -29,17 +29,17 @@ class TagWidget(QWidget):
         # Create layout
         layout = QHBoxLayout(self)
         layout.setContentsMargins(6, 2, 6, 2)
-        layout.setSpacing(2)
+        layout.setSpacing(4)
 
         # Create label
         self._label = QLabel(text)
         layout.addWidget(self._label)
 
-        # Create close button
+        # Create close button (ALWAYS visible on the right)
         self._close_btn = QPushButton("×")
-        self._close_btn.setMaximumSize(14, 14)
-        self._close_btn.setFlat(True)
-        self._close_btn.setVisible(False)
+        self._close_btn.setMinimumSize(20, 20)
+        self._close_btn.setMaximumSize(20, 20)
+        self._close_btn.setVisible(True)  # ALWAYS visible!
         self._close_btn.clicked.connect(self.removed.emit)
         layout.addWidget(self._close_btn)
 
@@ -54,14 +54,17 @@ class TagWidget(QWidget):
                 background-color: #d0d0d0;
             }
             QPushButton {
-                border: none;
-                background: transparent;
-                color: #666;
+                border: 1px solid #999;
+                border-radius: 10px;
+                background-color: #cccccc;
+                color: #333;
                 font-weight: bold;
-                font-size: 12px;
+                font-size: 14px;
             }
             QPushButton:hover {
-                color: #f44336;
+                background-color: #f44336;
+                color: white;
+                border-color: #f44336;
             }
             QLabel {
                 font-size: 11px;
@@ -76,13 +79,3 @@ class TagWidget(QWidget):
             The tag text
         """
         return self._text
-
-    def enterEvent(self, event):
-        """Show close button when mouse enters the widget."""
-        self._close_btn.setVisible(True)
-        super().enterEvent(event)
-
-    def leaveEvent(self, event):
-        """Hide close button when mouse leaves the widget."""
-        self._close_btn.setVisible(False)
-        super().leaveEvent(event)

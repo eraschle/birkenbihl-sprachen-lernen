@@ -1,6 +1,5 @@
 """Tests for AlignmentController."""
 
-from PySide6.QtCore import QObject
 from pytestqt.qtbot import QtBot
 
 from birkenbihl.gui.controllers.alignment_controller import AlignmentController

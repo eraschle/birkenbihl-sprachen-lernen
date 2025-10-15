@@ -1,6 +1,6 @@
 """Container widget for managing tag widgets and adding new tags."""
 
-from PySide6.QtWidgets import QComboBox, QHBoxLayout, QWidget
+from PySide6.QtWidgets import QComboBox, QHBoxLayout, QSizePolicy, QWidget
 
 from birkenbihl.gui.controllers.alignment_controller import AlignmentController
 from birkenbihl.gui.widgets.tag_widget import TagWidget
@@ -37,17 +37,21 @@ class TagContainer(QWidget):
 
     def _setup_ui(self):
         """Set up the UI layout and widgets."""
-        self._layout = QHBoxLayout(self)
+        self._layout = QHBoxLayout(self)  # type: ignore[reportUninitializedInstanceVariable]
         self._layout.setContentsMargins(0, 0, 0, 0)
         self._layout.setSpacing(4)
 
         # ComboBox
-        self._combobox = QComboBox()
+        self._combobox = QComboBox()  # type: ignore[reportUninitializedInstanceVariable]
         self._combobox.setMinimumWidth(120)
         self._combobox.setMaximumHeight(24)
-        self._combobox.currentTextChanged.connect(self._on_word_selected)
+        # Use 'activated' signal - only triggered by USER selection, not programmatic changes
+        self._combobox.activated.connect(self._on_word_selected_by_user)
         self._layout.addWidget(self._combobox)
         self._layout.addStretch()
+
+        # Set size policy so container only takes the height it needs
+        self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
 
     def _on_mappings_changed(self):
         """Handle controller mappings changed signal."""
@@ -80,16 +84,22 @@ class TagContainer(QWidget):
         # 4. Disable ComboBox if no words available
         self._combobox.setEnabled(len(available) > 0)
 
-    def _on_word_selected(self, text: str):
-        """Handle word selection from ComboBox.
+    def _on_word_selected_by_user(self, index: int):
+        """Handle word selection from ComboBox by user click.
 
         Args:
-            text: The selected text (not used, we use currentData instead)
+            index: The selected index in the ComboBox
         """
-        word = self._combobox.currentData()
+        # Skip placeholder (index 0)
+        if index == 0:
+            return
+
+        word = self._combobox.itemData(index)
+
         if word:
             self._controller.add_word(self._source_word, word)
-            self._combobox.setCurrentIndex(0)  # Reset to placeholder
+            # Reset to placeholder after successful add
+            self._combobox.setCurrentIndex(0)
 
     def _on_tag_removed(self, word: str):
         """Handle tag removal.

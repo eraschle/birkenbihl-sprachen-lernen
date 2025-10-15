@@ -5,8 +5,10 @@ from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
     QLabel,
+    QLayout,
     QPushButton,
     QScrollArea,
+    QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
@@ -25,7 +27,7 @@ class AlignmentEditor(QWidget):
     - Central controller prevents duplicate assignments
     - All UI components stay synchronized automatically
     - ComboBox disabled when no words available
-    - Hover effects on tags (× button appears)
+    - Close button (×) ALWAYS visible on right side of each tag
     """
 
     alignment_changed = Signal(list)  # list[WordAlignment]
@@ -105,14 +107,19 @@ class AlignmentEditor(QWidget):
         **BUG FIX:** Uses extend() instead of = to avoid overwriting
         when multiple alignments exist for the same source word.
 
+        **IMPORTANT:** Sorts alignments by position to ensure correct order.
+
         Returns:
             Dictionary mapping source words to lists of target words
         """
         if not self._sentence:
             return {}
 
+        # Sort alignments by position to ensure correct order
+        sorted_alignments = sorted(self._sentence.word_alignments, key=lambda a: a.position)
+
         mappings: dict[str, list[str]] = {}
-        for alignment in self._sentence.word_alignments:
+        for alignment in sorted_alignments:
             # Split hyphenated words back to list
             if "-" in alignment.target_word:
                 words = alignment.target_word.split("-")
@@ -139,12 +146,36 @@ class AlignmentEditor(QWidget):
             row = self._create_mapping_row(source_word)
             self._mapping_layout.addWidget(row)
 
+        # Add stretch at the end so widgets only take the space they need
+        self._mapping_layout.addStretch()
+
     def _clear_mapping_layout(self) -> None:
-        """Clear mapping layout."""
+        """Clear mapping layout completely before re-rendering."""
+        # Remove all widgets from layout
         while self._mapping_layout.count():
             item = self._mapping_layout.takeAt(0)
-            if item.widget() and hasattr(item.widget(), "deleteLater"):
-                item.widget().deleteLater()  # type: ignore[reportOptionalMemberAccess]
+            if item.widget():
+                widget = item.widget()
+                if widget is None:
+                    continue
+                widget.setParent(None)  # Detach from parent immediately
+                widget.deleteLater()  # Schedule deletion
+            elif item.layout():
+                # Handle nested layouts
+                self._clear_layout_recursive(item.layout())
+
+    def _clear_layout_recursive(self, layout: QLayout) -> None:
+        """Recursively clear a layout."""
+        while layout.count():
+            item = layout.takeAt(0)
+            if item.widget():
+                widget = item.widget()
+                if widget is None:
+                    continue
+                widget.setParent(None)
+                widget.deleteLater()
+            elif item.layout():
+                self._clear_layout_recursive(item.layout())
 
     def _create_mapping_row(self, source_word: str) -> QWidget:
         """Create mapping row with source label + TagContainer.
@@ -186,6 +217,9 @@ class AlignmentEditor(QWidget):
         main_layout.addWidget(row_widget)
         main_layout.addWidget(separator)
 
+        # Set size policy so container only takes the height it needs
+        container.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Minimum)
+
         return container
 
     def _on_validate(self) -> None:
@@ -203,8 +237,24 @@ class AlignmentEditor(QWidget):
             self.validation_failed.emit(error or "Validierung fehlgeschlagen")
 
     def _on_apply(self) -> None:
-        """Apply alignments using hook system."""
+        """Apply alignments using hook system.
+
+        Validates before applying. Only emits alignment_changed if validation passes.
+        """
         alignments = self._build_alignments()
+
+        # Validate before applying
+        if not self._sentence:
+            return
+
+        is_valid, error = validate_alignment_complete(self._sentence.natural_translation, alignments)
+
+        if not is_valid:
+            # Show validation error, do NOT apply
+            self.validation_failed.emit(error or "Validierung fehlgeschlagen")
+            return
+
+        # Validation passed - apply changes
         self.alignment_changed.emit(alignments)
 
     def _build_alignments(self) -> list[WordAlignment]:
