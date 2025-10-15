@@ -31,7 +31,9 @@ def mock_service():
             )
         ],
     )
-    service.translate_and_save.return_value = translation
+    # New API: translate() returns unsaved, save_translation() saves
+    service.translate.return_value = translation
+    service.save_translation.return_value = translation
     service.auto_detect_and_translate.return_value = translation
     return service
 
@@ -98,7 +100,8 @@ def test_create_translation_execute_success(mock_service: MagicMock):
     assert result.success
     assert result.data is not None
     assert isinstance(result.data, Translation)
-    mock_service.translate_and_save.assert_called_once()
+    mock_service.translate.assert_called_once()
+    mock_service.save_translation.assert_called_once()
 
 
 def test_create_translation_execute_cannot_execute(mock_service: MagicMock):
@@ -114,12 +117,13 @@ def test_create_translation_execute_cannot_execute(mock_service: MagicMock):
 
     assert not result.success
     assert "required" in result.message.lower()
-    mock_service.translate_and_save.assert_not_called()
+    mock_service.translate.assert_not_called()
+    mock_service.save_translation.assert_not_called()
 
 
 def test_create_translation_execute_service_error(mock_service: MagicMock):
     """Test execute with service error."""
-    mock_service.translate_and_save.side_effect = Exception("Service error")
+    mock_service.translate.side_effect = Exception("Service error")
 
     cmd = CreateTranslationCommand(
         service=mock_service,
@@ -170,6 +174,7 @@ def test_auto_detect_execute_success(mock_service: MagicMock):
     assert result.data is not None
     assert isinstance(result.data, Translation)
     mock_service.auto_detect_and_translate.assert_called_once()
+    mock_service.save_translation.assert_called_once()
 
 
 def test_auto_detect_execute_cannot_execute(mock_service: MagicMock):
@@ -184,6 +189,7 @@ def test_auto_detect_execute_cannot_execute(mock_service: MagicMock):
 
     assert not result.success
     mock_service.auto_detect_and_translate.assert_not_called()
+    mock_service.save_translation.assert_not_called()
 
 
 def test_auto_detect_execute_service_error(mock_service: MagicMock):

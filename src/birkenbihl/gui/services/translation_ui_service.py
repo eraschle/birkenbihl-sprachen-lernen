@@ -69,4 +69,5 @@ class TranslationUIService:
     ) -> Translation:
         translator = PydanticAITranslator(provider)
         temp_service = TranslationService(translator, self.storage)
-        return temp_service.translate_and_save(text, source_lang, target_lang, title)
+        translation = temp_service.translate(text, source_lang, target_lang, title)
+        return temp_service.save_translation(translation=translation)

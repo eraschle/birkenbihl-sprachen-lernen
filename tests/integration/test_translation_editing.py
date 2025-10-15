@@ -56,7 +56,7 @@ class TestFullWorkflowEditNaturalTranslation:
         """
         # Step 1: Create translation
         original_text = "Yo te extrañaré"
-        translation = translation_service_with_storage.translate_and_save(
+        translation = translation_service_with_storage.translate(
             original_text, get_language_by("es"), get_language_by("de"), "Test Translation"
         )
 
@@ -128,7 +128,7 @@ class TestFullWorkflowEditAlignmentManually:
         """
         # Step 1: Create translation
         original_text = "Hello world"
-        translation = translation_service_with_storage.translate_and_save(
+        translation = translation_service_with_storage.translate(
             original_text, get_language_by("en"), get_language_by("de"), "Manual Edit Test"
         )
 
@@ -189,7 +189,7 @@ class TestDeleteTranslation:
         """
         # Step 1: Create translation
         original_text = "Test deletion"
-        translation = translation_service_with_storage.translate_and_save(
+        translation = translation_service_with_storage.translate(
             original_text, get_language_by("en"), get_language_by("de"), "To Be Deleted"
         )
 
@@ -231,7 +231,7 @@ class TestMultipleEditsWorkflow:
         """
         # Step 1: Create translation
         original_text = "Yo te extrañaré"
-        translation = translation_service_with_storage.translate_and_save(
+        translation = translation_service_with_storage.translate(
             original_text, get_language_by("es"), get_language_by("de"), "Multiple Edits Test"
         )
 

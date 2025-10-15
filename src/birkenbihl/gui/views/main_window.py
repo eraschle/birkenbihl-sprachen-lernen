@@ -101,9 +101,9 @@ class MainWindow(QMainWindow):
         Navigate to editor view and load the newly created translation.
 
         Args:
-            translation: Newly created translation
+            translation: Newly created translation (unsaved)
         """
-        self._editor_view.load_translation(translation.uuid)
+        self._editor_view.set_translation(translation)
         self.show_editor_view()
 
     def _create_menu_bar(self) -> None:

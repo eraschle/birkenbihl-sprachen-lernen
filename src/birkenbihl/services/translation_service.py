@@ -31,33 +31,50 @@ class TranslationService:
         self._translator = translator
         self._storage = storage
 
-    def translate_and_save(self, text: str, source_lang: Language, target_lang: Language, title: str) -> Translation:
-        """Translate text using Birkenbihl method and save to storage.
+    def translate(self, text: str, source_lang: Language, target_lang: Language, title: str) -> Translation:
+        """Translate text using Birkenbihl method (returns unsaved Translation).
 
         Args:
             text: Text to translate (can contain multiple sentences)
-            source_lang_code: Source language object
-            target_lang_code: Target language object
+            source_lang: Source language object
+            target_lang: Target language object
             title: Document title
 
         Returns:
-            Saved Translation with natural and word-by-word translations
+            Translation object with natural and word-by-word translations (unsaved)
 
         Raises:
             TranslationError: If translation fails
-            StorageError: If save fails
             ValueError: If translator not configured
         """
         if not self._translator:
-            raise ValueError("Translator required for translate_and_save operation")
+            raise ValueError("Translator required for translate operation")
 
-        # Get translation from AI provider
-        translation = self._translator.translate(
+        return self._translator.translate(
             text=text, source_lang=source_lang, target_lang=target_lang, title=title
         )
 
-        # Persist to storage
-        return self._storage.save(translation)
+    def save_translation(self, translation: Translation) -> Translation:
+        """Save new translation or update existing one.
+
+        Automatically decides whether to create new or update existing
+        translation based on whether it exists in storage.
+
+        Args:
+            translation: Translation object to save
+
+        Returns:
+            Saved/updated Translation
+
+        Raises:
+            StorageError: If save/update fails
+        """
+        existing = self._storage.get(translation.uuid)
+
+        if existing is None:
+            return self._storage.save(translation)
+        else:
+            return self._storage.update(translation)
 
     def get_translation(self, translation_id: UUID) -> Translation | None:
         """Retrieve translation by ID.
@@ -104,15 +121,15 @@ class TranslationService:
         return self._storage.update(translation)
 
     def auto_detect_and_translate(self, text: str, target_lang: Language, title: str) -> Translation:
-        """Auto-detect source language and translate.
+        """Auto-detect source language and translate (returns unsaved Translation).
 
         Args:
             text: Text to translate
-            target_lang_code: Target language
+            target_lang: Target language
             title: Document title
 
         Returns:
-            Saved Translation
+            Translation object (unsaved)
 
         Raises:
             TranslationError: If detection or translation fails
@@ -122,7 +139,7 @@ class TranslationService:
             raise ValueError("Translator required for auto_detect_and_translate operation")
 
         source_lang = self._translator.detect_language(text)
-        return self.translate_and_save(
+        return self.translate(
             text=text,
             source_lang=source_lang,
             target_lang=target_lang,

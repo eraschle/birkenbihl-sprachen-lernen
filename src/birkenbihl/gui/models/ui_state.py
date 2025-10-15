@@ -31,6 +31,8 @@ class TranslationEditorState:
     edit_mode: str = "view"  # view, edit_natural, edit_alignment
     is_saving: bool = False
     has_unsaved_changes: bool = False
+    has_validation_errors: bool = False
+    validation_error_message: str = ""
 
 
 @dataclass

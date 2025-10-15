@@ -69,6 +69,13 @@ class EditorView(QWidget):
         self._mode_label = QLabel("<b>Ansicht</b>")  # type: ignore[reportUninitializedInstanceVariable]
         edit_layout.addWidget(self._mode_label)
 
+        # Validation error display
+        self._validation_error_label = QLabel()  # type: ignore[reportUninitializedInstanceVariable]
+        self._validation_error_label.setStyleSheet("color: red; font-weight: bold;")
+        self._validation_error_label.setWordWrap(True)
+        self._validation_error_label.setVisible(False)
+        edit_layout.addWidget(self._validation_error_label)
+
         self._stacked_widget = QStackedWidget()  # type: ignore[reportUninitializedInstanceVariable]
         edit_layout.addWidget(self._stacked_widget, 1)
 
@@ -90,10 +97,13 @@ class EditorView(QWidget):
         self._edit_button.clicked.connect(self._on_edit_clicked)
         self._back_button = QPushButton("Zurück")  # type: ignore[reportUninitializedInstanceVariable]
         self._back_button.clicked.connect(self._on_back_clicked)
+        self._save_button = QPushButton("Speichern")  # type: ignore[reportUninitializedInstanceVariable]
+        self._save_button.clicked.connect(self._on_save_clicked)
 
         button_layout.addStretch()
         button_layout.addWidget(self._back_button)
         button_layout.addWidget(self._edit_button)
+        button_layout.addWidget(self._save_button)
 
         edit_layout.addLayout(button_layout)
 
@@ -138,6 +148,7 @@ class EditorView(QWidget):
         """Bind ViewModel signals to View slots."""
         self._viewmodel.state_changed.connect(self._on_state_changed)
         self._viewmodel.sentence_updated.connect(self._on_sentence_updated)
+        self._viewmodel.translation_saved.connect(self._on_translation_saved)
         self._viewmodel.error_occurred.connect(self._on_error)
 
     def showEvent(self, event) -> None:  # type: ignore
@@ -153,12 +164,20 @@ class EditorView(QWidget):
         self._settings = self._settings_service.get_settings()
 
     def load_translation(self, translation_id: UUID) -> None:
-        """Load translation into editor.
+        """Load translation into editor from storage.
 
         Args:
             translation_id: Translation UUID
         """
         self._viewmodel.load_translation(translation_id)
+
+    def set_translation(self, translation: Translation) -> None:
+        """Load translation object directly into editor (may be unsaved).
+
+        Args:
+            translation: Translation object
+        """
+        self._viewmodel.set_translation(translation)
 
     def _on_sentence_selected(self, row: int) -> None:
         """Handle sentence selection."""
@@ -186,10 +205,26 @@ class EditorView(QWidget):
         """Handle alignment change."""
         self._viewmodel.update_alignment(alignments)
 
+    def _on_save_clicked(self) -> None:
+        """Handle save button click."""
+        self._viewmodel.save_translation()
+
     def _on_state_changed(self, state: TranslationEditorState) -> None:
         """Handle state changes."""
         if state.translation:
             self._update_sentence_list(state.translation)
+
+            # Select first sentence in list if one is selected
+            # Block signals to prevent infinite loop
+            if state.selected_sentence_uuid:
+                for idx, sentence in enumerate(state.translation.sentences):
+                    if sentence.uuid == state.selected_sentence_uuid:
+                        # Only update if different to avoid triggering signal
+                        if self._sentence_list.currentRow() != idx:
+                            self._sentence_list.blockSignals(True)
+                            self._sentence_list.setCurrentRow(idx)
+                            self._sentence_list.blockSignals(False)
+                        break
 
         if state.selected_sentence_uuid and state.translation:
             sentence = next(
@@ -198,6 +233,10 @@ class EditorView(QWidget):
             )
             if sentence:
                 self._update_edit_panel(sentence, state.edit_mode)
+
+        # Update button states and validation display
+        self._update_button_states(state)
+        self._update_validation_display(state)
 
     def _update_sentence_list(self, translation: Translation) -> None:
         """Update sentence list."""
@@ -231,6 +270,49 @@ class EditorView(QWidget):
     def _on_sentence_updated(self) -> None:
         """Handle sentence update."""
         print("✓ Sentence updated")
+
+    def _on_translation_saved(self) -> None:
+        """Handle translation saved."""
+        print("✓ Translation saved to storage")
+
+    def _update_button_states(self, state: TranslationEditorState) -> None:
+        """Update button enabled/disabled states based on validation.
+
+        Args:
+            state: Current editor state
+        """
+        # Save button only enabled when:
+        # - Translation exists
+        # - No validation errors
+        # - Not currently saving
+        can_save = (
+            state.translation is not None
+            and not state.has_validation_errors
+            and not state.is_saving
+        )
+        self._save_button.setEnabled(can_save)
+
+        # Set tooltip to show validation errors or saving status
+        if state.is_saving:
+            self._save_button.setToolTip("Speichert...")
+        elif state.has_validation_errors:
+            self._save_button.setToolTip(
+                f"Kann nicht speichern: {state.validation_error_message}"
+            )
+        else:
+            self._save_button.setToolTip("Translation speichern")
+
+    def _update_validation_display(self, state: TranslationEditorState) -> None:
+        """Update validation error display.
+
+        Args:
+            state: Current editor state
+        """
+        if state.has_validation_errors and state.validation_error_message:
+            self._validation_error_label.setText(f"⚠ {state.validation_error_message}")
+            self._validation_error_label.setVisible(True)
+        else:
+            self._validation_error_label.setVisible(False)
 
     def _on_error(self, error: str) -> None:
         """Handle error."""

@@ -128,15 +128,20 @@ def test_update_natural_translation(
 def test_update_alignment(
     qtbot: QtBot, viewmodel: TranslationEditorViewModel, mock_service: MagicMock, translation: Translation
 ):
-    """Test update alignment."""
+    """Test update alignment (updates local state, does not save)."""
     viewmodel._state.translation = translation
     viewmodel._state.selected_sentence_uuid = translation.sentences[0].uuid
     new_alignments = [WordAlignment(source_word="Hello", target_word="Hi", position=0)]
 
-    with qtbot.waitSignal(viewmodel.sentence_updated, timeout=1000):
+    with qtbot.waitSignal(viewmodel.state_changed, timeout=1000):
         viewmodel.update_alignment(new_alignments)
 
-    mock_service.update_sentence_alignment.assert_called_once()
+    # Verify alignments were updated in local state
+    sentence = translation.sentences[0]
+    assert sentence.word_alignments == new_alignments
+    assert viewmodel.state.has_unsaved_changes
+    # Service should NOT be called (local update only)
+    mock_service.update_sentence_alignment.assert_not_called()
 
 
 def test_update_natural_no_sentence_selected(

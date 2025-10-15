@@ -55,12 +55,13 @@ class CreateTranslationCommand:
             )
 
         try:
-            translation = self._service.translate_and_save(
+            translation = self._service.translate(
                 self._text,
                 self._source_lang,
                 self._target_lang,
                 self._title,
             )
+            translation = self._service.save_translation(translation=translation)
             return CommandResult(
                 success=True,
                 message=f"Translation '{self._title}' created successfully",
@@ -122,6 +123,7 @@ class AutoDetectTranslationCommand:
                 self._target_lang,
                 self._title,
             )
+            translation = self._service.save_translation(translation=translation)
             return CommandResult(
                 success=True,
                 message=f"Translation '{self._title}' created successfully",

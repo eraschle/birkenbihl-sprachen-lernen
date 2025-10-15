@@ -133,7 +133,8 @@ def translate(
             target_language = ls.get_language_by(target)
             if source:
                 source_language = ls.get_language_by(source)
-                result = service.translate_and_save(text, source_language, target_language, title)
+                transaltion = service.translate(text, source_language, target_language, title)
+                result = service.save_translation(transaltion)
             else:
                 result = service.auto_detect_and_translate(text, target_language, title)
 
