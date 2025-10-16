@@ -13,7 +13,12 @@ from pathlib import Path
 
 import pytest
 
-from birkenbihl.models.requests import SentenceUpdateRequest, TranslationRequest
+from birkenbihl.models.requests import (
+    AlignmentUpdateRequest,
+    SentenceUpdateRequest,
+    SuggestionRequest,
+    TranslationRequest,
+)
 from birkenbihl.models.settings import ProviderConfig
 from birkenbihl.models.translation import WordAlignment
 from birkenbihl.providers.pydantic_ai_translator import PydanticAITranslator
@@ -71,9 +76,13 @@ class TestFullWorkflowEditNaturalTranslation:
         original_natural = original_sentence.natural_translation
 
         # Step 2: Generate suggestions
-        suggestions = translation_service_with_storage.get_sentence_suggestions(
-            translation.uuid, original_sentence.uuid, openai_provider_config, count=3
+        suggestion_request = SuggestionRequest(
+            translation_id=translation.uuid,
+            sentence_uuid=original_sentence.uuid,
+            provider=openai_provider_config,
+            count=3,
         )
+        suggestions = translation_service_with_storage.get_sentence_suggestions(suggestion_request)
 
         assert len(suggestions) == 3
         assert all(isinstance(s, str) for s in suggestions)
@@ -172,9 +181,10 @@ class TestFullWorkflowEditAlignmentManually:
         assert is_valid, f"Manual alignments are invalid: {error}"
 
         # Step 4: Update sentence with new alignments
-        updated_translation = translation_service_with_storage.update_sentence_alignment(
-            translation.uuid, original_sentence.uuid, new_alignments
+        alignment_request = AlignmentUpdateRequest(
+            translation_id=translation.uuid, sentence_uuid=original_sentence.uuid, alignments=new_alignments
         )
+        updated_translation = translation_service_with_storage.update_sentence_alignment(alignment_request)
 
         # Verify update succeeded
         updated_sentence = updated_translation.sentences[0]
@@ -260,9 +270,10 @@ class TestMultipleEditsWorkflow:
         original_updated_at = translation.updated_at
 
         # Step 2: Edit natural translation
-        suggestions = translation_service_with_storage.get_sentence_suggestions(
-            translation.uuid, sentence_uuid, openai_provider_config, count=3
+        suggestion_request = SuggestionRequest(
+            translation_id=translation.uuid, sentence_uuid=sentence_uuid, provider=openai_provider_config, count=3
         )
+        suggestions = translation_service_with_storage.get_sentence_suggestions(suggestion_request)
         new_natural = suggestions[0]
 
         update_request = SentenceUpdateRequest(
@@ -280,9 +291,10 @@ class TestMultipleEditsWorkflow:
         # Step 3: Edit alignment manually (add extra mapping)
         current_alignments = translation.sentences[0].word_alignments
         # Just verify we can update with current alignments (no-op change)
-        translation = translation_service_with_storage.update_sentence_alignment(
-            translation.uuid, sentence_uuid, current_alignments
+        alignment_request = AlignmentUpdateRequest(
+            translation_id=translation.uuid, sentence_uuid=sentence_uuid, alignments=current_alignments
         )
+        translation = translation_service_with_storage.update_sentence_alignment(alignment_request)
 
         assert translation.updated_at >= after_natural_update
 

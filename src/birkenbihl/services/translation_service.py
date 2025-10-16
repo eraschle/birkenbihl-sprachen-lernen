@@ -10,7 +10,6 @@ from birkenbihl.models.requests import (
     SuggestionRequest,
     TranslationRequest,
 )
-from birkenbihl.models.settings import ProviderConfig
 from birkenbihl.models.translation import Sentence, Translation, WordAlignment
 from birkenbihl.models.validation import validate_alignment_complete
 from birkenbihl.protocols import IStorageProvider, ITranslationProvider
