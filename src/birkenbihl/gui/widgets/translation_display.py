@@ -43,7 +43,7 @@ class TranslationDisplay(QWidget):
         group = QGroupBox("Natürliche Übersetzung")
         layout = QVBoxLayout(group)
 
-        self._natural_label = QLabel()
+        self._natural_label = QLabel()  # type: ignore[reportUninitializedInstanceVariable]
         self._natural_label.setWordWrap(True)
         layout.addWidget(self._natural_label)
 
@@ -58,7 +58,7 @@ class TranslationDisplay(QWidget):
         group = QGroupBox("Wort-für-Wort")
         layout = QVBoxLayout(group)
 
-        self._interleaved_grid = InterleavedGridReadOnly()
+        self._interleaved_grid = InterleavedGridReadOnly()  # type: ignore[reportUninitializedInstanceVariable]
 
         scroll = QScrollArea()
         scroll.setWidget(self._interleaved_grid)

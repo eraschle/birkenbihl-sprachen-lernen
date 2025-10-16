@@ -83,7 +83,7 @@ class EditModePanel(QWidget):
         group = QGroupBox("Originalsätze")
         layout = QVBoxLayout(group)
 
-        self._sentence_list = SentenceList()
+        self._sentence_list = SentenceList()  # type: ignore[reportUninitializedInstanceVariable]
         layout.addWidget(self._sentence_list)
 
         return group
@@ -111,7 +111,7 @@ class EditModePanel(QWidget):
         group = QGroupBox("Natürliche Übersetzung")
         layout = QVBoxLayout(group)
 
-        self._natural_editor = NaturalEditor()
+        self._natural_editor = NaturalEditor()  # type: ignore[reportUninitializedInstanceVariable]
         layout.addWidget(self._natural_editor)
 
         return group
@@ -125,7 +125,7 @@ class EditModePanel(QWidget):
         group = QGroupBox("Wort-für-Wort (Bearbeiten)")
         layout = QVBoxLayout(group)
 
-        self._interleaved_grid = InterleavedGridEditable()
+        self._interleaved_grid = InterleavedGridEditable()  # type: ignore[reportUninitializedInstanceVariable]
         layout.addWidget(self._interleaved_grid)
 
         return group
@@ -139,7 +139,7 @@ class EditModePanel(QWidget):
         layout = QHBoxLayout()
         layout.addStretch()
 
-        self._save_button = QPushButton("Speichern")
+        self._save_button = QPushButton("Speichern")  # type: ignore[reportUninitializedInstanceVariable]
         self._save_button.setToolTip("Save changes to storage")
         self._save_button.setEnabled(False)
         layout.addWidget(self._save_button)

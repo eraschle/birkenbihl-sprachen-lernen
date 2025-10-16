@@ -1,7 +1,8 @@
 """Pool widget for unassigned words in interleaved grid."""
 
 from PySide6.QtCore import Signal
-from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel
+from PySide6.QtGui import QDragEnterEvent, QDragLeaveEvent, QDropEvent
+from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QWidget
 
 from birkenbihl.gui.widgets.word_tag import WordTag
 
@@ -15,7 +16,7 @@ class UnassignedPool(QFrame):
 
     word_dropped = Signal(str)
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: QWidget | None = None):
         """Initialize unassigned pool.
 
         Args:
@@ -95,7 +96,7 @@ class UnassignedPool(QFrame):
         """
         return len(self._tags) == 0
 
-    def dragEnterEvent(self, event) -> None:
+    def dragEnterEvent(self, event: QDragEnterEvent) -> None:
         """Handle drag entering pool.
 
         Args:
@@ -105,15 +106,16 @@ class UnassignedPool(QFrame):
             event.acceptProposedAction()
             self._set_highlighted(True)
 
-    def dragLeaveEvent(self, event) -> None:
+    def dragLeaveEvent(self, event: QDragLeaveEvent) -> None:
         """Handle drag leaving pool.
 
         Args:
             event: Drag event
         """
-        self._set_highlighted(False)
+        if event:
+            self._set_highlighted(False)
 
-    def dropEvent(self, event) -> None:
+    def dropEvent(self, event: QDropEvent) -> None:
         """Handle word dropped into pool.
 
         Args:

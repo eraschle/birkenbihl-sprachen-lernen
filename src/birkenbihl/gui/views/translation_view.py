@@ -1,6 +1,5 @@
 """Main translation view with three modes: VIEW, CREATE, EDIT."""
 
-from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QComboBox,
     QHBoxLayout,
@@ -62,17 +61,17 @@ class TranslationView(QWidget):
         label = QLabel("Bestehende Übersetzungen")
         header.addWidget(label)
 
-        self._translation_combo = QComboBox()
+        self._translation_combo = QComboBox()  # type: ignore[reportUninitializedInstanceVariable]
         self._translation_combo.setMinimumWidth(300)
         self._translation_combo.currentIndexChanged.connect(self._on_translation_selected)
         header.addWidget(self._translation_combo, stretch=1)
 
-        self._edit_button = QPushButton("Edit")
+        self._edit_button = QPushButton("Edit")  # type: ignore[reportUninitializedInstanceVariable]
         self._edit_button.setToolTip("Übersetzung bearbeiten")
         self._edit_button.clicked.connect(self._on_edit_clicked)
         header.addWidget(self._edit_button)
 
-        self._new_button = QPushButton("New")
+        self._new_button = QPushButton("New")  # type: ignore[reportUninitializedInstanceVariable]
         self._new_button.setToolTip("Neue Übersetzung erstellen")
         self._new_button.clicked.connect(self._on_new_clicked)
         header.addWidget(self._new_button)
@@ -81,16 +80,16 @@ class TranslationView(QWidget):
 
     def _create_content_area(self) -> QStackedWidget:
         """Create stacked widget for mode-specific content."""
-        self._content_stack = QStackedWidget()
+        self._content_stack = QStackedWidget()  # type: ignore[reportUninitializedInstanceVariable]
 
-        self._view_panel = ViewModePanel(self._state, parent=self)
-        self._create_panel = CreateModePanel(
+        self._view_panel = ViewModePanel(self._state, parent=self)  # type: ignore[reportUninitializedInstanceVariable]
+        self._create_panel = CreateModePanel(  # type: ignore[reportUninitializedInstanceVariable]
             self._service,
             self._settings_service,
             self._state,
             parent=self,
         )
-        self._edit_panel = EditModePanel(
+        self._edit_panel = EditModePanel(  # type: ignore[reportUninitializedInstanceVariable]
             self._service,
             self._settings_service,
             self._state,

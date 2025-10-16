@@ -45,9 +45,9 @@ class ViewModePanel(QWidget):
         """
         splitter = QSplitter(Qt.Orientation.Horizontal)
 
-        self._sentence_list = SentenceList()
-        self._translation_display = TranslationDisplay()
-        self._empty_label = self._create_empty_label()
+        self._sentence_list = SentenceList()  # type: ignore[reportUninitializedInstanceVariable]
+        self._translation_display = TranslationDisplay()  # type: ignore[reportUninitializedInstanceVariable]
+        self._empty_label = self._create_empty_label()  # type: ignore[reportUninitializedInstanceVariable]
 
         splitter.addWidget(self._sentence_list)
         splitter.addWidget(self._empty_label)

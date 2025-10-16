@@ -47,7 +47,7 @@ class MainWindow(QMainWindow):
         tabs = QTabWidget()
 
         # Translation tab
-        self._translation_view = TranslationView(
+        self._translation_view = TranslationView(  # type: ignore[reportUninitializedInstanceVariable]
             self._translation_service,
             self._settings_service,
             self._app_state,
@@ -56,12 +56,8 @@ class MainWindow(QMainWindow):
         tabs.addTab(self._translation_view, "Übersetzungen")
 
         # Settings tab
-        self._settings_viewmodel = SettingsViewModel(
-            self._settings_service, parent=self
-        )
-        self._settings_view = SettingsView(
-            self._settings_viewmodel, parent=self
-        )
+        self._settings_viewmodel = SettingsViewModel(self._settings_service, parent=self)  # type: ignore[reportUninitializedInstanceVariable]
+        self._settings_view = SettingsView(self._settings_viewmodel, parent=self)  # type: ignore[reportUninitializedInstanceVariable]
         tabs.addTab(self._settings_view, "Einstellungen")
 
         self.setCentralWidget(tabs)

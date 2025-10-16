@@ -15,7 +15,7 @@ class TestExtractNormalizedWords:
     """Tests for extract_normalized_words() - Extract and normalize words from text."""
 
     @pytest.mark.parametrize(
-        "input_text,expected,description",
+        ("input_text", "expected", "description"),
         [
             # Basic cases
             ("Hello world", ["hello", "world"], "basic words"),
@@ -56,7 +56,7 @@ class TestNormalizeWordForMatching:
     """Tests for normalize_word_for_matching() - Normalize single word for comparison."""
 
     @pytest.mark.parametrize(
-        "input_word,expected,description",
+        ("input_word", "expected", "description"),
         [
             # Basic normalization
             ("Hello", "hello", "uppercase to lowercase"),
@@ -81,7 +81,7 @@ class TestSplitHyphenated:
     """Tests for split_hyphenated() - Split hyphenated words and remove punctuation."""
 
     @pytest.mark.parametrize(
-        "input_word,expected,description",
+        ("input_word", "expected", "description"),
         [
             # Hyphenated words
             ("werde-vermissen", ["werde", "vermissen"], "basic hyphenated"),
@@ -122,7 +122,7 @@ class TestCleanTrailingPunctuation:
     """Tests for clean_trailing_punctuation() - Extract trailing punctuation from word."""
 
     @pytest.mark.parametrize(
-        "input_word,expected_word,expected_punct,description",
+        ("input_word", "expected_word", "expected_punct", "description"),
         [
             # Single trailing punctuation
             ("world!", "world", "!", "trailing exclamation"),
@@ -164,15 +164,19 @@ class TestCleanTrailingPunctuation:
 class TestSplitIntoSentences:
     """Tests for split_into_sentences() - Split text into sentences.
 
-    The function uses pattern: r"(?<=[.!?])\s+(?=[A-Z])"
+    The function uses pattern: r"(?<=[.!?])\\s+(?=[A-Z])"
     This means: Split after .!? when followed by whitespace AND capital letter.
     """
 
     @pytest.mark.parametrize(
-        "input_text,expected,description",
+        ("input_text", "expected", "description"),
         [
             # Normal cases - should split
-            ("Hello world. How are you?", ["Hello world.", "How are you?"], "two sentences with period and question"),
+            (
+                "Hello world. How are you?",
+                ["Hello world.", "How are you?"],
+                "two sentences with period and question",
+            ),
             ("First! Second? Third.", ["First!", "Second?", "Third."], "mixed terminators"),
             ("One. Two. Three.", ["One.", "Two.", "Three."], "three short sentences"),
             (

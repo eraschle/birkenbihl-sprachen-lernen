@@ -1,7 +1,5 @@
 """Tests for grid state model."""
 
-import pytest
-
 from birkenbihl.gui.models.grid_state import ColumnState, GridState, build_grid_state
 from birkenbihl.models.translation import Sentence, WordAlignment
 

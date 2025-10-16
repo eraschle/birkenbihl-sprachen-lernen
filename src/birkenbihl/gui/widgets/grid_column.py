@@ -1,7 +1,8 @@
 """Grid column widget for interleaved grid - holds one source word and its target words."""
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import QFrame, QLabel, QVBoxLayout
+from PySide6.QtGui import QDragEnterEvent, QDragLeaveEvent, QDropEvent
+from PySide6.QtWidgets import QFrame, QLabel, QVBoxLayout, QWidget
 
 from birkenbihl.gui.widgets.word_tag import WordTag
 
@@ -20,7 +21,7 @@ class GridColumn(QFrame):
 
     word_dropped = Signal(str)
 
-    def __init__(self, source_word: str, parent=None):
+    def __init__(self, source_word: str, parent: QWidget | None = None):
         """Initialize grid column.
 
         Args:
@@ -136,7 +137,7 @@ class GridColumn(QFrame):
         style = self._error_style() if error else ""
         self.setStyleSheet(style)
 
-    def dragEnterEvent(self, event) -> None:
+    def dragEnterEvent(self, event: QDragEnterEvent) -> None:
         """Handle drag entering column.
 
         Args:
@@ -146,15 +147,16 @@ class GridColumn(QFrame):
             event.acceptProposedAction()
             self.set_highlighted(True)
 
-    def dragLeaveEvent(self, event) -> None:
+    def dragLeaveEvent(self, event: QDragLeaveEvent) -> None:
         """Handle drag leaving column.
 
         Args:
             event: Drag event
         """
-        self.set_highlighted(False)
+        if not event.isAccepted():
+            self.set_highlighted(False)
 
-    def dropEvent(self, event) -> None:
+    def dropEvent(self, event: QDropEvent) -> None:
         """Handle word dropped into column.
 
         Args:

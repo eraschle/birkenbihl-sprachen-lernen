@@ -30,9 +30,6 @@ class InterleavedGridEditable(QWidget):
         """
         super().__init__(parent)
         self._columns: list[GridColumn] = []
-        self._pool: UnassignedPool
-        self._error_label: QLabel
-        self._grid_layout: QHBoxLayout
         self._grid_state: GridState | None = None
         self._init_ui()
 
@@ -42,15 +39,15 @@ class InterleavedGridEditable(QWidget):
         layout.setContentsMargins(10, 10, 10, 10)
         layout.setSpacing(10)
 
-        self._grid_layout = QHBoxLayout()
+        self._grid_layout = QHBoxLayout()  # type: ignore[reportUninitializedInstanceVariable]
         self._grid_layout.setSpacing(15)
         layout.addLayout(self._grid_layout)
 
-        self._pool = UnassignedPool()
+        self._pool = UnassignedPool()  # type: ignore[reportUninitializedInstanceVariable]
         self._pool.word_dropped.connect(self._on_pool_drop)
         layout.addWidget(self._pool)
 
-        self._error_label = QLabel()
+        self._error_label = QLabel()  # type: ignore[reportUninitializedInstanceVariable]
         self._error_label.setStyleSheet("QLabel { color: #ff0000; }")
         self._error_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self._error_label)
@@ -104,9 +101,7 @@ class InterleavedGridEditable(QWidget):
             Configured grid column
         """
         column = GridColumn(column_state.source_word)
-        column.word_dropped.connect(
-            lambda word, col=column: self._on_column_drop(col, word)
-        )
+        column.word_dropped.connect(lambda word, col=column: self._on_column_drop(col, word))
 
         for word in column_state.assigned_words:
             tag = self._create_tag(word)
@@ -241,11 +236,13 @@ class InterleavedGridEditable(QWidget):
             column.set_error_state(is_error)
 
         if is_valid:
-            self._error_label.setText("")
+            if hasattr(self, "_error_label") and self._error_label:
+                self._error_label.setText("")
             self.validation_error.emit("")
         else:
             msg = f"⚠️ Folgende Wörter haben keine Übersetzung: {', '.join(error_columns)}"
-            self._error_label.setText(msg)
+            if hasattr(self, "_error_label") and self._error_label:
+                self._error_label.setText(msg)
             self.validation_error.emit(msg)
 
         return is_valid

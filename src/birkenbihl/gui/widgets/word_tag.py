@@ -1,8 +1,9 @@
 """Draggable word tag widget for interleaved grid editing."""
 
-from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QCursor, QDrag
+from PySide6.QtCore import QEvent, Qt, Signal
+from PySide6.QtGui import QCursor, QDrag, QEnterEvent, QMouseEvent
 from PySide6.QtWidgets import QLabel
+from pytestqt.qtbot import QWidget
 
 
 class WordTag(QLabel):
@@ -15,7 +16,7 @@ class WordTag(QLabel):
     drag_started = Signal()
     drag_ended = Signal()
 
-    def __init__(self, word: str, parent=None):
+    def __init__(self, word: str, parent: QWidget = None):
         """Initialize word tag.
 
         Args:
@@ -41,7 +42,7 @@ class WordTag(QLabel):
         self.setCursor(QCursor(Qt.CursorShape.OpenHandCursor))
         self.setMargin(2)
 
-    def mousePressEvent(self, event) -> None:
+    def mousePressEvent(self, event: QMouseEvent) -> None:
         """Start drag operation on left click.
 
         Args:
@@ -68,7 +69,7 @@ class WordTag(QLabel):
         self.setCursor(QCursor(Qt.CursorShape.OpenHandCursor))
         self.drag_ended.emit()
 
-    def enterEvent(self, event) -> None:
+    def enterEvent(self, event: QEnterEvent) -> None:
         """Apply hover style.
 
         Args:
@@ -78,7 +79,7 @@ class WordTag(QLabel):
             self.setStyleSheet(self._hover_style())
         super().enterEvent(event)
 
-    def leaveEvent(self, event) -> None:
+    def leaveEvent(self, event: QEvent) -> None:
         """Remove hover style.
 
         Args:

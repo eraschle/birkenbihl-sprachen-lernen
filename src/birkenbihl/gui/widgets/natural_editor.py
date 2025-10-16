@@ -28,7 +28,7 @@ class NaturalEditor(QWidget):
         """Initialize UI components."""
         layout = QVBoxLayout(self)
 
-        self._text_edit = QTextEdit()
+        self._text_edit = QTextEdit()  # type: ignore[reportUninitializedInstanceVariable]
         self._text_edit.setPlaceholderText("Natural translation will appear here...")
         layout.addWidget(self._text_edit)
 
@@ -42,11 +42,11 @@ class NaturalEditor(QWidget):
         """
         button_layout = QHBoxLayout()
 
-        self._edit_button = QPushButton("Edit")
+        self._edit_button = QPushButton("Edit")  # type: ignore[reportUninitializedInstanceVariable]
         self._edit_button.setToolTip("Focus text editor for manual editing")
         button_layout.addWidget(self._edit_button)
 
-        self._generate_button = QPushButton("Generate (AI)")
+        self._generate_button = QPushButton("Generate (AI)")  # type: ignore[reportUninitializedInstanceVariable]
         self._generate_button.setToolTip("Regenerate translation using AI")
         button_layout.addWidget(self._generate_button)
 
