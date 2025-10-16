@@ -50,6 +50,7 @@ class EditModePanel(QWidget):
         self._settings_service = settings_service
         self._state = state
         self._current_translation: Translation | None = None
+        self._original_translation: Translation | None = None  # Backup for cancel
         self._current_sentence_index = 0
         self._has_unsaved_changes = False
         self._worker: AsyncWorker | None = None
@@ -60,7 +61,9 @@ class EditModePanel(QWidget):
         """Initialize UI components."""
         layout = QVBoxLayout(self)
         layout.addWidget(self._create_splitter())
-        layout.addLayout(self._create_bottom_bar())
+        # Note: Save button moved to TranslationView header, but we still initialize
+        # internal save button to maintain signal connections
+        self._create_bottom_bar()
 
     def _create_splitter(self) -> QSplitter:
         """Create splitter with sentence list and editor/preview.
@@ -130,21 +133,15 @@ class EditModePanel(QWidget):
 
         return group
 
-    def _create_bottom_bar(self) -> QHBoxLayout:
-        """Create bottom bar with save button.
+    def _create_bottom_bar(self) -> None:
+        """Create internal save button for signal tracking.
 
-        Returns:
-            Layout with save button
+        Note: Button not visible - save action triggered via TranslationView header.
         """
-        layout = QHBoxLayout()
-        layout.addStretch()
-
         self._save_button = QPushButton("Speichern")  # type: ignore[reportUninitializedInstanceVariable]
         self._save_button.setToolTip("Save changes to storage")
         self._save_button.setEnabled(False)
-        layout.addWidget(self._save_button)
-
-        return layout
+        self._save_button.hide()  # Hidden - using header Save button
 
     def _connect_signals(self) -> None:
         """Connect signals to slots."""
@@ -162,7 +159,14 @@ class EditModePanel(QWidget):
         Args:
             translation: Selected translation or None
         """
-        self._current_translation = translation
+        # Create deep copy as backup for cancel operation
+        if translation:
+            self._original_translation = translation.model_copy(deep=True)
+            self._current_translation = translation
+        else:
+            self._original_translation = None
+            self._current_translation = None
+
         self._current_sentence_index = 0
         self._has_unsaved_changes = False
         self._save_button.setEnabled(False)
@@ -356,3 +360,26 @@ class EditModePanel(QWidget):
             message: Success message
         """
         QMessageBox.information(self, "Erfolg", message)
+
+    def save_changes(self) -> None:
+        """Public method to trigger save operation.
+
+        Called by parent TranslationView when Save button is clicked.
+        """
+        self._on_save_clicked()
+
+    def cancel_changes(self) -> None:
+        """Public method to cancel changes and restore original state.
+
+        Called by parent TranslationView when Cancel button is clicked.
+        Restores translation to state before entering EDIT mode.
+        """
+        if not self._original_translation:
+            return
+
+        # Restore original translation in state
+        self._state.select_translation(self._original_translation)
+
+        # Reset flags
+        self._has_unsaved_changes = False
+        self._save_button.setEnabled(False)

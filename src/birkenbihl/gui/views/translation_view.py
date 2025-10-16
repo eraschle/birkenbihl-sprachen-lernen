@@ -127,13 +127,24 @@ class TranslationView(QWidget):
                 self._state.set_mode(AppMode.VIEW)
 
     def _on_edit_clicked(self) -> None:
-        """Handle Edit button click."""
-        self._state.set_mode(AppMode.EDIT)
+        """Handle Edit/Save button click."""
+        if self._state.mode == AppMode.EDIT:
+            # Save button in EDIT mode - delegate to edit panel
+            self._edit_panel.save_changes()
+        else:
+            # Edit button in VIEW mode - switch to EDIT
+            self._state.set_mode(AppMode.EDIT)
 
     def _on_new_clicked(self) -> None:
-        """Handle New button click."""
-        self._state.select_translation(None)
-        self._state.set_mode(AppMode.CREATE)
+        """Handle New/Cancel button click."""
+        if self._state.mode == AppMode.EDIT:
+            # Cancel button in EDIT mode - restore original state and return to VIEW
+            self._edit_panel.cancel_changes()
+            self._state.set_mode(AppMode.VIEW)
+        else:
+            # New button - create new translation
+            self._state.select_translation(None)
+            self._state.set_mode(AppMode.CREATE)
 
     def _on_mode_changed(self, mode: AppMode) -> None:
         """Handle mode change - switch content panel."""
@@ -153,8 +164,20 @@ class TranslationView(QWidget):
         # Combobox enabled only in VIEW mode
         self._translation_combo.setEnabled(mode == AppMode.VIEW)
 
-        # Edit enabled only in VIEW mode with selection
-        self._edit_button.setEnabled(mode == AppMode.VIEW and has_selection)
+        # Edit button: "Edit" in VIEW, "Save" in EDIT
+        if mode == AppMode.EDIT:
+            self._edit_button.setText("Save")
+            self._edit_button.setToolTip("Änderungen speichern")
+            self._edit_button.setEnabled(True)
+        else:
+            self._edit_button.setText("Edit")
+            self._edit_button.setToolTip("Übersetzung bearbeiten")
+            self._edit_button.setEnabled(mode == AppMode.VIEW and has_selection)
 
-        # New always enabled
-        self._new_button.setEnabled(True)
+        # New button: "New" in VIEW/CREATE, "Cancel" in EDIT
+        if mode == AppMode.EDIT:
+            self._new_button.setText("Cancel")
+            self._new_button.setToolTip("Bearbeitung abbrechen")
+        else:
+            self._new_button.setText("New")
+            self._new_button.setToolTip("Neue Übersetzung erstellen")
