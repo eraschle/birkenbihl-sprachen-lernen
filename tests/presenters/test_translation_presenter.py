@@ -98,17 +98,13 @@ class TestTranslationPresenterBasic:
 class TestTranslationPresenterDates:
     """Tests for datetime formatting."""
 
-    def test_present_formats_created_at(
-        self, presenter: TranslationPresenter, sample_translation: Translation
-    ) -> None:
+    def test_present_formats_created_at(self, presenter: TranslationPresenter, sample_translation: Translation) -> None:
         """Test that present() formats created_at timestamp."""
         result = presenter.present(sample_translation)
 
         assert result.created_at == "2025-10-16 12:00"
 
-    def test_present_formats_updated_at(
-        self, presenter: TranslationPresenter, sample_translation: Translation
-    ) -> None:
+    def test_present_formats_updated_at(self, presenter: TranslationPresenter, sample_translation: Translation) -> None:
         """Test that present() formats updated_at timestamp."""
         result = presenter.present(sample_translation)
 
@@ -119,9 +115,7 @@ class TestTranslationPresenterDates:
 class TestTranslationPresenterSentences:
     """Tests for sentence presentation."""
 
-    def test_present_includes_sentences(
-        self, presenter: TranslationPresenter, sample_translation: Translation
-    ) -> None:
+    def test_present_includes_sentences(self, presenter: TranslationPresenter, sample_translation: Translation) -> None:
         """Test that present() includes sentence presentations."""
         result = presenter.present(sample_translation)
 
@@ -246,7 +240,7 @@ class TestPresentationModelImmutability:
         """Test that TranslationPresentation is immutable."""
         result = presenter.present(sample_translation)
 
-        with pytest.raises(Exception):  # FrozenInstanceError
+        with pytest.raises(Exception, match="cannot assign to field"):
             result.title = "Modified"  # type: ignore
 
     def test_sentence_presentation_is_frozen(
@@ -256,5 +250,5 @@ class TestPresentationModelImmutability:
         result = presenter.present(sample_translation)
         sentence = result.sentences[0]
 
-        with pytest.raises(Exception):  # FrozenInstanceError
+        with pytest.raises(Exception, match="cannot assign to field"):
             sentence.source_text = "Modified"  # type: ignore

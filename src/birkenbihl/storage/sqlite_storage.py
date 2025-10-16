@@ -198,10 +198,7 @@ class SqliteStorageProvider:
         Returns:
             List of SentenceDAO objects
         """
-        return [
-            self._create_sentence_dao(sentence, translation.uuid)
-            for sentence in translation.sentences
-        ]
+        return [self._create_sentence_dao(sentence, translation.uuid) for sentence in translation.sentences]
 
     def _create_sentence_dao(self, sentence: Sentence, translation_id: UUID) -> SentenceDAO:
         """Create single SentenceDAO from domain sentence.
@@ -271,10 +268,7 @@ class SqliteStorageProvider:
         Returns:
             List of domain Sentence objects
         """
-        return [
-            self._create_domain_sentence(sentence_dao)
-            for sentence_dao in translation_dao.sentences
-        ]
+        return [self._create_domain_sentence(sentence_dao) for sentence_dao in translation_dao.sentences]
 
     def _create_domain_sentence(self, sentence_dao: SentenceDAO) -> Sentence:
         """Create single domain Sentence from DAO.
@@ -328,3 +322,8 @@ class SqliteStorageProvider:
     def __del__(self):
         """Cleanup on object deletion."""
         self.close()
+
+
+# Local Variables:
+# jinx-local-words: "SentenceDAO SentenceDAOs TranslationDAO WordAlignmentDAO WordAlignmentDAOs"
+# End:

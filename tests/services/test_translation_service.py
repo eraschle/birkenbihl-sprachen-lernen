@@ -12,7 +12,7 @@ from uuid import uuid4
 import pytest
 
 from birkenbihl.models import dateutils
-from birkenbihl.models.requests import SentenceUpdateRequest
+from birkenbihl.models.requests import AlignmentUpdateRequest, SentenceUpdateRequest, SuggestionRequest
 from birkenbihl.models.settings import ProviderConfig
 from birkenbihl.models.translation import Sentence, Translation, WordAlignment
 from birkenbihl.protocols import IStorageProvider, ITranslationProvider
@@ -113,9 +113,13 @@ class TestGetSentenceSuggestions:
                 mock_translator_class.return_value.generate_alternatives.return_value = expected_alternatives
 
                 # Act
-                alternatives = translation_service.get_sentence_suggestions(
-                    sample_translation.uuid, sentence_uuid, provider_config, count=3
+                request = SuggestionRequest(
+                    translation_id=sample_translation.uuid,
+                    sentence_uuid=sentence_uuid,
+                    provider=provider_config,
+                    count=3,
                 )
+                alternatives = translation_service.get_sentence_suggestions(request)
 
                 # Assert
                 assert alternatives == expected_alternatives
@@ -135,8 +139,11 @@ class TestGetSentenceSuggestions:
         mock_storage.get.return_value = None  # type: ignore[reportAttributeAccessIssue]
 
         # Act & Assert
+        request = SuggestionRequest(
+            translation_id=translation_id, sentence_uuid=sentence_uuid, provider=provider_config
+        )
         with pytest.raises(NotFoundError, match=f"Translation {translation_id} not found"):
-            translation_service.get_sentence_suggestions(translation_id, sentence_uuid, provider_config)
+            translation_service.get_sentence_suggestions(request)
 
     def test_get_sentence_suggestions_sentence_not_found(
         self,
@@ -151,11 +158,14 @@ class TestGetSentenceSuggestions:
         mock_storage.get.return_value = sample_translation  # type: ignore[reportAttributeAccessIssue]
 
         # Act & Assert
+        request = SuggestionRequest(
+            translation_id=sample_translation.uuid, sentence_uuid=wrong_sentence_uuid, provider=provider_config
+        )
         with pytest.raises(
             NotFoundError,
             match=f"Sentence {wrong_sentence_uuid} not found in translation {sample_translation.uuid}",
         ):
-            translation_service.get_sentence_suggestions(sample_translation.uuid, wrong_sentence_uuid, provider_config)
+            translation_service.get_sentence_suggestions(request)
 
 
 @pytest.mark.unit
@@ -296,7 +306,10 @@ class TestUpdateSentenceAlignment:
         mock_storage.update.return_value = sample_translation  # type: ignore[reportAttributeAccessIssue]
 
         # Act
-        result = translation_service.update_sentence_alignment(sample_translation.uuid, sentence_uuid, new_alignments)
+        request = AlignmentUpdateRequest(
+            translation_id=sample_translation.uuid, sentence_uuid=sentence_uuid, alignments=new_alignments
+        )
+        result = translation_service.update_sentence_alignment(request)
 
         # Assert
         assert result.sentences[0].word_alignments == new_alignments
@@ -320,8 +333,11 @@ class TestUpdateSentenceAlignment:
         mock_storage.get.return_value = sample_translation  # type: ignore[reportAttributeAccessIssue]
 
         # Act & Assert
+        request = AlignmentUpdateRequest(
+            translation_id=sample_translation.uuid, sentence_uuid=sentence_uuid, alignments=invalid_alignments
+        )
         with pytest.raises(ValueError, match="Invalid alignment"):
-            translation_service.update_sentence_alignment(sample_translation.uuid, sentence_uuid, invalid_alignments)
+            translation_service.update_sentence_alignment(request)
 
     def test_update_sentence_alignment_missing_words_fails(
         self,
@@ -342,5 +358,13 @@ class TestUpdateSentenceAlignment:
         mock_storage.get.return_value = sample_translation  # type: ignore[reportAttributeAccessIssue]
 
         # Act & Assert
+        request = AlignmentUpdateRequest(
+            translation_id=sample_translation.uuid, sentence_uuid=sentence_uuid, alignments=incomplete_alignments
+        )
         with pytest.raises(ValueError, match="Invalid alignment"):
-            translation_service.update_sentence_alignment(sample_translation.uuid, sentence_uuid, incomplete_alignments)
+            translation_service.update_sentence_alignment(request)
+
+
+# Local Variables:
+# jinx-local-words: "PydanticAITranslator"
+# End:

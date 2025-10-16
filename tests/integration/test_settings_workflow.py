@@ -211,11 +211,30 @@ class TestSettingsWorkflowIntegration:
         # Initial settings with three providers
         service1 = SettingsService(file_path=temp_db)
         service1.load_settings()
-        service1.add_provider(ProviderConfig(name="Provider 1", provider_type="openai", model="gpt-4o", api_key="key1"))
         service1.add_provider(
-            ProviderConfig(name="Provider 2", provider_type="anthropic", model="claude", api_key="key2")
+            ProviderConfig(
+                name="Provider 1",
+                provider_type="openai",
+                model="gpt-4o",
+                api_key="key1",
+            )
         )
-        service1.add_provider(ProviderConfig(name="Provider 3", provider_type="google-gla", model="gemini-2.0-flash-exp", api_key="key3"))
+        service1.add_provider(
+            ProviderConfig(
+                name="Provider 2",
+                provider_type="anthropic",
+                model="claude",
+                api_key="key2",
+            )
+        )
+        service1.add_provider(
+            ProviderConfig(
+                name="Provider 3",
+                provider_type="google-gla",
+                model="gemini-2.0-flash-exp",
+                api_key="key3",
+            )
+        )
         service1.save_settings(use_database=True)
 
         # Remove Provider 2
