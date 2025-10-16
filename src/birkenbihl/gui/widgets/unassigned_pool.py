@@ -4,6 +4,7 @@ from PySide6.QtCore import Signal
 from PySide6.QtGui import QDragEnterEvent, QDragLeaveEvent, QDropEvent
 from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QWidget
 
+from birkenbihl.gui.styles import theme
 from birkenbihl.gui.widgets.word_tag import WordTag
 
 
@@ -50,13 +51,7 @@ class UnassignedPool(QFrame):
 
     def _setup_style(self) -> None:
         """Configure pool appearance."""
-        self.setStyleSheet("""
-            QFrame {
-                background-color: #f9f9f9;
-                border: 1px solid #ddd;
-                border-radius: 4px;
-            }
-        """)
+        self.setStyleSheet(theme.get_pool_frame_style())
 
     def add_tag(self, tag: WordTag) -> None:
         """Add tag to pool.
@@ -132,13 +127,4 @@ class UnassignedPool(QFrame):
         Args:
             highlighted: True to highlight
         """
-        if highlighted:
-            self.setStyleSheet("""
-                QFrame {
-                    background-color: rgba(0, 150, 255, 0.1);
-                    border: 2px solid #0096ff;
-                    border-radius: 4px;
-                }
-            """)
-        else:
-            self._setup_style()
+        self.setStyleSheet(theme.get_pool_frame_style(highlighted))

@@ -2,8 +2,9 @@
 
 from PySide6.QtCore import QEvent, QMimeData, Qt, Signal
 from PySide6.QtGui import QCursor, QDrag, QEnterEvent, QMouseEvent
-from PySide6.QtWidgets import QLabel
-from pytestqt.qtbot import QWidget
+from PySide6.QtWidgets import QLabel, QWidget
+
+from birkenbihl.gui.styles import theme
 
 
 class WordTag(QLabel):
@@ -38,7 +39,7 @@ class WordTag(QLabel):
 
     def _setup_style(self) -> None:
         """Configure tag appearance."""
-        self.setStyleSheet(self._normal_style())
+        self.setStyleSheet(theme.get_word_tag_style("normal"))
         self.setCursor(QCursor(Qt.CursorShape.OpenHandCursor))
         self.setMargin(2)
 
@@ -78,7 +79,7 @@ class WordTag(QLabel):
             event: Enter event
         """
         if not self._is_dragging:
-            self.setStyleSheet(self._hover_style())
+            self.setStyleSheet(theme.get_word_tag_style("hover"))
         super().enterEvent(event)
 
     def leaveEvent(self, event: QEvent) -> None:
@@ -88,35 +89,5 @@ class WordTag(QLabel):
             event: Leave event
         """
         if not self._is_dragging:
-            self.setStyleSheet(self._normal_style())
+            self.setStyleSheet(theme.get_word_tag_style("normal"))
         super().leaveEvent(event)
-
-    def _normal_style(self) -> str:
-        """Get normal state stylesheet.
-
-        Returns:
-            CSS stylesheet string
-        """
-        return """
-            QLabel {
-                background-color: #f0f0f0;
-                border: 1px solid #ccc;
-                border-radius: 4px;
-                padding: 5px 10px;
-            }
-        """
-
-    def _hover_style(self) -> str:
-        """Get hover state stylesheet.
-
-        Returns:
-            CSS stylesheet string
-        """
-        return """
-            QLabel {
-                background-color: #e8e8e8;
-                border: 1px solid #999;
-                border-radius: 4px;
-                padding: 5px 10px;
-            }
-        """

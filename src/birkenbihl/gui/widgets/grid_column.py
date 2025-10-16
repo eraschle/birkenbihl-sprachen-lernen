@@ -4,6 +4,7 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QDragEnterEvent, QDragLeaveEvent, QDropEvent
 from PySide6.QtWidgets import QFrame, QLabel, QVBoxLayout, QWidget
 
+from birkenbihl.gui.styles import theme
 from birkenbihl.gui.widgets.word_tag import WordTag
 
 
@@ -68,7 +69,7 @@ class GridColumn(QFrame):
         label = QLabel()
         label.setFixedHeight(30)
         label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        label.setStyleSheet(self._drop_zone_style(False))
+        label.setStyleSheet(theme.get_drop_zone_style(False))
         return label
 
     def add_tag(self, tag: WordTag) -> None:
@@ -125,8 +126,7 @@ class GridColumn(QFrame):
             highlighted: True to highlight
         """
         if self._drop_zone:
-            style = self._drop_zone_style(highlighted)
-            self._drop_zone.setStyleSheet(style)
+            self._drop_zone.setStyleSheet(theme.get_drop_zone_style(highlighted))
 
     def set_error_state(self, error: bool) -> None:
         """Mark column as error (red) when empty.
@@ -134,7 +134,7 @@ class GridColumn(QFrame):
         Args:
             error: True to show error state
         """
-        style = self._error_style() if error else ""
+        style = theme.get_error_frame_style() if error else ""
         self.setStyleSheet(style)
 
     def dragEnterEvent(self, event: QDragEnterEvent) -> None:
@@ -166,42 +166,3 @@ class GridColumn(QFrame):
         self.word_dropped.emit(word)
         self.set_highlighted(False)
         event.acceptProposedAction()
-
-    def _drop_zone_style(self, highlighted: bool) -> str:
-        """Get drop zone stylesheet.
-
-        Args:
-            highlighted: Whether drop zone is highlighted
-
-        Returns:
-            CSS stylesheet
-        """
-        if highlighted:
-            return """
-                QLabel {
-                    background-color: rgba(0, 150, 255, 0.1);
-                    border: 2px solid #0096ff;
-                    border-radius: 4px;
-                }
-            """
-        return """
-            QLabel {
-                background-color: transparent;
-                border: 2px dashed #ddd;
-                border-radius: 4px;
-            }
-        """
-
-    def _error_style(self) -> str:
-        """Get error state stylesheet.
-
-        Returns:
-            CSS stylesheet
-        """
-        return """
-            QFrame {
-                background-color: rgba(255, 0, 0, 0.05);
-                border: 1px solid #ff0000;
-                border-radius: 4px;
-            }
-        """

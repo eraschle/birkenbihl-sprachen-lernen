@@ -3,6 +3,7 @@
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QComboBox, QLabel, QVBoxLayout, QWidget
 
+from birkenbihl.gui.styles import theme
 from birkenbihl.services import language_service as ls
 
 
@@ -45,16 +46,7 @@ class LanguageSelector(QWidget):
         label = QLabel(self._label_text)
         self._combo = QComboBox()  # type: ignore[reportUninitializedInstanceVariable]
         self._combo.currentIndexChanged.connect(self._on_selection_changed)
-        self._combo.setStyleSheet("""
-            QComboBox QAbstractItemView::item:selected {
-                background-color: #0078d4;
-                color: white;
-            }
-            QComboBox QAbstractItemView::item:hover {
-                background-color: #e5f3ff;
-                color: black;
-            }
-        """)
+        self._combo.setStyleSheet(theme.get_default_combobox_style())
 
         layout.addWidget(label)
         layout.addWidget(self._combo)

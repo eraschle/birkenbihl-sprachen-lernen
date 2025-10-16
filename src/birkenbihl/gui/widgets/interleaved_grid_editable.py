@@ -4,6 +4,7 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
 from birkenbihl.gui.models.grid_state import ColumnState, GridState, build_grid_state
+from birkenbihl.gui.styles import theme
 from birkenbihl.gui.widgets.grid_column import GridColumn
 from birkenbihl.gui.widgets.unassigned_pool import UnassignedPool
 from birkenbihl.gui.widgets.word_tag import WordTag
@@ -48,7 +49,7 @@ class InterleavedGridEditable(QWidget):
         layout.addWidget(self._pool)
 
         self._error_label = QLabel()  # type: ignore[reportUninitializedInstanceVariable]
-        self._error_label.setStyleSheet("QLabel { color: #ff0000; }")
+        self._error_label.setStyleSheet(theme.get_error_label_style())
         self._error_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self._error_label)
 
