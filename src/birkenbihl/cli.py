@@ -12,6 +12,8 @@ from birkenbihl.app import get_translator
 from birkenbihl.models.requests import TranslationRequest
 from birkenbihl.models.settings import ProviderConfig
 from birkenbihl.models.translation import Translation
+from birkenbihl.presenters.models import SentencePresentation, TranslationPresentation
+from birkenbihl.presenters.translation_presenter import TranslationPresenter
 from birkenbihl.services import language_service as ls
 from birkenbihl.services import path_service as ps
 from birkenbihl.services.settings_service import SettingsService
@@ -21,32 +23,60 @@ console = Console()
 
 
 def display_translation(translation: Translation) -> None:
-    """Display a translation with rich formatting."""
-    # Header
-    title = translation.title or f"Translation {str(translation.uuid)[:8]}"
-    header = f"[bold cyan]{title}[/bold cyan]"
-    lang_info = f"[dim]{translation.source_language} → {translation.target_language}[/dim]"
+    """Display translation with rich formatting using Presenter.
+
+    Args:
+        translation: Translation domain object to display
+    """
+    presenter = TranslationPresenter()
+    data = presenter.present(translation)
+
+    _display_header(data)
+    for sentence in data.sentences:
+        _display_sentence(sentence)
+    console.print()
+
+
+def _display_header(data: TranslationPresentation) -> None:
+    """Display translation header with title and languages.
+
+    Args:
+        data: Translation presentation data
+    """
+    header = f"[bold cyan]{data.title}[/bold cyan]"
+    lang_info = f"[dim]{data.source_language_name} → {data.target_language_name}[/dim]"
     console.print(Panel(f"{header}\n{lang_info}", border_style="cyan"))
 
-    # Sentences
-    for idx, sentence in enumerate(translation.sentences, 1):
-        console.print(f"\n[bold yellow]Sentence {idx}:[/bold yellow]")
-        console.print(f"  [dim]Original:[/dim]  {sentence.source_text}")
-        console.print(f"  [dim]Natural:[/dim]   {sentence.natural_translation}")
-        console.print(f"  [dim]Word-by-Word:[/dim] {sentence.word_alignments}")
 
-        if sentence.word_alignments:
-            console.print("\n  [bold]Alignments:[/bold]")
-            table = Table(show_header=True, box=None, padding=(0, 1))
-            table.add_column("Source", style="green")
-            table.add_column("Target", style="blue")
+def _display_sentence(sentence: SentencePresentation) -> None:
+    """Display single sentence with translations and alignments.
 
-            for alignment in sentence.word_alignments:
-                table.add_row(alignment.source_word, alignment.target_word)
+    Args:
+        sentence: Sentence presentation data
+    """
+    console.print(f"\n[bold yellow]Sentence {sentence.index}:[/bold yellow]")
+    console.print(f"  [dim]Original:[/dim]  {sentence.source_text}")
+    console.print(f"  [dim]Natural:[/dim]   {sentence.natural_translation}")
 
-            console.print(table)
+    if sentence.has_alignments:
+        _display_alignments(sentence.alignments)
 
-    console.print()
+
+def _display_alignments(alignments: list[tuple[str, str]]) -> None:
+    """Display word-by-word alignments in a table.
+
+    Args:
+        alignments: List of (source_word, target_word) tuples
+    """
+    console.print("\n  [bold]Alignments:[/bold]")
+    table = Table(show_header=True, box=None, padding=(0, 1))
+    table.add_column("Source", style="green")
+    table.add_column("Target", style="blue")
+
+    for source, target in alignments:
+        table.add_row(source, target)
+
+    console.print(table)
 
 
 @click.group()
