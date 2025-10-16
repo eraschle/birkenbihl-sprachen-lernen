@@ -1,6 +1,6 @@
 """Draggable word tag widget for interleaved grid editing."""
 
-from PySide6.QtCore import QEvent, Qt, Signal
+from PySide6.QtCore import QEvent, QMimeData, Qt, Signal
 from PySide6.QtGui import QCursor, QDrag, QEnterEvent, QMouseEvent
 from PySide6.QtWidgets import QLabel
 from pytestqt.qtbot import QWidget
@@ -57,6 +57,8 @@ class WordTag(QLabel):
     def _start_drag(self) -> None:
         """Execute drag operation."""
         drag = QDrag(self)
+        mime_data = QMimeData()
+        drag.setMimeData(mime_data)
         mime = drag.mimeData()
         mime.setText(self._word)
         drag.setMimeData(mime)
