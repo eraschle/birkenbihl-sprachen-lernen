@@ -4,11 +4,14 @@ from PySide6.QtWidgets import (
     QMainWindow,
     QMenuBar,
     QMessageBox,
+    QTabWidget,
     QWidget,
 )
 
+from birkenbihl.gui.models.app_state import AppState
 from birkenbihl.gui.viewmodels.settings_vm import SettingsViewModel
 from birkenbihl.gui.views.settings_view import SettingsView
+from birkenbihl.gui.views.translation_view import TranslationView
 from birkenbihl.services.settings_service import SettingsService
 from birkenbihl.services.translation_service import TranslationService
 
@@ -22,20 +25,22 @@ class MainWindow(QMainWindow):
         """Initialize main window.
 
         Args:
-            translation_service: TranslationService instance (unused, kept for compatibility)
+            translation_service: TranslationService instance
             settings_service: SettingsService instance
             parent: Parent widget
         """
         super().__init__(parent)
+        self._translation_service = translation_service
         self._settings_service = settings_service
+        self._app_state = AppState(parent=self)
         self._init_ui()
         self._create_menu_bar()
         self._apply_geometry()
 
     def _init_ui(self) -> None:
         """Initialize UI components."""
-        self.setWindowTitle("Birkenbihl Sprachtrainer - Einstellungen")
-        self._create_settings_view()
+        self.setWindowTitle("Birkenbihl Sprachtrainer")
+        self._create_tabbed_views()
 
     def _create_settings_view(self) -> None:
         """Create settings view."""
@@ -65,11 +70,12 @@ class MainWindow(QMainWindow):
 
     def _show_about(self) -> None:
         """Show about dialog."""
-        QMessageBox.about(
-            self,
-            "Über Birkenbihl",
-            "Birkenbihl Sprachtrainer\n\nDigitale Umsetzung der Vera F. Birkenbihl Sprachlernmethode.\n\nVersion 1.0",
-        )
+        message_lines = [
+            "Birkenbihl Sprachtrainer",
+            "Digitale Umsetzung der Vera F. Birkenbihl Sprachlernmethode.",
+            "Version 1.0",
+        ]
+        QMessageBox.about(self, "Über Birkenbihl", "\n\n".join(message_lines))
 
     def _apply_geometry(self) -> None:
         """Apply window geometry."""

@@ -4,6 +4,8 @@ These prompts are used by all translation providers to ensure consistent
 behavior across OpenAI, Anthropic, and other models.
 """
 
+import re
+
 from birkenbihl.models.languages import Language
 
 BIRKENBIHL_SYSTEM_PROMPT = """You are a language translation expert specializing in the Vera F. Birkenbihl \
@@ -266,7 +268,9 @@ def create_regenerate_alignment_prompt(
     target_name = target_lang.name_en
 
     # Extract words from natural translation to show them explicitly
-    target_words = natural_translation.split()
+    # Remove punctuation but preserve case (used only in prompt, so inline is fine)
+    text_no_punct = re.sub(r"[^\w\s'\-]", "", natural_translation)
+    target_words = text_no_punct.split()
     target_words_list = ", ".join(f'"{word}"' for word in target_words)
 
     return f"""Create a word-by-word alignment for the Birkenbihl method.

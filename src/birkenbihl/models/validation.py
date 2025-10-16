@@ -1,14 +1,10 @@
 """Validation functions for translation models."""
 
-import re
-
 from birkenbihl.models.translation import WordAlignment
+from birkenbihl.utils.text_extractor import extract_normalized_words, split_hyphenated
 
 
-def validate_alignment_complete(
-    natural_translation: str,
-    alignments: list[WordAlignment],
-) -> tuple[bool, str | None]:
+def validate_alignment_complete(natural_translation: str, alignments: list[WordAlignment]) -> tuple[bool, str | None]:
     """Validate that all words from natural translation are present in alignments.
 
     Rules:
@@ -84,9 +80,7 @@ def _extract_words(text: str) -> list[str]:
     Returns:
         List of normalized words
     """
-    text_no_punct = re.sub(r"[^\w\s'\-]", "", text)
-    words = text_no_punct.lower().split()
-    return [w for w in words if w]
+    return extract_normalized_words(text)
 
 
 def validate_source_words_mapped(alignments: list[WordAlignment]) -> tuple[bool, str | None]:
@@ -141,21 +135,10 @@ def _extract_alignment_words(alignments: list[WordAlignment]) -> list[str]:
     """
     words = []
     for alignment in alignments:
-        # Normalize: lowercase and remove punctuation (except hyphens between words)
+        # Normalize: lowercase
         target_word = alignment.target_word.lower()
-
-        if "-" in target_word:
-            # Split hyphenated words first
-            parts = target_word.split("-")
-            # Remove punctuation from each part
-            for part in parts:
-                clean_part = re.sub(r"[^\w'\-]", "", part)
-                if clean_part:
-                    words.append(clean_part)
-        else:
-            # Remove punctuation from single word
-            clean_word = re.sub(r"[^\w'\-]", "", target_word)
-            if clean_word:
-                words.append(clean_word)
+        # Split hyphenated and clean punctuation in one call
+        parts = split_hyphenated(target_word)
+        words.extend(parts)
 
     return words

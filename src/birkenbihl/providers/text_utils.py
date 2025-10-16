@@ -1,46 +1,7 @@
 """Text processing utilities for translation providers."""
 
-import re
-
 from birkenbihl.providers.models import SentenceResponse, WordAlignmentResponse
-
-
-def split_into_sentences(text: str) -> list[str]:
-    """Split text into sentences using deterministic regex-based approach.
-
-    Handles common sentence terminators (.!?) followed by whitespace.
-    Preserves sentence terminators with each sentence.
-
-    Args:
-        text: Input text to split
-
-    Returns:
-        List of sentences with whitespace stripped
-
-    Examples:
-        >>> split_into_sentences("Hello world. How are you?")
-        ['Hello world.', 'How are you?']
-
-        >>> split_into_sentences("One sentence")
-        ['One sentence']
-
-        >>> split_into_sentences("First! Second? Third.")
-        ['First!', 'Second?', 'Third.']
-    """
-    if not text or not text.strip():
-        return []
-
-    # Pattern: Split after .!? when followed by whitespace and capital letter
-    # This avoids splitting on abbreviations like "Mr. Smith"
-    pattern = r"(?<=[.!?])\s+(?=[A-Z])"
-
-    # Split the text
-    sentences = re.split(pattern, text)
-
-    # Clean and filter
-    result = [s.strip() for s in sentences if s.strip()]
-
-    return result if result else [text.strip()]
+from birkenbihl.utils.text_extractor import normalize_word_for_matching, split_into_sentences
 
 
 def redistribute_merged_translation(merged: SentenceResponse, source_sentences: list[str]) -> list[SentenceResponse]:
@@ -93,12 +54,12 @@ def redistribute_merged_translation(merged: SentenceResponse, source_sentences: 
 
     # Step 3: Match each alignment to a source sentence via source_word
     for alignment in merged.word_alignments:
-        source_word = alignment.source_word.strip().lower()
+        source_word = normalize_word_for_matching(alignment.source_word)
         matched = False
 
         for i, source_sent in enumerate(source_sentences):
-            # Split source sentence into words and compare (case-insensitive)
-            source_words = [w.strip().lower() for w in source_sent.split()]
+            # Split source sentence into words and normalize for comparison
+            source_words = [normalize_word_for_matching(w) for w in source_sent.split()]
 
             if source_word in source_words:
                 alignments_per_sentence[i].append(alignment)
@@ -128,3 +89,8 @@ def redistribute_merged_translation(merged: SentenceResponse, source_sentences: 
         )
 
     return result
+
+
+# Local Variables:
+# jinx-local-words: "sents"
+# End:
