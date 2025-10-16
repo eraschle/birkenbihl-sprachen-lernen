@@ -156,14 +156,14 @@ refactor(cli): break down translate command into helper functions
 ```
 
 **Abgeschlossen:** ✅ JA
-**Commit Hash:** (wird eingefügt)
+**Commit Hash:** b0a34b1
 **Datum:** 16. Oktober 2025
 
 ---
 
 ### 1.3 Core Parameter Objects 🔴
 
-**Status:** ⬜ TODO
+**Status:** ✅ DONE
 
 **Neu:** `src/birkenbihl/models/requests.py`
 
@@ -227,9 +227,9 @@ feat(models): add parameter objects for translation requests
 - Full type hints and docstrings
 ```
 
-**Abgeschlossen:** ⬜ NEIN
-**Commit Hash:** -
-**Datum:** -
+**Abgeschlossen:** ✅ JA
+**Commit Hash:** (wird eingefügt)
+**Datum:** 16. Oktober 2025
 
 ---
 
@@ -818,7 +818,7 @@ docs: update documentation after refactoring
 ### Phase 1 (Kritisch)
 - [x] 1.1 SqliteStorage Refactoring
 - [x] 1.2 CLI Refactoring
-- [ ] 1.3 Core Parameter Objects
+- [x] 1.3 Core Parameter Objects
 - [ ] 1.4 TranslationService API
 - [ ] 1.5 Provider API
 - [ ] 1.6 Tests anpassen
