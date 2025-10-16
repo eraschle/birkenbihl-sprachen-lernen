@@ -42,15 +42,29 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Birkenbihl Sprachtrainer")
         self._create_tabbed_views()
 
-    def _create_settings_view(self) -> None:
-        """Create settings view."""
-        self._settings_viewmodel = SettingsViewModel(  # type: ignore[reportUninitializedInstanceVariable]
+    def _create_tabbed_views(self) -> None:
+        """Create tabbed interface with Translations and Settings."""
+        tabs = QTabWidget()
+
+        # Translation tab
+        self._translation_view = TranslationView(
+            self._translation_service,
+            self._settings_service,
+            self._app_state,
+            parent=self,
+        )
+        tabs.addTab(self._translation_view, "Übersetzungen")
+
+        # Settings tab
+        self._settings_viewmodel = SettingsViewModel(
             self._settings_service, parent=self
         )
-        self._settings_view = SettingsView(  # type: ignore[reportUninitializedInstanceVariable]
+        self._settings_view = SettingsView(
             self._settings_viewmodel, parent=self
         )
-        self.setCentralWidget(self._settings_view)
+        tabs.addTab(self._settings_view, "Einstellungen")
+
+        self.setCentralWidget(tabs)
 
     def _create_menu_bar(self) -> None:
         """Create menu bar."""
