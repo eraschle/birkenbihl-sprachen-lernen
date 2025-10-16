@@ -5,6 +5,7 @@ from typing import Self
 from uuid import UUID
 
 from birkenbihl.models.languages import Language
+from birkenbihl.models.requests import TranslationRequest
 from birkenbihl.models.settings import ProviderConfig
 from birkenbihl.models.translation import Translation
 from birkenbihl.providers.pydantic_ai_translator import PydanticAITranslator
@@ -69,5 +70,6 @@ class TranslationUIService:
     ) -> Translation:
         translator = PydanticAITranslator(provider)
         temp_service = TranslationService(translator, self.storage)
-        translation = temp_service.translate(text, source_lang, target_lang, title)
+        request = TranslationRequest(text=text, source_lang=source_lang, target_lang=target_lang, title=title)
+        translation = temp_service.translate(request)
         return temp_service.save_translation(translation=translation)

@@ -2,6 +2,7 @@
 
 from birkenbihl.gui.widgets import (
     base,
+    language_combo,
     language_selector,
     progress_widget,
     provider_selector,
@@ -9,7 +10,8 @@ from birkenbihl.gui.widgets import (
 
 __all__ = [
     "base",
-    "provider_selector",
+    "language_combo",
     "language_selector",
     "progress_widget",
+    "provider_selector",
 ]
