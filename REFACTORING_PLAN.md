@@ -31,7 +31,7 @@ Code-Qualität auf 100% Clean Code Compliance bringen:
 
 ### 1.1 SqliteStorage Refactoring 🔴
 
-**Status:** ⬜ TODO
+**Status:** ✅ DONE
 
 **Problem:**
 - `_to_dao()`: 42 LOC (KRITISCH)
@@ -87,9 +87,9 @@ refactor(storage): break down SqliteStorage DAO conversion methods
 - All tests passing
 ```
 
-**Abgeschlossen:** ⬜ NEIN
-**Commit Hash:** -
-**Datum:** -
+**Abgeschlossen:** ✅ JA
+**Commit Hash:** (wird eingefügt)
+**Datum:** 16. Oktober 2025
 
 ---
 
@@ -815,7 +815,7 @@ docs: update documentation after refactoring
 ## 📊 Fortschritts-Tracking
 
 ### Phase 1 (Kritisch)
-- [ ] 1.1 SqliteStorage Refactoring
+- [x] 1.1 SqliteStorage Refactoring
 - [ ] 1.2 CLI Refactoring
 - [ ] 1.3 Core Parameter Objects
 - [ ] 1.4 TranslationService API
