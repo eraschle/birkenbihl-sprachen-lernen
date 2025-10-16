@@ -12,6 +12,7 @@ from uuid import uuid4
 import pytest
 
 from birkenbihl.models import dateutils
+from birkenbihl.models.requests import SentenceUpdateRequest
 from birkenbihl.models.settings import ProviderConfig
 from birkenbihl.models.translation import Sentence, Translation, WordAlignment
 from birkenbihl.protocols import IStorageProvider, ITranslationProvider
@@ -170,13 +171,19 @@ class TestUpdateSentenceNatural:
     ) -> None:
         """Test successful update of natural translation and alignment regeneration."""
         # Arrange
-        sentence_uuid = sample_translation.sentences[0].uuid
         new_natural = "Du wirst mir fehlen"
         new_alignments = [
             WordAlignment(source_word="Yo", target_word="Du", position=0),
             WordAlignment(source_word="te", target_word="mir", position=1),
             WordAlignment(source_word="extrañaré", target_word="wirst-fehlen", position=2),
         ]
+
+        request = SentenceUpdateRequest(
+            translation_id=sample_translation.uuid,
+            sentence_idx=0,
+            new_text=new_natural,
+            provider=provider_config,
+        )
 
         mock_storage.get.return_value = sample_translation  # type: ignore[reportAttributeAccessIssue]
         mock_storage.update.return_value = sample_translation  # type: ignore[reportAttributeAccessIssue]
@@ -187,9 +194,7 @@ class TestUpdateSentenceNatural:
             mock_translator_class.return_value.regenerate_alignment.return_value = new_alignments
 
             # Act
-            result = translation_service.update_sentence_natural(
-                sample_translation.uuid, sentence_uuid, new_natural, provider_config
-            )
+            result = translation_service.update_sentence_natural(request)
 
             # Assert
             assert result.sentences[0].natural_translation == new_natural
@@ -206,8 +211,14 @@ class TestUpdateSentenceNatural:
     ) -> None:
         """Test that update_sentence_natural calls regenerate_alignment."""
         # Arrange
-        sentence_uuid = sample_translation.sentences[0].uuid
         new_natural = "Neuer Text"
+        request = SentenceUpdateRequest(
+            translation_id=sample_translation.uuid,
+            sentence_idx=0,
+            new_text=new_natural,
+            provider=provider_config,
+        )
+
         mock_storage.get.return_value = sample_translation  # type: ignore[reportAttributeAccessIssue]
         mock_storage.update.return_value = sample_translation  # type: ignore[reportAttributeAccessIssue]
 
@@ -217,9 +228,7 @@ class TestUpdateSentenceNatural:
             mock_translator_class.return_value.regenerate_alignment.return_value = []
 
             # Act
-            translation_service.update_sentence_natural(
-                sample_translation.uuid, sentence_uuid, new_natural, provider_config
-            )
+            translation_service.update_sentence_natural(request)
 
             # Assert
             mock_translator_class.return_value.regenerate_alignment.assert_called_once_with(
@@ -238,9 +247,16 @@ class TestUpdateSentenceNatural:
     ) -> None:
         """Test that update_sentence_natural updates updated_at timestamp."""
         # Arrange
-        sentence_uuid = sample_translation.sentences[0].uuid
         new_natural = "Neuer Text"
         old_updated_at = sample_translation.updated_at
+
+        request = SentenceUpdateRequest(
+            translation_id=sample_translation.uuid,
+            sentence_idx=0,
+            new_text=new_natural,
+            provider=provider_config,
+        )
+
         mock_storage.get.return_value = sample_translation  # type: ignore[reportAttributeAccessIssue]
         mock_storage.update.return_value = sample_translation  # type: ignore[reportAttributeAccessIssue]
 
@@ -250,9 +266,7 @@ class TestUpdateSentenceNatural:
             mock_translator_class.return_value.regenerate_alignment.return_value = []
 
             # Act
-            result = translation_service.update_sentence_natural(
-                sample_translation.uuid, sentence_uuid, new_natural, provider_config
-            )
+            result = translation_service.update_sentence_natural(request)
 
             # Assert
             assert result.updated_at > old_updated_at or result.updated_at != old_updated_at

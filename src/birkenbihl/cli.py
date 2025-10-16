@@ -9,6 +9,7 @@ from rich.panel import Panel
 from rich.table import Table
 
 from birkenbihl.app import get_translator
+from birkenbihl.models.requests import TranslationRequest
 from birkenbihl.models.settings import ProviderConfig
 from birkenbihl.models.translation import Translation
 from birkenbihl.services import language_service as ls
@@ -140,7 +141,10 @@ def _execute_translation(
 
     if source:
         source_language = ls.get_language_by(source)
-        translation = service.translate(text, source_language, target_language, title)
+        request = TranslationRequest(
+            text=text, source_lang=source_language, target_lang=target_language, title=title
+        )
+        translation = service.translate(request)
         return service.save_translation(translation)
 
     return service.auto_detect_and_translate(text, target_language, title)

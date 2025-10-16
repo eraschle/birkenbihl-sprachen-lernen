@@ -4,6 +4,7 @@ from uuid import UUID
 
 from birkenbihl.models import dateutils
 from birkenbihl.models.languages import Language
+from birkenbihl.models.requests import SentenceUpdateRequest, TranslationRequest
 from birkenbihl.models.settings import ProviderConfig
 from birkenbihl.models.translation import Translation, WordAlignment
 from birkenbihl.models.validation import validate_alignment_complete
@@ -31,14 +32,11 @@ class TranslationService:
         self._translator = translator
         self._storage = storage
 
-    def translate(self, text: str, source_lang: Language, target_lang: Language, title: str) -> Translation:
+    def translate(self, request: TranslationRequest) -> Translation:
         """Translate text using Birkenbihl method (returns unsaved Translation).
 
         Args:
-            text: Text to translate (can contain multiple sentences)
-            source_lang: Source language object
-            target_lang: Target language object
-            title: Document title
+            request: Translation request with text, languages, and title
 
         Returns:
             Translation object with natural and word-by-word translations (unsaved)
@@ -51,7 +49,10 @@ class TranslationService:
             raise ValueError("Translator required for translate operation")
 
         return self._translator.translate(
-            text=text, source_lang=source_lang, target_lang=target_lang, title=title
+            text=request.text,
+            source_lang=request.source_lang,
+            target_lang=request.target_lang,
+            title=request.title,
         )
 
     def save_translation(self, translation: Translation) -> Translation:
@@ -139,12 +140,10 @@ class TranslationService:
             raise ValueError("Translator required for auto_detect_and_translate operation")
 
         source_lang = self._translator.detect_language(text)
-        return self.translate(
-            text=text,
-            source_lang=source_lang,
-            target_lang=target_lang,
-            title=title,
+        request = TranslationRequest(
+            text=text, source_lang=source_lang, target_lang=target_lang, title=title
         )
+        return self.translate(request)
 
     def get_sentence_suggestions(
         self,
@@ -183,13 +182,7 @@ class TranslationService:
 
         return alternatives
 
-    def update_sentence_natural(
-        self,
-        translation_id: UUID,
-        sentence_uuid: UUID,
-        new_natural: str,
-        provider: ProviderConfig,
-    ) -> Translation:
+    def update_sentence_natural(self, request: SentenceUpdateRequest) -> Translation:
         """Update natural translation of a sentence and regenerate word-by-word.
 
         Workflow:
@@ -201,10 +194,7 @@ class TranslationService:
         6. Save translation via storage
 
         Args:
-            translation_id: UUID of the translation
-            sentence_uuid: UUID of the sentence to update
-            new_natural: New natural translation text
-            provider: Provider to use for alignment generation
+            request: Update request with translation_id, sentence_idx, new_text, provider
 
         Returns:
             Updated Translation object
@@ -213,20 +203,23 @@ class TranslationService:
             NotFoundError: If translation or sentence not found
             Exception: If alignment regeneration fails
         """
-        translation = self._storage.get(translation_id)
+        translation = self._storage.get(request.translation_id)
         if not translation:
-            raise NotFoundError(f"Translation {translation_id} not found")
+            raise NotFoundError(f"Translation {request.translation_id} not found")
 
-        sentence = next((s for s in translation.sentences if s.uuid == sentence_uuid), None)
-        if not sentence:
-            raise NotFoundError(f"Sentence {sentence_uuid} not found in translation {translation_id}")
+        if request.sentence_idx < 0 or request.sentence_idx >= len(translation.sentences):
+            raise NotFoundError(
+                f"Sentence index {request.sentence_idx} out of range for translation {request.translation_id}"
+            )
 
-        translator = PydanticAITranslator(provider)
+        sentence = translation.sentences[request.sentence_idx]
+
+        translator = PydanticAITranslator(request.provider)
         new_alignments = translator.regenerate_alignment(
-            sentence.source_text, new_natural, translation.source_language, translation.target_language
+            sentence.source_text, request.new_text, translation.source_language, translation.target_language
         )
 
-        sentence.natural_translation = new_natural
+        sentence.natural_translation = request.new_text
         sentence.word_alignments = new_alignments
         translation.updated_at = dateutils.create_now()
 
