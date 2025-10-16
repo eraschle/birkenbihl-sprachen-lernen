@@ -9,10 +9,12 @@ from rich.panel import Panel
 from rich.table import Table
 
 from birkenbihl.app import get_translator
+from birkenbihl.models.settings import ProviderConfig
 from birkenbihl.models.translation import Translation
 from birkenbihl.services import language_service as ls
 from birkenbihl.services import path_service as ps
 from birkenbihl.services.settings_service import SettingsService
+from birkenbihl.services.translation_service import TranslationService
 
 console = Console()
 
@@ -57,6 +59,93 @@ def cli():
     pass
 
 
+def _load_settings_service() -> SettingsService:
+    """Load and initialize settings service.
+
+    Returns:
+        Initialized SettingsService
+
+    Raises:
+        Exception: If settings cannot be loaded
+    """
+    settings_service = SettingsService(ps.get_setting_path())
+    settings_service.load_settings()
+    return settings_service
+
+
+def _select_provider(settings_service: SettingsService, provider_name: str | None) -> ProviderConfig:
+    """Select provider from settings or CLI argument.
+
+    Args:
+        settings_service: Initialized settings service
+        provider_name: Provider name from CLI (None for default)
+
+    Returns:
+        Selected ProviderConfig
+
+    Raises:
+        click.Abort: If provider not found or not configured
+    """
+    if provider_name:
+        settings = settings_service.get_settings()
+        matching = [p for p in settings.providers if p.name == provider_name]
+        if not matching:
+            console.print(f"[bold red]Error:[/bold red] Provider '{provider_name}' not found")
+            console.print("\nAvailable providers:")
+            for p in settings.providers:
+                console.print(f"  - {p.name}")
+            raise click.Abort()
+        return matching[0]
+
+    provider = settings_service.get_default_provider()
+    if provider is None:
+        console.print("[bold red]Error:[/bold red] No provider configured in settings.yaml")
+        raise click.Abort()
+    return provider
+
+
+def _create_translation_service(provider_config: ProviderConfig, storage_path: Path | None) -> TranslationService:
+    """Create translation service with provider and storage.
+
+    Args:
+        provider_config: Provider configuration
+        storage_path: Custom storage path (None for default)
+
+    Returns:
+        Initialized TranslationService
+    """
+    from birkenbihl.storage import JsonStorageProvider
+
+    translator = get_translator(provider_config)
+    storage_provider = JsonStorageProvider(storage_path)
+    return TranslationService(translator, storage_provider)
+
+
+def _execute_translation(
+    service: TranslationService, text: str, source: str | None, target: str, title: str
+) -> Translation:
+    """Execute translation with auto-detect or explicit source language.
+
+    Args:
+        service: TranslationService instance
+        text: Text to translate
+        source: Source language code (None for auto-detect)
+        target: Target language code
+        title: Translation title
+
+    Returns:
+        Translation result
+    """
+    target_language = ls.get_language_by(target)
+
+    if source:
+        source_language = ls.get_language_by(source)
+        translation = service.translate(text, source_language, target_language, title)
+        return service.save_translation(translation)
+
+    return service.auto_detect_and_translate(text, target_language, title)
+
+
 @cli.command()
 @click.argument("text")
 @click.option(
@@ -91,7 +180,7 @@ def translate(
     title: str,
     provider: str | None,
     storage: Path | None,
-):
+) -> None:
     """Translate text using the Birkenbihl method.
 
     Examples:
@@ -100,43 +189,12 @@ def translate(
         birkenbihl translate "Hello" -p "Claude Sonnet"
     """
     try:
-        # Load settings
-        settings_service = SettingsService(ps.get_setting_path())
-        settings_service.load_settings()
-        settings = settings_service.get_settings()
-
-        # Select provider from CLI args or use default
-        selected_provider = None
-        if provider:
-            matching_providers = [p for p in settings.providers if p.name == provider]
-            if not matching_providers:
-                console.print(f"[bold red]Error:[/bold red] Provider '{provider}' not found in settings.yaml")
-                console.print("\nAvailable providers:")
-                for p in settings.providers:
-                    console.print(f"  - {p.name}")
-                raise click.Abort()
-            selected_provider = matching_providers[0]
-        else:
-            selected_provider = settings_service.get_default_provider()
-            if selected_provider is None:
-                console.print("[bold red]Error:[/bold red] No provider configured in settings.yaml")
-                raise click.Abort()
+        settings_service = _load_settings_service()
+        provider_config = _select_provider(settings_service, provider)
+        service = _create_translation_service(provider_config, storage)
 
         with console.status("[bold green]Translating...", spinner="dots"):
-            from birkenbihl.services.translation_service import TranslationService
-            from birkenbihl.storage import JsonStorageProvider
-
-            translator = get_translator(selected_provider)
-            storage_provider = JsonStorageProvider(storage)
-            service = TranslationService(translator, storage_provider)
-
-            target_language = ls.get_language_by(target)
-            if source:
-                source_language = ls.get_language_by(source)
-                transaltion = service.translate(text, source_language, target_language, title)
-                result = service.save_translation(transaltion)
-            else:
-                result = service.auto_detect_and_translate(text, target_language, title)
+            result = _execute_translation(service, text, source, target, title)
 
         console.print("[bold green]✓[/bold green] Translation completed!")
         display_translation(result)

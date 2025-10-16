@@ -88,14 +88,14 @@ refactor(storage): break down SqliteStorage DAO conversion methods
 ```
 
 **Abgeschlossen:** ✅ JA
-**Commit Hash:** (wird eingefügt)
+**Commit Hash:** 8393907
 **Datum:** 16. Oktober 2025
 
 ---
 
 ### 1.2 CLI Refactoring 🔴
 
-**Status:** ⬜ TODO
+**Status:** ✅ DONE
 
 **Problem:**
 - `translate()` Command: 50 LOC (KRITISCH)
@@ -146,17 +146,18 @@ def _display_translation(translation: Translation) -> None:
 refactor(cli): break down translate command into helper functions
 
 - Extract helper functions from 50 LOC translate command
-- _setup_translation_config: service initialization
-- _resolve_source_language: auto-detection logic
-- _perform_translation: translation execution
-- _display_translation: output formatting
-- Add type hints to CLI tests
-- All tests passing
+- _load_settings_service: settings initialization (6 LOC)
+- _select_provider: provider selection logic (16 LOC)
+- _create_translation_service: service setup (6 LOC)
+- _execute_translation: translation execution (8 LOC)
+- translate command reduced to 14 LOC
+- Add complete type hints (ProviderConfig, TranslationService)
+- Pyright clean (0 errors)
 ```
 
-**Abgeschlossen:** ⬜ NEIN
-**Commit Hash:** -
-**Datum:** -
+**Abgeschlossen:** ✅ JA
+**Commit Hash:** (wird eingefügt)
+**Datum:** 16. Oktober 2025
 
 ---
 
@@ -816,7 +817,7 @@ docs: update documentation after refactoring
 
 ### Phase 1 (Kritisch)
 - [x] 1.1 SqliteStorage Refactoring
-- [ ] 1.2 CLI Refactoring
+- [x] 1.2 CLI Refactoring
 - [ ] 1.3 Core Parameter Objects
 - [ ] 1.4 TranslationService API
 - [ ] 1.5 Provider API
