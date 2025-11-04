@@ -282,9 +282,11 @@ def create_regenerate_alignment_prompt(
 
 **Critical rules:**
 1. **EVERY target word MUST be used EXACTLY ONCE** in the alignments
-2. **Use target words AS THEY APPEAR** in the natural translation (if "werde" and "vermissen" are separate words, keep them separate!)
+2. **Use target words AS THEY APPEAR** in the natural translation
+   (if "werde" and "vermissen" are separate words, keep them separate!)
 3. Map each source word to one or more target words
-4. Use hyphens to connect target words ONLY when mapping multiple target words to ONE source word (e.g., "I've" → "Ich-habe")
+4. Use hyphens to connect target words ONLY when mapping multiple target
+   words to ONE source word (e.g., "I've" → "Ich-habe")
 5. **DO NOT create compound words** if the target words appear separately in the natural translation
 6. Follow source word order with sequential position numbers (0-indexed)
 

@@ -57,7 +57,11 @@ def validate_alignment_complete(
     if missing_words and extra_words:
         error_msg = f"Fehlende Wörter: {', '.join(sorted(missing_words))}; "
         error_msg += f"Zusätzliche Wörter: {', '.join(sorted(extra_words))}. "
-        error_msg += "Die Wort-für-Wort Übersetzung muss ALLE Wörter aus der natürlichen Übersetzung verwenden (keine zusammengesetzten Wörter, wenn diese in der natürlichen Übersetzung separat sind)."
+        error_msg += (
+            "Die Wort-für-Wort Übersetzung muss ALLE Wörter aus der "
+            "natürlichen Übersetzung verwenden (keine zusammengesetzten "
+            "Wörter, wenn diese in der natürlichen Übersetzung separat sind)."
+        )
         return (False, error_msg)
     elif missing_words:
         error_msg = f"Fehlende Wörter: {', '.join(sorted(missing_words))}. "

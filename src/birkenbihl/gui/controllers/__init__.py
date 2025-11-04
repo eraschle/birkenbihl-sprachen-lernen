@@ -1,5 +1,6 @@
-"""Controllers for GUI components."""
+"""Controllers for GUI components.
 
-from birkenbihl.gui.controllers.alignment_controller import AlignmentController
+Note: Legacy controllers removed. Future implementations will go here.
+"""
 
-__all__ = ["AlignmentController"]
+__all__: list[str] = []

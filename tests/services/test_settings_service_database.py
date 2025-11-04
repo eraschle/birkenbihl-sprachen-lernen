@@ -167,8 +167,8 @@ class TestSettingsServiceDatabaseIntegration:
             service.save_settings(use_database=True)
 
         # Verify nothing was saved to database
+        storage = SettingsStorageProvider(temp_db)
         with pytest.raises(NotFoundError):
-            storage = SettingsStorageProvider(temp_db)
             storage.load()
 
     def test_database_persistence_across_service_resets(self, temp_db: Path, sample_settings: Settings) -> None:
