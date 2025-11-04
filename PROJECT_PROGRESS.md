@@ -220,6 +220,119 @@ Before each commit, verify:
 
 ---
 
+### 1.6 Two-Step Translation Refactoring (4-5 hours)
+
+**Goal:** Separate natural translation from word alignment generation
+**Priority:** HIGH (Improves translation quality and follows Birkenbihl method)
+**Estimated Duration:** 4-5 hours
+
+**Context:**
+Currently, `BaseTranslator.translate()` uses a single prompt to generate both
+natural translation AND word alignments in one AI call. This approach:
+- Violates NLP best practices (word alignment is separate task in state-of-the-art systems)
+- Contradicts the original Birkenbihl method (4 separate steps)
+- Reduces control over translation quality
+- Prevents user editing of natural translation before alignment
+
+**New Approach (Two-Step Process):**
+1. **Step 1 - Natural Translation Only:**
+   - Input: Source text
+   - Output: Natural translation
+   - Save to storage
+
+2. **Step 2 - Word Alignment Generation:**
+   - Input: Source text + source words list + target words list
+   - Output: Word alignments
+   - Rules: Each target word used exactly once, multiple words connected with hyphens
+
+**Files:**
+- `src/birkenbihl/providers/prompts.py`
+- `src/birkenbihl/providers/base_translator.py`
+- `src/birkenbihl/providers/models.py`
+- `tests/providers/test_base_translator.py`
+
+**Tasks:**
+- [ ] **1.6.1** Create new prompts for Step 1 (natural translation only)
+  - New system prompt: Remove word-by-word requirements
+  - New user prompt: Request only natural translation
+  - Keep focus on fluent, idiomatic translation
+  - Prefer separate words over compounds for better alignment
+  - Create `NaturalTranslationResponse` model (without alignments)
+  - Max 20 LOC per function
+
+- [ ] **1.6.2** Refactor `BaseTranslator.translate()` to two steps
+  - **Step 1**: Call new natural translation agent
+    - Input: sentences, source_lang, target_lang
+    - Output: List of natural translations
+    - Store intermediate result
+  - **Step 2**: For each sentence, generate word alignments
+    - Use existing `create_word_by_word_prompt()` or `create_regenerate_alignment_prompt()`
+    - Input: source_text, natural_translation, source_words[], target_words[]
+    - Output: WordAlignment[]
+  - Combine results into final Translation model
+  - Extract to helper functions (max 20 LOC each):
+    - `_generate_natural_translations()` - Step 1 logic
+    - `_generate_word_alignments_for_sentence()` - Step 2 logic for single sentence
+    - `_generate_all_alignments()` - Step 2 orchestration
+  - Keep main `translate()` as orchestrator (max 15 LOC)
+
+- [ ] **1.6.3** Update `translate_stream()` for two-step process
+  - Yield progress after Step 1 (50% completion)
+  - Yield progress during Step 2 (50%-100%)
+  - Extract streaming logic to helper functions (max 20 LOC each)
+
+- [ ] **1.6.4** Verify existing `regenerate_alignment()` still works
+  - This method already implements Step 2 logic
+  - May need alignment with new `_generate_word_alignments_for_sentence()`
+  - Avoid code duplication (DRY principle)
+
+- [ ] **1.6.5** Add/update unit tests
+  - Test natural translation generation (Step 1)
+  - Test word alignment generation (Step 2)
+  - Test end-to-end two-step workflow
+  - Test edge cases (empty alignments, missing words)
+  - Mock AI responses for deterministic tests
+
+- [ ] **1.6.6** Update integration tests
+  - Verify Spanish alignment test still passes
+  - Verify Unit 1.1 tests still pass
+  - Check that validation still catches misalignments
+
+- [ ] **1.6.7** Add logging for debugging
+  - Log Step 1 API call and response
+  - Log Step 2 API call per sentence
+  - Log intermediate state between steps
+  - Performance metrics (time per step)
+
+- [ ] **1.6.8** Run Pyright + Ruff validation
+- [ ] **1.6.9** Commit: "refactor(providers): Split translation into two-step process (natural + alignment)"
+
+**Success Criteria:**
+- Translation quality improved (better alignments)
+- Natural translation can be edited before alignment generation
+- All functions ≤20 LOC
+- Existing `regenerate_alignment()` logic reused (DRY)
+- All tests pass (unit + integration)
+- Performance acceptable (two API calls vs one)
+- Logging shows clear two-step process
+
+**Benefits:**
+- ✅ Follows NLP best practices (BinaryAlign, TransAlign approach)
+- ✅ Aligns with original Birkenbihl method (separate steps)
+- ✅ Better control over translation quality
+- ✅ User can edit natural translation before alignment
+- ✅ Word alignment can be regenerated independently
+- ✅ Separation of Concerns (SRP principle)
+- ✅ Easier debugging (isolate which step failed)
+
+**Performance Considerations:**
+- Two API calls instead of one (latency increases)
+- Mitigation: Use streaming for real-time progress feedback
+- Mitigation: Cache natural translations for regeneration scenarios
+- Trade-off: Better quality justifies slightly longer wait
+
+---
+
 ### Phase 1 Completion Checklist
 
 Before moving to Phase 2, verify:
@@ -227,12 +340,17 @@ Before moving to Phase 2, verify:
 - [ ] All functions ≤2 parameters (100% compliance)
 - [ ] Presenter layer implemented
 - [ ] Error handling aligned
+- [ ] Two-step translation process implemented
+  - [ ] Natural translation generation works independently
+  - [ ] Word alignment generation works independently
+  - [ ] End-to-end workflow produces correct results
+  - [ ] Integration tests pass (Spanish, Unit 1.1)
 - [ ] All tests pass
 - [ ] Ruff check passes
 - [ ] Pyright check passes
 - [ ] Code quality score: ⭐⭐⭐⭐⭐ (5/5)
 
-**Expected Completion:** 2025-11-18
+**Expected Completion:** 2025-11-20 (adjusted for Phase 1.6)
 
 ---
 
@@ -725,11 +843,30 @@ Before moving to Phase 4, verify:
 
 ## Notes & Decisions
 
-### 2025-11-04
+### 2025-11-04 - Initial Planning
 - Decided to prioritize code quality (Phase 1) before new features
 - Word Alignment Editor identified as most critical missing feature
 - AudioService deferred to Phase 3 (can be released without it initially)
 - Excel export marked as optional (nice-to-have)
+
+### 2025-11-04 - Translation Architecture Decision
+- **Added Phase 1.6**: Two-Step Translation Refactoring (user request)
+- **Problem identified**: Current implementation uses single prompt for both natural translation + word alignment
+- **Research findings**:
+  - NLP best practice (2024): Word alignment is separate task AFTER translation (BinaryAlign, TransAlign)
+  - Original Birkenbihl method: 4 separate steps, decoding is intentionally separate
+  - Current approach violates both principles
+- **Decision**: Split into two-step process:
+  - Step 1: Generate natural translation only
+  - Step 2: Generate word alignments based on natural translation + word lists
+- **Benefits**:
+  - Follows state-of-the-art NLP practices
+  - Aligns with original Birkenbihl pedagogy
+  - User can edit natural translation before alignment
+  - Better control over translation quality
+  - Easier debugging (isolate which step fails)
+- **Trade-off**: Two API calls vs one (acceptable for quality improvement)
+- **Implementation note**: Existing `create_word_by_word_prompt()` and `regenerate_alignment()` already implement parts of Step 2
 
 ---
 
