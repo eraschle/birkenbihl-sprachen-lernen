@@ -158,6 +158,48 @@ class SqliteStorageProvider:
         except Exception as e:
             raise StorageError(f"Failed to update translation: {e}") from e
 
+    def _create_alignment_daos(self, sentence_id: UUID, alignments: list[WordAlignment]) -> list[WordAlignmentDAO]:
+        """Convert WordAlignments to DAOs.
+
+        Args:
+            sentence_id: UUID of parent sentence
+            alignments: List of WordAlignment domain models
+
+        Returns:
+            List of WordAlignmentDAO database models
+        """
+        return [
+            WordAlignmentDAO(
+                sentence_id=sentence_id,
+                source_word=wa.source_word,
+                target_word=wa.target_word,
+                position=wa.position,
+            )
+            for wa in alignments
+        ]
+
+    def _create_sentence_daos(self, translation_id: UUID, sentences: list[Sentence]) -> list[SentenceDAO]:
+        """Convert Sentences to DAOs.
+
+        Args:
+            translation_id: UUID of parent translation
+            sentences: List of Sentence domain models
+
+        Returns:
+            List of SentenceDAO database models
+        """
+        return [
+            SentenceDAO(
+                id=sentence.uuid,
+                translation_id=translation_id,
+                source_text=sentence.source_text,
+                natural_translation=sentence.natural_translation,
+                created_at=sentence.created_at,
+                word_alignments=self._create_alignment_daos(sentence.uuid, sentence.word_alignments),
+            )
+            for sentence in sentences
+        ]
+
     def _to_dao(self, translation: Translation) -> TranslationDAO:
         """Convert domain Translation to DAO.
 
@@ -175,28 +217,47 @@ class SqliteStorageProvider:
             created_at=translation.created_at,
             updated_at=translation.updated_at,
         )
+        translation_dao.sentences = self._create_sentence_daos(translation.uuid, translation.sentences)
+        return translation_dao
 
-        translation_dao.sentences = [
-            SentenceDAO(
-                id=sentence.uuid,
-                translation_id=translation.uuid,
-                source_text=sentence.source_text,
-                natural_translation=sentence.natural_translation,
-                created_at=sentence.created_at,
-                word_alignments=[
-                    WordAlignmentDAO(
-                        sentence_id=sentence.uuid,
-                        source_word=wa.source_word,
-                        target_word=wa.target_word,
-                        position=wa.position,
-                    )
-                    for wa in sentence.word_alignments
-                ],
+    def _build_alignments(self, alignment_daos: list[WordAlignmentDAO]) -> list[WordAlignment]:
+        """Convert WordAlignmentDAOs to domain models.
+
+        Args:
+            alignment_daos: List of WordAlignmentDAO database models
+
+        Returns:
+            List of WordAlignment domain models, sorted by position
+        """
+        sorted_daos = sorted(alignment_daos, key=lambda x: x.position)
+        return [
+            WordAlignment(
+                source_word=wa_dao.source_word,
+                target_word=wa_dao.target_word,
+                position=wa_dao.position,
             )
-            for sentence in translation.sentences
+            for wa_dao in sorted_daos
         ]
 
-        return translation_dao
+    def _build_sentences(self, sentence_daos: list[SentenceDAO]) -> list[Sentence]:
+        """Convert SentenceDAOs to domain models.
+
+        Args:
+            sentence_daos: List of SentenceDAO database models
+
+        Returns:
+            List of Sentence domain models
+        """
+        return [
+            Sentence(
+                uuid=sentence_dao.id,
+                source_text=sentence_dao.source_text,
+                natural_translation=sentence_dao.natural_translation,
+                created_at=sentence_dao.created_at,
+                word_alignments=self._build_alignments(sentence_dao.word_alignments),
+            )
+            for sentence_dao in sentence_daos
+        ]
 
     def _from_dao(self, translation_dao: TranslationDAO) -> Translation:
         """Convert DAO to domain Translation.
@@ -216,23 +277,7 @@ class SqliteStorageProvider:
             target_language=get_language_by(translation_dao.target_language),
             created_at=translation_dao.created_at,
             updated_at=translation_dao.updated_at,
-            sentences=[
-                Sentence(
-                    uuid=sentence_dao.id,
-                    source_text=sentence_dao.source_text,
-                    natural_translation=sentence_dao.natural_translation,
-                    created_at=sentence_dao.created_at,
-                    word_alignments=[
-                        WordAlignment(
-                            source_word=wa_dao.source_word,
-                            target_word=wa_dao.target_word,
-                            position=wa_dao.position,
-                        )
-                        for wa_dao in sorted(sentence_dao.word_alignments, key=lambda x: x.position)
-                    ],
-                )
-                for sentence_dao in translation_dao.sentences
-            ],
+            sentences=self._build_sentences(translation_dao.sentences),
         )
 
     def __enter__(self):
