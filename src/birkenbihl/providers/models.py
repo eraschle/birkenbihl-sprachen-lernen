@@ -8,6 +8,30 @@ by the translation providers.
 from pydantic import BaseModel, Field
 
 
+class NaturalSentenceResponse(BaseModel):
+    """Natural translation only (Step 1 of two-step process).
+
+    Contains only source text and natural translation, without word alignments.
+    Word alignments are generated in Step 2.
+    """
+
+    source_text: str = Field(description="Original sentence in source language")
+    natural_translation: str = Field(description="Natural, fluent translation in target language")
+
+
+class NaturalTranslationResponse(BaseModel):
+    """Natural translation response (Step 1 of two-step process).
+
+    Root model for Step 1 AI structured output. Contains one or more sentences
+    with natural translations only. Word alignments are generated separately in Step 2.
+    """
+
+    sentences: list[NaturalSentenceResponse] = Field(
+        description="List of sentences with natural translations only",
+        min_length=1,
+    )
+
+
 class WordAlignmentResponse(BaseModel):
     """Word-by-word alignment from AI response.
 

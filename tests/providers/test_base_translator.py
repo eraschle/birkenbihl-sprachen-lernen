@@ -12,6 +12,9 @@ import pytest
 from birkenbihl.models.translation import Translation
 from birkenbihl.providers.base_translator import BaseTranslator
 from birkenbihl.providers.models import (
+    AlignmentResponse,
+    NaturalSentenceResponse,
+    NaturalTranslationResponse,
     SentenceResponse,
     TranslationResponse,
     WordAlignmentResponse,
@@ -60,27 +63,37 @@ class TestBaseTranslator:
                 system_prompt=BIRKENBIHL_SYSTEM_PROMPT,
             )
 
-    def test_translate_single_sentence(self, base_translator: BaseTranslator, mock_agent: MagicMock) -> None:
-        """Test translation of single sentence returns correct domain model."""
-        # Arrange: Mock AI response
-        mock_response = TranslationResponse(
-            sentences=[
-                SentenceResponse(
-                    source_text="Hello world",
-                    natural_translation="Hallo Welt",
-                    word_alignments=[
-                        WordAlignmentResponse(source_word="Hello", target_word="Hallo", position=0),
-                        WordAlignmentResponse(source_word="world", target_word="Welt", position=1),
-                    ],
-                )
+    def test_translate_single_sentence(self, base_translator: BaseTranslator) -> None:
+        """Test translation of single sentence returns correct domain model (two-step process)."""
+        # Arrange: Mock Step 1 (Natural Translation)
+        mock_natural_response = NaturalTranslationResponse(
+            sentences=[NaturalSentenceResponse(source_text="Hello world", natural_translation="Hallo Welt")]
+        )
+        mock_natural_result = Mock()
+        mock_natural_result.output = mock_natural_response
+
+        # Arrange: Mock Step 2 (Word Alignments)
+        mock_alignment_response = AlignmentResponse(
+            word_alignments=[
+                WordAlignmentResponse(source_word="Hello", target_word="Hallo", position=0),
+                WordAlignmentResponse(source_word="world", target_word="Welt", position=1),
             ]
         )
-        mock_result = Mock()
-        mock_result.output = mock_response
-        mock_agent.run_sync.return_value = mock_result
+        mock_alignment_result = Mock()
+        mock_alignment_result.output = mock_alignment_response
 
-        # Act
-        result = base_translator.translate("Hello world", get_language_by("en"), get_language_by("de"))
+        # Mock Agent creation for both steps
+        mock_natural_agent = MagicMock()
+        mock_natural_agent.run_sync.return_value = mock_natural_result
+        mock_alignment_agent = MagicMock()
+        mock_alignment_agent.run_sync.return_value = mock_alignment_result
+
+        with patch("birkenbihl.providers.base_translator.Agent") as mock_agent_class:
+            # First call returns natural agent, second returns alignment agent
+            mock_agent_class.side_effect = [mock_natural_agent, mock_alignment_agent]
+
+            # Act
+            result = base_translator.translate("Hello world", get_language_by("en"), get_language_by("de"))
 
         # Assert: Verify domain model structure
         assert isinstance(result, Translation)
@@ -106,36 +119,51 @@ class TestBaseTranslator:
         assert sentence.word_alignments[1].target_word == "Welt"
         assert sentence.word_alignments[1].position == 1
 
-    def test_translate_multiple_sentences(self, base_translator: BaseTranslator, mock_agent: MagicMock) -> None:
-        """Test translation of multiple sentences."""
-        # Arrange: Mock AI response with 2 sentences
-        mock_response = TranslationResponse(
+    def test_translate_multiple_sentences(self, base_translator: BaseTranslator) -> None:
+        """Test translation of multiple sentences (two-step process)."""
+        # Arrange: Mock Step 1 (Natural Translations)
+        mock_natural_response = NaturalTranslationResponse(
             sentences=[
-                SentenceResponse(
-                    source_text="Hello world",
-                    natural_translation="Hallo Welt",
-                    word_alignments=[
-                        WordAlignmentResponse(source_word="Hello", target_word="Hallo", position=0),
-                        WordAlignmentResponse(source_word="world", target_word="Welt", position=1),
-                    ],
-                ),
-                SentenceResponse(
-                    source_text="How are you",
-                    natural_translation="Wie geht es dir",
-                    word_alignments=[
-                        WordAlignmentResponse(source_word="How", target_word="Wie", position=0),
-                        WordAlignmentResponse(source_word="are", target_word="geht-es", position=1),
-                        WordAlignmentResponse(source_word="you", target_word="dir", position=2),
-                    ],
-                ),
+                NaturalSentenceResponse(source_text="Hello world", natural_translation="Hallo Welt"),
+                NaturalSentenceResponse(source_text="How are you", natural_translation="Wie geht es dir"),
             ]
         )
-        mock_result = Mock()
-        mock_result.output = mock_response
-        mock_agent.run_sync.return_value = mock_result
+        mock_natural_result = Mock()
+        mock_natural_result.output = mock_natural_response
 
-        # Act
-        result = base_translator.translate("Hello world. How are you", get_language_by("en"), get_language_by("de"))
+        # Arrange: Mock Step 2 (Word Alignments for each sentence)
+        mock_alignment_response_1 = AlignmentResponse(
+            word_alignments=[
+                WordAlignmentResponse(source_word="Hello", target_word="Hallo", position=0),
+                WordAlignmentResponse(source_word="world", target_word="Welt", position=1),
+            ]
+        )
+        mock_alignment_result_1 = Mock()
+        mock_alignment_result_1.output = mock_alignment_response_1
+
+        mock_alignment_response_2 = AlignmentResponse(
+            word_alignments=[
+                WordAlignmentResponse(source_word="How", target_word="Wie", position=0),
+                WordAlignmentResponse(source_word="are", target_word="geht-es", position=1),
+                WordAlignmentResponse(source_word="you", target_word="dir", position=2),
+            ]
+        )
+        mock_alignment_result_2 = Mock()
+        mock_alignment_result_2.output = mock_alignment_response_2
+
+        # Mock Agent creation: 1 natural agent + 2 alignment agents
+        mock_natural_agent = MagicMock()
+        mock_natural_agent.run_sync.return_value = mock_natural_result
+        mock_alignment_agent_1 = MagicMock()
+        mock_alignment_agent_1.run_sync.return_value = mock_alignment_result_1
+        mock_alignment_agent_2 = MagicMock()
+        mock_alignment_agent_2.run_sync.return_value = mock_alignment_result_2
+
+        with patch("birkenbihl.providers.base_translator.Agent") as mock_agent_class:
+            mock_agent_class.side_effect = [mock_natural_agent, mock_alignment_agent_1, mock_alignment_agent_2]
+
+            # Act
+            result = base_translator.translate("Hello world. How are you", get_language_by("en"), get_language_by("de"))
 
         # Assert
         assert len(result.sentences) == 2
@@ -143,28 +171,39 @@ class TestBaseTranslator:
         assert result.sentences[1].source_text == "How are you"
         assert result.sentences[1].natural_translation == "Wie geht es dir"
 
-    def test_translate_spanish_to_german(self, base_translator: BaseTranslator, mock_agent: MagicMock) -> None:
-        """Test Spanish to German translation (Birkenbihl method focus)."""
-        # Arrange: Example from ORIGINAL_REQUIREMENTS.md
-        mock_response = TranslationResponse(
+    def test_translate_spanish_to_german(self, base_translator: BaseTranslator) -> None:
+        """Test Spanish to German translation (Birkenbihl method focus, two-step)."""
+        # Arrange: Mock Step 1 (Natural Translation)
+        mock_natural_response = NaturalTranslationResponse(
             sentences=[
-                SentenceResponse(
-                    source_text="Yo te extrañaré",
-                    natural_translation="Ich werde dich vermissen",
-                    word_alignments=[
-                        WordAlignmentResponse(source_word="Yo", target_word="Ich", position=0),
-                        WordAlignmentResponse(source_word="te", target_word="dich", position=1),
-                        WordAlignmentResponse(source_word="extrañaré", target_word="vermissen-werde", position=2),
-                    ],
-                )
+                NaturalSentenceResponse(source_text="Yo te extrañaré", natural_translation="Ich werde dich vermissen")
             ]
         )
-        mock_result = Mock()
-        mock_result.output = mock_response
-        mock_agent.run_sync.return_value = mock_result
+        mock_natural_result = Mock()
+        mock_natural_result.output = mock_natural_response
 
-        # Act
-        result = base_translator.translate("Yo te extrañaré", get_language_by("es"), get_language_by("de"))
+        # Arrange: Mock Step 2 (Word Alignments)
+        mock_alignment_response = AlignmentResponse(
+            word_alignments=[
+                WordAlignmentResponse(source_word="Yo", target_word="Ich", position=0),
+                WordAlignmentResponse(source_word="te", target_word="dich", position=1),
+                WordAlignmentResponse(source_word="extrañaré", target_word="vermissen-werde", position=2),
+            ]
+        )
+        mock_alignment_result = Mock()
+        mock_alignment_result.output = mock_alignment_response
+
+        # Mock Agent creation
+        mock_natural_agent = MagicMock()
+        mock_natural_agent.run_sync.return_value = mock_natural_result
+        mock_alignment_agent = MagicMock()
+        mock_alignment_agent.run_sync.return_value = mock_alignment_result
+
+        with patch("birkenbihl.providers.base_translator.Agent") as mock_agent_class:
+            mock_agent_class.side_effect = [mock_natural_agent, mock_alignment_agent]
+
+            # Act
+            result = base_translator.translate("Yo te extrañaré", get_language_by("es"), get_language_by("de"))
 
         # Assert
         sentence = result.sentences[0]
@@ -256,63 +295,92 @@ class TestBaseTranslator:
 class TestBirkenbilFormatValidation:
     """Test Birkenbihl method format requirements."""
 
-    def test_word_alignment_position_ordering(self, base_translator: BaseTranslator, mock_agent: MagicMock) -> None:
-        """Test that word alignments maintain correct position ordering."""
-        # Arrange: Example from ORIGINAL_REQUIREMENTS.md
-        mock_response = TranslationResponse(
+    def test_word_alignment_position_ordering(self, base_translator: BaseTranslator) -> None:
+        """Test that word alignments maintain correct position ordering (two-step)."""
+        # Arrange: Mock Step 1 (Natural Translation)
+        mock_natural_response = NaturalTranslationResponse(
             sentences=[
-                SentenceResponse(
-                    source_text="Lo que parecía no importante",
-                    natural_translation="Das was schien nicht wichtig",
-                    word_alignments=[
-                        WordAlignmentResponse(source_word="Lo", target_word="Das", position=0),
-                        WordAlignmentResponse(source_word="que", target_word="was", position=1),
-                        WordAlignmentResponse(source_word="parecía", target_word="schien", position=2),
-                        WordAlignmentResponse(source_word="no", target_word="nicht", position=3),
-                        WordAlignmentResponse(source_word="importante", target_word="wichtig", position=4),
-                    ],
+                NaturalSentenceResponse(
+                    source_text="Lo que parecía no importante", natural_translation="Das was schien nicht wichtig"
                 )
             ]
         )
-        mock_result = Mock()
-        mock_result.output = mock_response
-        mock_agent.run_sync.return_value = mock_result
+        mock_natural_result = Mock()
+        mock_natural_result.output = mock_natural_response
 
-        # Act
-        result = base_translator.translate("Lo que parecía no importante", get_language_by("es"), get_language_by("de"))
+        # Arrange: Mock Step 2 (Word Alignments)
+        mock_alignment_response = AlignmentResponse(
+            word_alignments=[
+                WordAlignmentResponse(source_word="Lo", target_word="Das", position=0),
+                WordAlignmentResponse(source_word="que", target_word="was", position=1),
+                WordAlignmentResponse(source_word="parecía", target_word="schien", position=2),
+                WordAlignmentResponse(source_word="no", target_word="nicht", position=3),
+                WordAlignmentResponse(source_word="importante", target_word="wichtig", position=4),
+            ]
+        )
+        mock_alignment_result = Mock()
+        mock_alignment_result.output = mock_alignment_response
+
+        # Mock Agent creation
+        mock_natural_agent = MagicMock()
+        mock_natural_agent.run_sync.return_value = mock_natural_result
+        mock_alignment_agent = MagicMock()
+        mock_alignment_agent.run_sync.return_value = mock_alignment_result
+
+        with patch("birkenbihl.providers.base_translator.Agent") as mock_agent_class:
+            mock_agent_class.side_effect = [mock_natural_agent, mock_alignment_agent]
+
+            # Act
+            result = base_translator.translate(
+                "Lo que parecía no importante", get_language_by("es"), get_language_by("de")
+            )
 
         # Assert: Positions are sequential and start at 0
         alignments = result.sentences[0].word_alignments
         for i, alignment in enumerate(alignments):
             assert alignment.position == i
 
-    def test_hyphenated_compound_words(self, base_translator: BaseTranslator, mock_agent: MagicMock) -> None:
-        """Test that compound translations use hyphens correctly."""
-        # Arrange: Example with compound word
-        mock_response = TranslationResponse(
+    def test_hyphenated_compound_words(self, base_translator: BaseTranslator) -> None:
+        """Test that compound translations use hyphens correctly (two-step)."""
+        # Arrange: Mock Step 1 (Natural Translation)
+        mock_natural_response = NaturalTranslationResponse(
             sentences=[
-                SentenceResponse(
+                NaturalSentenceResponse(
                     source_text="Fueron tantos bellos y malos momentos",
                     natural_translation="Waren so viele schöne und schlechte momente",
-                    word_alignments=[
-                        WordAlignmentResponse(source_word="Fueron", target_word="Waren", position=0),
-                        WordAlignmentResponse(source_word="tantos", target_word="so-viele", position=1),
-                        WordAlignmentResponse(source_word="bellos", target_word="schöne", position=2),
-                        WordAlignmentResponse(source_word="y", target_word="und", position=3),
-                        WordAlignmentResponse(source_word="malos", target_word="schlechte", position=4),
-                        WordAlignmentResponse(source_word="momentos", target_word="momente", position=5),
-                    ],
                 )
             ]
         )
-        mock_result = Mock()
-        mock_result.output = mock_response
-        mock_agent.run_sync.return_value = mock_result
+        mock_natural_result = Mock()
+        mock_natural_result.output = mock_natural_response
 
-        # Act
-        result = base_translator.translate(
-            "Fueron tantos bellos y malos momentos", get_language_by("es"), get_language_by("de")
+        # Arrange: Mock Step 2 (Word Alignments)
+        mock_alignment_response = AlignmentResponse(
+            word_alignments=[
+                WordAlignmentResponse(source_word="Fueron", target_word="Waren", position=0),
+                WordAlignmentResponse(source_word="tantos", target_word="so-viele", position=1),
+                WordAlignmentResponse(source_word="bellos", target_word="schöne", position=2),
+                WordAlignmentResponse(source_word="y", target_word="und", position=3),
+                WordAlignmentResponse(source_word="malos", target_word="schlechte", position=4),
+                WordAlignmentResponse(source_word="momentos", target_word="momente", position=5),
+            ]
         )
+        mock_alignment_result = Mock()
+        mock_alignment_result.output = mock_alignment_response
+
+        # Mock Agent creation
+        mock_natural_agent = MagicMock()
+        mock_natural_agent.run_sync.return_value = mock_natural_result
+        mock_alignment_agent = MagicMock()
+        mock_alignment_agent.run_sync.return_value = mock_alignment_result
+
+        with patch("birkenbihl.providers.base_translator.Agent") as mock_agent_class:
+            mock_agent_class.side_effect = [mock_natural_agent, mock_alignment_agent]
+
+            # Act
+            result = base_translator.translate(
+                "Fueron tantos bellos y malos momentos", get_language_by("es"), get_language_by("de")
+            )
 
         # Assert: Compound word uses hyphen
         alignments = result.sentences[0].word_alignments
