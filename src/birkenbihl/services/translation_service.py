@@ -44,8 +44,9 @@ class TranslationService:
             Translation object with natural and word-by-word translations (unsaved)
 
         Raises:
-            TranslationError: If translation fails
             ValueError: If translator not configured
+            ProviderError: If provider configuration fails
+            TranslationError: If translation or alignment fails
         """
         if not self._translator:
             raise ValueError("Translator required for translate operation")
@@ -132,8 +133,9 @@ class TranslationService:
             Translation object (unsaved)
 
         Raises:
-            TranslationError: If detection or translation fails
             ValueError: If translator not configured
+            ProviderError: If provider configuration fails
+            TranslationError: If detection or translation fails
         """
         if not self._translator:
             raise ValueError("Translator required for auto_detect_and_translate operation")
@@ -166,7 +168,8 @@ class TranslationService:
 
         Raises:
             NotFoundError: If translation or sentence not found
-            Exception: If suggestion generation fails
+            ProviderError: If provider configuration fails
+            TranslationError: If suggestion generation fails
         """
         translation = self._storage.get(translation_id)
         if not translation:

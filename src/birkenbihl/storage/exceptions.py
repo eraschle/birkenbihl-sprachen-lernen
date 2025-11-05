@@ -1,7 +1,9 @@
 """Storage-related exceptions."""
 
+from birkenbihl.exceptions import BirkenbihError
 
-class StorageError(Exception):
+
+class StorageError(BirkenbihError):
     """Base exception for storage operations."""
 
 

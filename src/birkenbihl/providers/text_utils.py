@@ -2,6 +2,7 @@
 
 import re
 
+from birkenbihl.exceptions import TranslationError
 from birkenbihl.providers.models import SentenceResponse, WordAlignmentResponse
 
 
@@ -82,7 +83,7 @@ def redistribute_merged_translation(merged: SentenceResponse, source_sentences: 
 
     # Verify we got the expected number of sentences
     if len(natural_sentences) != len(source_sentences):
-        raise ValueError(
+        raise TranslationError(
             f"Natural translation split into {len(natural_sentences)} sentences "  # type: ignore[reportImplicitStringConcatenation]
             f"but expected {len(source_sentences)}. "
             f"Natural: {natural_sentences}, Expected count: {len(source_sentences)}"
@@ -106,7 +107,7 @@ def redistribute_merged_translation(merged: SentenceResponse, source_sentences: 
                 break
 
         if not matched:
-            raise ValueError(
+            raise TranslationError(
                 f"Could not match source_word '{alignment.source_word}' "  # type: ignore[reportImplicitStringConcatenation]
                 f"to any source sentence: {source_sentences}"
             )

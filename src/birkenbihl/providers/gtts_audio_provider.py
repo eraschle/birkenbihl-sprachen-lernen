@@ -4,6 +4,8 @@ from pathlib import Path
 
 from gtts import gTTS
 
+from birkenbihl.exceptions import AudioError
+
 
 class GTTSAudioProvider:
     """Audio provider using Google Text-to-Speech (gTTS).
@@ -41,11 +43,10 @@ class GTTSAudioProvider:
             Audio data as bytes (MP3 format)
 
         Raises:
-            ValueError: If language not supported
-            RuntimeError: If audio generation fails
+            AudioError: If language not supported or generation fails
         """
         if language not in self.SUPPORTED_LANGS:
-            raise ValueError(
+            raise AudioError(
                 f"Language '{language}' not supported. Supported: {', '.join(self.SUPPORTED_LANGS)}"
             )
 
@@ -62,7 +63,7 @@ class GTTSAudioProvider:
             return audio_buffer.read()
 
         except Exception as e:
-            raise RuntimeError(f"Audio generation failed: {e}") from e
+            raise AudioError(f"Audio generation failed: {e}") from e
 
     def save_audio_file(self, text: str, language: str, output_path: Path) -> Path:
         """Generate and save audio to file.
@@ -76,11 +77,10 @@ class GTTSAudioProvider:
             Path to saved audio file
 
         Raises:
-            ValueError: If language not supported
-            RuntimeError: If generation or save fails
+            AudioError: If language not supported or save fails
         """
         if language not in self.SUPPORTED_LANGS:
-            raise ValueError(
+            raise AudioError(
                 f"Language '{language}' not supported. Supported: {', '.join(self.SUPPORTED_LANGS)}"
             )
 
@@ -95,7 +95,7 @@ class GTTSAudioProvider:
             return output_path
 
         except Exception as e:
-            raise RuntimeError(f"Audio save failed: {e}") from e
+            raise AudioError(f"Audio save failed: {e}") from e
 
     def get_supported_languages(self) -> list[str]:
         """Get list of supported language codes.

@@ -10,6 +10,7 @@ from typing import Any
 
 from pydantic_ai.models import Model
 
+from birkenbihl.exceptions import ProviderError
 from birkenbihl.models.languages import Language
 from birkenbihl.models.settings import ProviderConfig
 from birkenbihl.models.translation import Translation, WordAlignment
@@ -103,7 +104,7 @@ class PydanticAITranslator:
         if model_class is None:
             supported = ", ".join(ProviderRegistry.get_provider_types())
             logger.error("Unsupported provider: %s", config.provider_type)
-            raise ValueError(f"Unsupported provider: {config.provider_type}. Supported providers: {supported}")
+            raise ProviderError(f"Unsupported provider: {config.provider_type}. Supported providers: {supported}")
 
         logger.debug("Using model class: %s", model_class.__name__)
 
@@ -184,7 +185,7 @@ class PydanticAITranslator:
 
         provider_path = provider_map.get(config.provider_type)
         if not provider_path:
-            raise ValueError(f"No OpenAI-compatible provider mapping for: {config.provider_type}")
+            raise ProviderError(f"No OpenAI-compatible provider mapping for: {config.provider_type}")
 
         # Import Provider class dynamically
         module_path, class_name = provider_path.rsplit(".", 1)
@@ -234,7 +235,7 @@ class PydanticAITranslator:
         provider_path = provider_map.get(model_name)
 
         if not provider_path:
-            raise ValueError(f"No provider mapping for model class: {model_name}")
+            raise ProviderError(f"No provider mapping for model class: {model_name}")
 
         # Import Provider class dynamically
         module_path, class_name = provider_path.rsplit(".", 1)
