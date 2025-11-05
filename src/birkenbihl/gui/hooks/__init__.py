@@ -1,13 +1,6 @@
-"""Hook system for post-processing alignments."""
+"""Hook system for post-processing alignments.
 
-from birkenbihl.gui.hooks.alignment_hooks import (
-    AlignmentHook,
-    AlignmentHookManager,
-    HyphenateMultiWordsHook,
-)
+Note: Legacy hooks removed. Future implementations will go here.
+"""
 
-__all__ = [
-    "AlignmentHook",
-    "AlignmentHookManager",
-    "HyphenateMultiWordsHook",
-]
+__all__: list[str] = []

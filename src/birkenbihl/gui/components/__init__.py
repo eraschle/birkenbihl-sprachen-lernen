@@ -1,11 +1,7 @@
-"""Reusable GUI components."""
+"""Reusable GUI components.
 
-from birkenbihl.gui.components.alignment_preview import AlignmentPreview
-from birkenbihl.gui.components.progress_widget import ProgressWidget
-from birkenbihl.gui.components.provider_selector import ProviderSelector
+Note: Components are located in birkenbihl.gui.widgets module.
+This module is kept for backwards compatibility but is empty.
+"""
 
-__all__ = [
-    "AlignmentPreview",
-    "ProgressWidget",
-    "ProviderSelector",
-]
+__all__: list[str] = []

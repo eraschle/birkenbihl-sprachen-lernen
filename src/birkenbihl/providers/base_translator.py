@@ -19,14 +19,17 @@ from birkenbihl.providers import text_utils
 from birkenbihl.providers.models import (
     AlignmentResponse,
     AlternativesResponse,
+    NaturalTranslationResponse,
     TranslationResponse,
     WordAlignmentResponse,
 )
 from birkenbihl.providers.prompts import (
     BIRKENBIHL_SYSTEM_PROMPT,
+    NATURAL_TRANSLATION_SYSTEM_PROMPT,
     create_alternatives_prompt,
+    create_natural_translation_prompt,
     create_regenerate_alignment_prompt,
-    create_translation_prompt,
+    create_word_by_word_prompt,
 )
 
 logger = logging.getLogger(__name__)
@@ -60,15 +63,102 @@ class BaseTranslator:
             system_prompt=BIRKENBIHL_SYSTEM_PROMPT,
         )
 
+    def _generate_natural_translations(
+        self, sentences: list[str], source_lang: Language, target_lang: Language
+    ) -> NaturalTranslationResponse:
+        """Generate natural translations (Step 1 of two-step process).
+
+        Args:
+            sentences: List of sentences to translate
+            source_lang: Source language
+            target_lang: Target language
+
+        Returns:
+            NaturalTranslationResponse with natural translations only
+        """
+        agent = Agent(
+            model=self._agent.model,
+            output_type=NaturalTranslationResponse,
+            system_prompt=NATURAL_TRANSLATION_SYSTEM_PROMPT,
+        )
+
+        prompt = create_natural_translation_prompt(sentences, source_lang, target_lang)
+        logger.debug("Step 1: Generating natural translations")
+        result = agent.run_sync(prompt)
+        logger.info("Step 1 complete: %d natural translations generated", len(result.output.sentences))
+        return result.output
+
+    def _generate_word_alignments_for_sentence(
+        self, source_text: str, natural_translation: str, source_lang: Language, target_lang: Language
+    ) -> list[WordAlignment]:
+        """Generate word alignments for a single sentence (Step 2).
+
+        Args:
+            source_text: Original sentence
+            natural_translation: Natural translation from Step 1
+            source_lang: Source language
+            target_lang: Target language
+
+        Returns:
+            List of WordAlignment objects
+        """
+        source_words = source_text.split()
+        target_words = natural_translation.split()
+
+        agent = Agent(
+            model=self._agent.model,
+            output_type=AlignmentResponse,
+            system_prompt=BIRKENBIHL_SYSTEM_PROMPT,
+        )
+
+        prompt = create_word_by_word_prompt(source_words, target_words, source_lang, target_lang)
+        result = agent.run_sync(prompt)
+
+        return self._create_word_alignments(result.output)
+
+    def _generate_all_alignments(
+        self, natural_response: NaturalTranslationResponse, source_lang: Language, target_lang: Language
+    ) -> list[Sentence]:
+        """Generate word alignments for all sentences (Step 2 orchestration).
+
+        Args:
+            natural_response: Natural translations from Step 1
+            source_lang: Source language
+            target_lang: Target language
+
+        Returns:
+            List of complete Sentence objects with alignments
+        """
+        logger.debug("Step 2: Generating word alignments for %d sentences", len(natural_response.sentences))
+        sentences = []
+
+        for idx, nat_sent in enumerate(natural_response.sentences, 1):
+            logger.debug("Generating alignments for sentence %d/%d", idx, len(natural_response.sentences))
+
+            alignments = self._generate_word_alignments_for_sentence(
+                nat_sent.source_text, nat_sent.natural_translation, source_lang, target_lang
+            )
+
+            sentence = Sentence(
+                source_text=nat_sent.source_text,
+                natural_translation=nat_sent.natural_translation,
+                word_alignments=alignments,
+            )
+            sentences.append(sentence)
+
+        logger.info("Step 2 complete: %d sentences with alignments", len(sentences))
+        return sentences
+
     def translate(
         self, text: str, source_lang: Language, target_lang: Language, title: str | None = None
     ) -> Translation:
-        """Translate text using Birkenbihl method.
+        """Translate text using Birkenbihl method (two-step process).
 
         Args:
             text: Text to translate (can contain multiple sentences)
             source_lang: Source language code (en, es)
             target_lang: Target language code (de)
+            title: Optional title for the translation
 
         Returns:
             Translation with natural and word-by-word translations
@@ -76,86 +166,53 @@ class BaseTranslator:
         Raises:
             Exception: If translation fails
         """
-        # Split text into sentences deterministically
         sentences = text_utils.split_into_sentences(text)
         logger.info("Split text into %d sentences", len(sentences))
-        logger.debug("Sentences: %s", [s[:50] + "..." if len(s) > 50 else s for s in sentences])
-
-        # Create user prompt with sentence list
-        user_prompt = create_translation_prompt(sentences, source_lang, target_lang)
-        logger.debug("Created translation prompt")
-
-        # Run PydanticAI agent synchronously
         logger.info("=" * 60)
-        logger.info("API REQUEST START")
+        logger.info("TWO-STEP TRANSLATION START")
         logger.info("=" * 60)
         logger.info("Model: %s", self._agent.model)
-        logger.info("Source Language: %s", source_lang)
-        logger.info("Target Language: %s", target_lang)
-        logger.info("Sentences to translate: %d", len(sentences))
-        logger.debug("Prompt: %s", user_prompt[:500] + "..." if len(user_prompt) > 500 else user_prompt)
+        logger.info("Source: %s → Target: %s", source_lang, target_lang)
 
         start_time = time.time()
-        result = self._agent.run_sync(user_prompt)
-        elapsed_time = time.time() - start_time
 
-        logger.info("=" * 60)
-        logger.info("API RESPONSE RECEIVED")
-        logger.info("=" * 60)
-        logger.info("Response time: %.2f seconds", elapsed_time)
-        logger.info("Sentences received: %d", len(result.output.sentences))
-        # logger.info("Response cost: %s", result.cost() if hasattr(result, "cost") else "N/A")
+        # Step 1: Generate natural translations
+        natural_response = self._generate_natural_translations(sentences, source_lang, target_lang)
 
-        # Log each translated sentence (DEBUG level)
-        for i, sent in enumerate(result.output.sentences, 1):
-            logger.debug(
-                "Sentence %d: '%s' → '%s' (%d word alignments)",
-                i,
-                sent.source_text[:50] + "..." if len(sent.source_text) > 50 else sent.source_text,
-                sent.natural_translation[:50] + "..."
-                if len(sent.natural_translation) > 50
-                else sent.natural_translation,
-                len(sent.word_alignments),
-            )
+        # Step 2: Generate word alignments
+        complete_sentences = self._generate_all_alignments(natural_response, source_lang, target_lang)
 
-        # Validation: If AI merged sentences, redistribute them
-        if len(result.output.sentences) == 1 and len(sentences) > 1:
-            logger.warning("AI merged %d sentences into 1, attempting to redistribute...", len(sentences))
-            # AI ignored our instructions and merged sentences - try to fix it
-            try:
-                result.output.sentences = text_utils.redistribute_merged_translation(
-                    result.output.sentences[0], sentences
-                )
-                logger.info("Successfully redistributed merged translation")
-            except ValueError as e:
-                logger.warning("Redistribution failed (%s), falling back to individual sentence translation", str(e))
-                # Redistribution failed (AI didn't translate all sentences)
-                # Fallback: translate each sentence individually
-                result.output.sentences = []
-                for i, sentence in enumerate(sentences, 1):
-                    logger.debug("Translating sentence %d/%d individually", i, len(sentences))
-                    single_prompt = create_translation_prompt([sentence], source_lang, target_lang)
-                    single_result = self._agent.run_sync(single_prompt)
-                    result.output.sentences.extend(single_result.output.sentences)
-                logger.info("Completed individual sentence translation: %d sentences", len(result.output.sentences))
+        # Create Translation domain model
+        now = datetime.datetime.now(datetime.UTC)
+        translation_title = title if title else "Übersetzung"
+        translation_title = translation_title[:50] + ("..." if len(translation_title) > 50 else "")
 
-        # Convert AI response to domain model
-        logger.debug("Converting AI response to domain model")
-        translation = self._convert_to_domain_model(result.output, source_lang, target_lang, title=title)
-        logger.info(
-            "Translation complete: %d sentences, %d total word alignments",
-            len(translation.sentences),
-            sum(len(s.word_alignments) for s in translation.sentences),
+        translation = Translation(
+            title=translation_title,
+            source_language=source_lang,
+            target_language=target_lang,
+            sentences=complete_sentences,
+            created_at=now,
+            updated_at=now,
         )
+
+        elapsed_time = time.time() - start_time
+        logger.info("=" * 60)
+        logger.info("TWO-STEP TRANSLATION COMPLETE")
+        logger.info("=" * 60)
+        logger.info("Total time: %.2f seconds", elapsed_time)
+        total_alignments = sum(len(s.word_alignments) for s in translation.sentences)
+        logger.info("Sentences: %d, Word alignments: %d", len(translation.sentences), total_alignments)
+
         return translation
 
     async def translate_stream(
         self, text: str, source_lang: Language, target_lang: Language
     ) -> AsyncIterator[tuple[float, Translation | None]]:
-        """Translate text using Birkenbihl method with streaming progress.
+        """Translate text using two-step method with streaming progress.
 
-        Yields partial results as sentences are completed, enabling real-time
-        progress tracking and incremental UI updates.
+        Step 1 (Natural Translation): 0% → 50%
+        Step 2 (Word Alignments): 50% → 100%
 
         Args:
             text: Text to translate (can contain multiple sentences)
@@ -164,67 +221,38 @@ class BaseTranslator:
 
         Yields:
             Tuple of (progress: float, translation: Translation | None)
-            - progress: 0.0 to 1.0 based on completed sentences
-            - translation: Partial Translation with completed sentences (None initially)
 
         Raises:
             Exception: If translation fails
         """
         sentences = text_utils.split_into_sentences(text)
-        total_sentences = len(sentences)
-        logger.info("Starting streaming translation: %d sentences", total_sentences)
-        user_prompt = create_translation_prompt(sentences, source_lang, target_lang)
-
-        # Track completed sentences for progress calculation
-        last_sentence_count = 0
-        final_translation = None
-
-        logger.info("=" * 60)
-        logger.info("STREAMING API REQUEST START")
-        logger.info("=" * 60)
-        logger.info("Model: %s", self._agent.model)
-        logger.info("Source Language: %s", source_lang)
-        logger.info("Target Language: %s", target_lang)
-        logger.info("Sentences to translate: %d", total_sentences)
+        logger.info("Starting two-step streaming translation: %d sentences", len(sentences))
 
         start_time = time.time()
-        async with self._agent.run_stream(user_prompt) as result:
-            async for partial_response in result.stream_output(debounce_by=0.01):
-                current_sentence_count = len(partial_response.sentences)
 
-                # Check if new sentences were completed
-                if current_sentence_count > last_sentence_count:
-                    # Calculate progress based on completed sentences
-                    progress = current_sentence_count / total_sentences
-                    progress = min(progress, 1.0)
+        # Step 1: Natural translations (0% → 50%)
+        yield (0.0, None)
+        natural_response = self._generate_natural_translations(sentences, source_lang, target_lang)
+        yield (0.5, None)
 
-                    logger.info(
-                        "Streaming progress: %d/%d sentences (%.0f%%)",
-                        current_sentence_count,
-                        total_sentences,
-                        progress * 100,
-                    )
+        # Step 2: Word alignments (50% → 100%)
+        complete_sentences = self._generate_all_alignments(natural_response, source_lang, target_lang)
 
-                    # Convert partial response to domain model
-                    final_translation = self._convert_to_domain_model(partial_response, source_lang, target_lang)
+        # Create final Translation
+        now = datetime.datetime.now(datetime.UTC)
+        translation = Translation(
+            title="Übersetzung",
+            source_language=source_lang,
+            target_language=target_lang,
+            sentences=complete_sentences,
+            created_at=now,
+            updated_at=now,
+        )
 
-                    yield (progress, final_translation)
-                    last_sentence_count = current_sentence_count
-
-        # Ensure we yield final result with 100% progress if not already done
-        if final_translation and last_sentence_count < total_sentences:
-            logger.debug("Yielding final translation result")
-            yield (1.0, final_translation)
+        yield (1.0, translation)
 
         elapsed_time = time.time() - start_time
-        logger.info("=" * 60)
-        logger.info("STREAMING API RESPONSE COMPLETE")
-        logger.info("=" * 60)
-        logger.info("Total streaming time: %.2f seconds", elapsed_time)
-        if final_translation:
-            logger.info("Total sentences: %d", len(final_translation.sentences))
-            logger.info("Total word alignments: %d", sum(len(s.word_alignments) for s in final_translation.sentences))
-            logger.info("Average time per sentence: %.2f seconds", elapsed_time / len(final_translation.sentences))
+        logger.info("Streaming complete: %.2f seconds", elapsed_time)
 
     def detect_language(self, text: str) -> Language:
         """Detect language of given text.

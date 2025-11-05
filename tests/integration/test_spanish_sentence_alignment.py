@@ -9,7 +9,10 @@ class TestSpanishSentenceAlignment:
     """Test alignment for the Spanish sentence with reported issues."""
 
     def test_full_sentence_alignment(self) -> None:
-        """Test complete alignment for: 'Mas comprendo que llegó tu tiempo, que Dios te ha llamado para estar a Su lado.'"""
+        """Test complete alignment for:
+        'Mas comprendo que llegó tu tiempo, que Dios te ha llamado para
+        estar a Su lado.'
+        """
         # Arrange
         natural_translation = (
             "Aber ich verstehe, dass deine Zeit gekommen ist, dass Gott dich gerufen hat, um an Seiner Seite zu sein."

@@ -6,6 +6,35 @@ behavior across OpenAI, Anthropic, and other models.
 
 from birkenbihl.models.languages import Language
 
+# NEW: Step 1 - Natural Translation Only
+NATURAL_TRANSLATION_SYSTEM_PROMPT = """You are a language translation expert.
+
+Your task is to provide natural, fluent translations that sound idiomatic in the target language.
+
+**Translation Principles:**
+1. **Fluent and Natural**: Translation should sound like a native speaker
+2. **Accurate Meaning**: Preserve the meaning and tone of the original
+3. **Proper Grammar**: Use correct grammar and sentence structure
+4. **Prefer Separate Words**: Avoid compound words where possible to facilitate word-by-word alignment later
+   - ✓ CORRECT: "nicht wichtig" (separate negation)
+   - ✗ AVOID: "unwichtig" (compound negation - harder to align)
+   - ✓ CORRECT: "um dich wieder zu sehen" (separate infinitive)
+   - ✗ AVOID: "um dich wiederzusehen" (compound infinitive - harder to align)
+
+**Examples:**
+
+EN→DE:
+- "I don't like it" → "Ich mag es nicht" (NOT "Ich mag es nicht")
+- "Yesterday I met some new people" → "Gestern traf ich einige neue Leute"
+
+ES→DE:
+- "Yo te extrañaré" → "Ich werde dich vermissen" (separate words for "werde" and "vermissen")
+- "No es importante" → "Es ist nicht wichtig" (separate negation)
+
+Provide accurate, natural translations optimized for language learning."""
+
+
+# Original: Combined prompt (kept for reference, but will be replaced with two-step approach)
 BIRKENBIHL_SYSTEM_PROMPT = """You are a language translation expert specializing in the Vera F. Birkenbihl \
 language learning method.
 
@@ -94,6 +123,40 @@ Word-by-word:
 
 Provide accurate, pedagogically useful translations that help language learners understand sentence structure.
 """
+
+
+def create_natural_translation_prompt(sentences: list[str], source_lang: Language, target_lang: Language) -> str:
+    """Create user prompt for natural translation (Step 1).
+
+    Args:
+        sentences: List of sentences to translate
+        source_lang: Source language code
+        target_lang: Target language code
+
+    Returns:
+        Formatted prompt for natural translation only
+    """
+    src_name = source_lang.name_en
+    trg_name = target_lang.name_en
+
+    if len(sentences) == 1:
+        sentences_text = sentences[0]
+    else:
+        sentences_text = "\n".join(f"{i + 1}. {sent}" for i, sent in enumerate(sentences))
+
+    return f"""Translate the following sentence(s) from {src_name} to {trg_name}.
+
+Provide a natural, fluent translation for EACH sentence separately.
+
+Source sentence(s):
+{sentences_text}
+
+Remember to:
+- Use separate words instead of compounds where possible (for better word alignment later)
+- Translate ALL {len(sentences)} sentences
+- Each sentence should sound natural and idiomatic in {trg_name}
+
+Your response must contain exactly {len(sentences)} sentence translations."""
 
 
 def create_translation_prompt(
@@ -282,9 +345,11 @@ def create_regenerate_alignment_prompt(
 
 **Critical rules:**
 1. **EVERY target word MUST be used EXACTLY ONCE** in the alignments
-2. **Use target words AS THEY APPEAR** in the natural translation (if "werde" and "vermissen" are separate words, keep them separate!)
+2. **Use target words AS THEY APPEAR** in the natural translation
+   (if "werde" and "vermissen" are separate words, keep them separate!)
 3. Map each source word to one or more target words
-4. Use hyphens to connect target words ONLY when mapping multiple target words to ONE source word (e.g., "I've" → "Ich-habe")
+4. Use hyphens to connect target words ONLY when mapping multiple target
+   words to ONE source word (e.g., "I've" → "Ich-habe")
 5. **DO NOT create compound words** if the target words appear separately in the natural translation
 6. Follow source word order with sequential position numbers (0-indexed)
 
