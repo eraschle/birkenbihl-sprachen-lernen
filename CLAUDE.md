@@ -161,7 +161,9 @@ Services orchestrate business logic by coordinating protocols/providers:
 - Choice per language: ElevenLabs if preferred and it speaks the language, else Piper if it has a voice,
   else ElevenLabs if a key is set, else `AudioError` explaining what to configure
 - Generated audio is cached by provider + language + text, so repeated listening never re-synthesizes
-- GUI: `gui/widgets/audio_bar.py` in the translation tab (play sentence/text, loop, save as file)
+- Speech speed 0.7-1.0 (`AudioSettings.speech_speed`, chosen in the audio bar): Piper scales the voice's own
+  `length_scale`, ElevenLabs gets `voice_settings.speed`; part of the cache key
+- GUI: `gui/widgets/audio_bar.py` in the translation tab (play sentence/text, loop, speed, save as file)
 
 ### Storage Layer
 

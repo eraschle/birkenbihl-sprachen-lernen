@@ -23,7 +23,7 @@ from PySide6.QtWidgets import (
 from birkenbihl.gui.styles import theme
 from birkenbihl.gui.viewmodels.settings_vm import SettingsViewModel
 from birkenbihl.gui.widgets.language_combo import LanguageCombo
-from birkenbihl.models.settings import AudioSettings, ProviderConfig
+from birkenbihl.models.settings import ProviderConfig
 from birkenbihl.providers import catalog
 from birkenbihl.services import language_service as ls
 
@@ -272,13 +272,13 @@ class SettingsView(QWidget):
         return group
 
     def _on_audio_changed(self) -> None:
-        self._view_model.update_audio(
-            AudioSettings(
-                provider=self._audio_provider_combo.currentData(),
-                elevenlabs_api_key=self._elevenlabs_key_edit.text().strip(),
-                elevenlabs_voice_id=self._elevenlabs_voice_edit.text().strip(),
-            )
-        )
+        changes = {
+            "provider": self._audio_provider_combo.currentData(),
+            "elevenlabs_api_key": self._elevenlabs_key_edit.text().strip(),
+            "elevenlabs_voice_id": self._elevenlabs_voice_edit.text().strip(),
+        }
+        # update a copy so audio settings edited elsewhere (speech speed in the translation tab) are kept
+        self._view_model.update_audio(self._view_model.audio.model_copy(update=changes))
 
     def _show_audio_settings(self) -> None:
         audio = self._view_model.audio

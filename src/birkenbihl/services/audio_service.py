@@ -64,6 +64,15 @@ class AudioService:
         text = " ".join(sentence.source_text for sentence in translation.sentences)
         return self._audio(text, translation.source_language.code)
 
+    @property
+    def speech_speed(self) -> float:
+        return self._settings_service.get_settings().audio.speech_speed
+
+    def set_speech_speed(self, speed: float) -> None:
+        """Remember the speed for the next audio; saved with the other settings."""
+        settings = self._settings_service.get_settings()
+        settings.audio = settings.audio.model_copy(update={"speech_speed": speed})
+
     def save_as(self, audio_file: Path, target: Path) -> Path:
         """Copy a generated audio file to where the user wants it; the file type decides the extension."""
         target = target.with_suffix(audio_file.suffix)
@@ -73,11 +82,12 @@ class AudioService:
 
     def _audio(self, text: str, language_code: str) -> Path:
         provider = self.provider_for(language_code)
-        key = hashlib.sha256(f"{provider.name}|{language_code}|{text}".encode()).hexdigest()[:24]
+        speed = self.speech_speed
+        key = hashlib.sha256(f"{provider.name}|{language_code}|{speed}|{text}".encode()).hexdigest()[:24]
         cached = next(self._cache_dir.glob(f"{key}.*"), None)
         if cached:
             return cached
-        clip = provider.synthesize(text, language_code)
+        clip = provider.synthesize(text, language_code, speed)
         self._cache_dir.mkdir(parents=True, exist_ok=True)
         path = self._cache_dir / f"{key}.{clip.file_extension}"
         path.write_bytes(clip.data)

@@ -6,13 +6,15 @@ from pathlib import Path
 
 from PySide6.QtCore import QUrl
 from PySide6.QtMultimedia import QAudioOutput, QMediaPlayer
-from PySide6.QtWidgets import QCheckBox, QFileDialog, QHBoxLayout, QLabel, QPushButton, QWidget
+from PySide6.QtWidgets import QCheckBox, QComboBox, QFileDialog, QHBoxLayout, QLabel, QPushButton, QWidget
 
 from birkenbihl.gui.models.app_state import AppState
 from birkenbihl.gui.utils.async_helper import AsyncWorker
 from birkenbihl.services.audio_service import AudioService
 
 AudioJob = Callable[[], Path]
+
+SPEEDS = [("Sehr langsam (0,7×)", 0.7), ("Langsam (0,85×)", 0.85), ("Normal (1×)", 1.0)]
 
 
 class AudioBar(QWidget):
@@ -35,6 +37,7 @@ class AudioBar(QWidget):
         self._stop_button = self._button("⏹ Stopp", self._player.stop)
         self._repeat_check = QCheckBox("Wiederholen")
         self._repeat_check.setChecked(True)
+        self._speed_combo = self._create_speed_combo()
         self._save_sentence_button = self._button("💾 Satz speichern…", lambda: self._save(self._sentence_job()))
         self._save_text_button = self._button("💾 Text speichern…", lambda: self._save(self._text_job(), whole=True))
         self._status = QLabel()
@@ -48,12 +51,28 @@ class AudioBar(QWidget):
             self._play_text_button,
             self._stop_button,
             self._repeat_check,
+            self._speed_combo,
             self._save_sentence_button,
             self._save_text_button,
             self._status,
         ):
             layout.addWidget(widget)
         layout.addStretch()
+
+    def _create_speed_combo(self) -> QComboBox:
+        combo = QComboBox()
+        combo.setToolTip("Sprechtempo - langsamer hilft am Anfang beim Mithören")
+        for label, speed in SPEEDS:
+            combo.addItem(label, userData=speed)
+        current = min(SPEEDS, key=lambda item: abs(item[1] - self._service.speech_speed))
+        combo.setCurrentIndex(SPEEDS.index(current))
+        combo.currentIndexChanged.connect(self._on_speed_changed)
+        return combo
+
+    def _on_speed_changed(self) -> None:
+        self._service.set_speech_speed(self._speed_combo.currentData())
+        self._player.stop()
+        self._status.setText("Tempo geändert - zum Anhören erneut ▶ drücken")
 
     def _button(self, text: str, action: Callable[[], object]) -> QPushButton:
         button = QPushButton(text)
@@ -119,10 +138,11 @@ class AudioBar(QWidget):
 
     def _set_busy(self, busy: bool) -> None:
         self._status.setText("Erzeuge Audio …" if busy else "")
-        for button in (
+        for widget in (
             self._play_sentence_button,
             self._play_text_button,
+            self._speed_combo,
             self._save_sentence_button,
             self._save_text_button,
         ):
-            button.setEnabled(not busy)
+            widget.setEnabled(not busy)

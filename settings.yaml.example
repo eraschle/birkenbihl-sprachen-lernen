@@ -70,6 +70,7 @@ audio:
   provider: piper
   elevenlabs_api_key: ""
   elevenlabs_voice_id: ""   # empty: default voice
+  speech_speed: 1.0         # 0.7 (very slow) to 1.0 (normal); also selectable in the translation tab
 
 # ============================================================================
 # API keys

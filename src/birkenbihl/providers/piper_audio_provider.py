@@ -60,12 +60,15 @@ class PiperAudioProvider:
     def supports(self, language_code: str) -> bool:
         return language_code in VOICES
 
-    def synthesize(self, text: str, language_code: str) -> AudioClip:
+    def synthesize(self, text: str, language_code: str, speed: float = 1.0) -> AudioClip:
         voice = self._voice(language_code)
         buffer = io.BytesIO()
         try:
             with wave.open(buffer, "wb") as wav_file:
-                voice.synthesize_wav(text, wav_file, SynthesisConfig())
+                # length_scale stretches phoneme durations (slower without changing pitch); relative to the
+                # voice's own default so "normal" sounds the way the voice was tuned
+                config = SynthesisConfig(length_scale=voice.config.length_scale / speed)
+                voice.synthesize_wav(text, wav_file, config)
         except Exception as e:
             raise AudioError(f"Piper konnte den Text nicht sprechen: {e}") from e
         return AudioClip(buffer.getvalue(), "wav")

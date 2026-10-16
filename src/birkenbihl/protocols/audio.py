@@ -21,8 +21,8 @@ class IAudioProvider(Protocol):
         """Whether this provider has a voice for the language (ISO 639-1 code, e.g. "es")."""
         ...
 
-    def synthesize(self, text: str, language_code: str) -> AudioClip:
-        """Speak the text in the given language.
+    def synthesize(self, text: str, language_code: str, speed: float = 1.0) -> AudioClip:
+        """Speak the text in the given language; speed 1.0 is normal, below 1.0 slower.
 
         Raises:
             AudioError: If the language is not supported or synthesis fails

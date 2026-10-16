@@ -859,6 +859,7 @@ Before moving to Phase 4, verify:
   update_sentence_natural, update_translation.
 - Audio: Piper (local) with ElevenLabs fallback/preference; play, loop and save sentence or whole text in the
   translation tab; audio settings in the settings tab. gTTS removed.
+- Speech speed (very slow 0.7× / slow 0.85× / normal) in the audio bar, saved in settings.yaml.
 **Phase 3**: AudioService done, but NOT yet wired into the GUI
 **Phase 4**: Deferred (optional feature)
 

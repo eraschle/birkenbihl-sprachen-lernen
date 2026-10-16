@@ -15,7 +15,12 @@ from birkenbihl.providers.piper_audio_provider import VOICES, PiperAudioProvider
 
 
 class FakeVoice:
+    def __init__(self, length_scale: float = 1.0) -> None:
+        self.configs: list[object] = []
+        self.config = MagicMock(length_scale=length_scale)
+
     def synthesize_wav(self, text: str, wav_file: wave.Wave_write, config: object) -> None:
+        self.configs.append(config)
         wav_file.setnchannels(1)
         wav_file.setsampwidth(2)
         wav_file.setframerate(16000)
@@ -77,6 +82,18 @@ class TestPiperAudioProvider:
 
         assert not (tmp_path / f"{VOICES['de']}.onnx").exists()
 
+    @pytest.mark.parametrize(("voice_default", "speed", "length_scale"), [(1.0, 0.8, 1.25), (0.9, 1.0, 0.9)])
+    def test_speed_scales_the_voice_default(
+        self, tmp_path: Path, voice_default: float, speed: float, length_scale: float
+    ) -> None:
+        _with_voice_files(tmp_path, VOICES["es"])
+        voice = FakeVoice(voice_default)
+
+        with patch("birkenbihl.providers.piper_audio_provider.PiperVoice.load", return_value=voice):
+            PiperAudioProvider(tmp_path).synthesize("Hola", "es", speed=speed)
+
+        assert voice.configs[0].length_scale == pytest.approx(length_scale)  # type: ignore[attr-defined]
+
     def test_unsupported_language(self) -> None:
         with pytest.raises(AudioError, match="keine Stimme"):
             PiperAudioProvider(Path("unused")).synthesize("こんにちは", "ja")
@@ -110,7 +127,24 @@ class TestElevenLabsAudioProvider:
         request = seen[0]
         assert request.url.path == f"/v1/text-to-speech/{DEFAULT_VOICE_ID}"
         assert request.headers["xi-api-key"] == "secret-key"
-        assert json.loads(request.content) == {"text": "Yo te extrañaré", "model_id": MODEL_ID, "language_code": "es"}
+        assert json.loads(request.content) == {
+            "text": "Yo te extrañaré",
+            "model_id": MODEL_ID,
+            "language_code": "es",
+            "voice_settings": {"speed": 1.0},
+        }
+
+    @pytest.mark.parametrize(("speed", "sent"), [(0.85, 0.85), (0.5, 0.7), (1.5, 1.2)])
+    def test_speed_is_sent_within_elevenlabs_range(self, speed: float, sent: float) -> None:
+        bodies: list[dict] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            bodies.append(json.loads(request.content))
+            return httpx.Response(200, content=b"mp3")
+
+        _elevenlabs(handler).synthesize("Hola", "es", speed=speed)
+
+        assert bodies[0]["voice_settings"] == {"speed": sent}
 
     def test_api_error_becomes_audio_error(self) -> None:
         provider = _elevenlabs(lambda request: httpx.Response(401, text="invalid api key"))

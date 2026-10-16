@@ -19,12 +19,14 @@ class FakeProvider:
         self._languages = languages
         self._extension = extension
         self.calls: list[tuple[str, str]] = []
+        self.speeds: list[float] = []
 
     def supports(self, language_code: str) -> bool:
         return language_code in self._languages
 
-    def synthesize(self, text: str, language_code: str) -> AudioClip:
+    def synthesize(self, text: str, language_code: str, speed: float = 1.0) -> AudioClip:
         self.calls.append((text, language_code))
+        self.speeds.append(speed)
         return AudioClip(f"{self.name}:{text}".encode(), self._extension)
 
 
@@ -131,13 +133,56 @@ class TestAudioFiles:
         assert saved.read_bytes() == b"ElevenLabs:Hola."
 
 
+class TestSpeechSpeed:
+    def test_audio_is_generated_at_the_chosen_speed(
+        self, tmp_path: Path, piper: FakeProvider, cloud: FakeProvider
+    ) -> None:
+        service = _service(tmp_path, piper, cloud, AudioSettings(speech_speed=0.85))
+        translation = _translation("es", "Hola.")
+
+        service.sentence_audio(translation.sentences[0], translation)
+
+        assert piper.speeds == [0.85]
+
+    def test_slow_and_normal_versions_are_cached_separately(
+        self, tmp_path: Path, piper: FakeProvider, cloud: FakeProvider
+    ) -> None:
+        service = _service(tmp_path, piper, cloud, AudioSettings())
+        translation = _translation("es", "Hola.")
+
+        normal = service.sentence_audio(translation.sentences[0], translation)
+        service.set_speech_speed(0.7)
+        slow = service.sentence_audio(translation.sentences[0], translation)
+        service.set_speech_speed(1.0)
+        normal_again = service.sentence_audio(translation.sentences[0], translation)
+
+        assert slow != normal
+        assert normal_again == normal
+        assert piper.speeds == [1.0, 0.7]
+
+    def test_speed_change_keeps_other_audio_settings(
+        self, tmp_path: Path, piper: FakeProvider, cloud: FakeProvider
+    ) -> None:
+        service = _service(tmp_path, piper, cloud, AudioSettings(provider="elevenlabs", elevenlabs_api_key="k"))
+
+        service.set_speech_speed(0.7)
+
+        assert service.provider_for("es") is cloud
+        assert service.speech_speed == 0.7
+
+    @pytest.mark.parametrize("speed", [0.5, 1.3])
+    def test_speed_outside_supported_range_is_rejected(self, speed: float) -> None:
+        with pytest.raises(ValueError, match="speech_speed"):
+            AudioSettings(speech_speed=speed)
+
+
 class TestAudioSettingsPersistence:
     def test_audio_settings_survive_save_and_load(self, tmp_path: Path) -> None:
         path = tmp_path / "settings.yaml"
         service = SettingsService(path)
         service.load_settings()
         service.get_settings().audio = AudioSettings(
-            provider="elevenlabs", elevenlabs_api_key="key", elevenlabs_voice_id="v1"
+            provider="elevenlabs", elevenlabs_api_key="key", elevenlabs_voice_id="v1", speech_speed=0.85
         )
         service.save_settings()
 
@@ -145,7 +190,7 @@ class TestAudioSettingsPersistence:
         reloaded.load_settings()
 
         assert reloaded.get_settings().audio == AudioSettings(
-            provider="elevenlabs", elevenlabs_api_key="key", elevenlabs_voice_id="v1"
+            provider="elevenlabs", elevenlabs_api_key="key", elevenlabs_voice_id="v1", speech_speed=0.85
         )
 
     def test_settings_without_audio_section_use_piper(self, tmp_path: Path) -> None:

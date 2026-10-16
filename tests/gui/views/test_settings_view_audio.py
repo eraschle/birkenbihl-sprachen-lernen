@@ -42,3 +42,15 @@ def test_entered_audio_settings_are_saved(qtbot: QtBot, tmp_path: Path) -> None:
     reloaded = SettingsService(path)
     reloaded.load_settings()
     assert reloaded.get_settings().audio == AudioSettings(provider="elevenlabs", elevenlabs_api_key="secret")
+
+
+def test_editing_audio_settings_keeps_speech_speed(qtbot: QtBot, tmp_path: Path) -> None:
+    path = tmp_path / "settings.yaml"
+    path.write_text("audio:\n  speech_speed: 0.7\n")
+    view, viewmodel = _view(qtbot, path)
+
+    view._elevenlabs_key_edit.setText("secret")
+    view._elevenlabs_key_edit.editingFinished.emit()
+
+    assert viewmodel.audio.speech_speed == 0.7
+    assert viewmodel.audio.elevenlabs_api_key == "secret"

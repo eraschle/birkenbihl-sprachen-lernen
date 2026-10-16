@@ -2,7 +2,7 @@
 
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class ProviderConfig(BaseModel):
@@ -30,6 +30,8 @@ class AudioSettings(BaseModel):
     provider: Literal["piper", "elevenlabs"] = "piper"
     elevenlabs_api_key: str = ""
     elevenlabs_voice_id: str = ""  # empty: the provider's default voice
+    # 1.0 = normal; slower helps beginners. 0.7 is ElevenLabs' minimum and where Piper still sounds natural.
+    speech_speed: float = Field(default=1.0, ge=0.7, le=1.0)
 
 
 class Settings(BaseModel):

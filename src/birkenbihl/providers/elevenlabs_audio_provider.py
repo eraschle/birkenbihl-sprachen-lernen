@@ -11,6 +11,7 @@ from birkenbihl.protocols.audio import AudioClip
 API_URL = "https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
 MODEL_ID = "eleven_multilingual_v2"
 DEFAULT_VOICE_ID = "JBFqnCBsd6RMkjVDRZzb"  # premade voice "George"; any voice of the account works
+MIN_SPEED, MAX_SPEED = 0.7, 1.2  # range ElevenLabs accepts for voice_settings.speed
 
 # Languages of eleven_multilingual_v2
 LANGUAGES = {
@@ -32,7 +33,7 @@ class ElevenLabsAudioProvider:
     def supports(self, language_code: str) -> bool:
         return language_code in LANGUAGES
 
-    def synthesize(self, text: str, language_code: str) -> AudioClip:
+    def synthesize(self, text: str, language_code: str, speed: float = 1.0) -> AudioClip:
         if not self.supports(language_code):
             raise AudioError(f"ElevenLabs unterstützt die Sprache '{language_code}' nicht")
         try:
@@ -40,7 +41,12 @@ class ElevenLabsAudioProvider:
                 API_URL.format(voice_id=self._voice_id),
                 params={"output_format": "mp3_44100_128"},
                 headers={"xi-api-key": self._api_key},
-                json={"text": text, "model_id": MODEL_ID, "language_code": language_code},
+                json={
+                    "text": text,
+                    "model_id": MODEL_ID,
+                    "language_code": language_code,
+                    "voice_settings": {"speed": min(max(speed, MIN_SPEED), MAX_SPEED)},
+                },
             )
         except httpx.HTTPError as e:
             raise AudioError(f"ElevenLabs ist nicht erreichbar: {e}") from e

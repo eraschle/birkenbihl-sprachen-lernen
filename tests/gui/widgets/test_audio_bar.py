@@ -25,12 +25,14 @@ class FakePiper:
 
     def __init__(self) -> None:
         self.spoken: list[str] = []
+        self.speeds: list[float] = []
 
     def supports(self, language_code: str) -> bool:
         return language_code == "es"
 
-    def synthesize(self, text: str, language_code: str) -> AudioClip:
+    def synthesize(self, text: str, language_code: str, speed: float = 1.0) -> AudioClip:
         self.spoken.append(text)
+        self.speeds.append(speed)
         return AudioClip(b"RIFF" + text.encode(), "wav")
 
 
@@ -125,6 +127,26 @@ class TestAudioBar:
 
         assert "ElevenLabs-API-Key" in bar._status.text()
         assert bar._play_sentence_button.isEnabled()
+
+    def test_speed_choice_is_used_for_the_next_audio(
+        self, qtbot: QtBot, audio_service: AudioService, piper: FakePiper
+    ) -> None:
+        bar = _bar(qtbot, audio_service, _translation())
+        assert bar._speed_combo.currentData() == 1.0
+
+        bar._speed_combo.setCurrentIndex(bar._speed_combo.findData(0.7))
+        bar._play_sentence_button.click()
+        _wait_idle(qtbot, bar)
+
+        assert audio_service.speech_speed == 0.7
+        assert piper.speeds == [0.7]
+
+    def test_speed_combo_shows_saved_speed(self, qtbot: QtBot, audio_service: AudioService) -> None:
+        audio_service.set_speech_speed(0.85)
+
+        bar = _bar(qtbot, audio_service, _translation())
+
+        assert bar._speed_combo.currentData() == 0.85
 
     def test_buttons_disabled_while_generating(self, qtbot: QtBot, audio_service: AudioService) -> None:
         bar = _bar(qtbot, audio_service, _translation())
