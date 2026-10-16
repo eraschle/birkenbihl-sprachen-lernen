@@ -44,36 +44,6 @@ class WordAlignmentResponse(BaseModel):
     position: int = Field(description="Sequential position in sentence (0-indexed)")
 
 
-class SentenceResponse(BaseModel):
-    """Single sentence translation from AI response.
-
-    Contains both natural and word-by-word translations as required
-    by the Birkenbihl method. No UUID or timestamp - these are added
-    when converting to domain Sentence model.
-    """
-
-    source_text: str = Field(description="Original sentence in source language")
-    natural_translation: str = Field(description="Natural, fluent translation in target language")
-    word_alignments: list[WordAlignmentResponse] = Field(
-        description="Word-by-word alignment for Birkenbihl decoding method"
-    )
-
-
-class TranslationResponse(BaseModel):
-    """Complete translation response from AI.
-
-    Root model for AI structured output. Contains one or more sentences
-    with both translation types (natural + word-by-word).
-
-    This is converted to the domain Translation model by providers.
-    """
-
-    sentences: list[SentenceResponse] = Field(
-        description="List of translated sentences with natural and word-by-word translations",
-        min_length=1,
-    )
-
-
 class AlternativesResponse(BaseModel):
     """Alternative natural translations response from AI.
 

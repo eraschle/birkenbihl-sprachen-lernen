@@ -96,10 +96,7 @@ class TestBirkenbihUnit11WordByWord:
             assert sentence.natural_translation.strip() != ""
             assert len(sentence.word_alignments) > 0
 
-            for alignment in sentence.word_alignments:
-                assert alignment.source_word.strip() != ""
-                # Note: target_word may be empty in some cases (e.g., articles)
-                assert alignment.position >= 0
+            assert [a.source_index for a in sentence.word_alignments] == list(range(len(sentence.source_tokens)))
 
     @pytest.mark.parametrize("test_index", [0, 1, 2, 3, 4])
     def test_first_five_translations_sample(

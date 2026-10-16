@@ -4,7 +4,6 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QGridLayout, QLabel, QWidget
 
 from birkenbihl.models.translation import Sentence
-from birkenbihl.utils.text_extractor import split_hyphenated, tokenize_clean
 
 
 class InterleavedGridReadOnly(QWidget):
@@ -57,36 +56,28 @@ class InterleavedGridReadOnly(QWidget):
         label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._grid.addWidget(label, 0, 0)
 
-    def _build_grid_structure(self, sentence: Sentence) -> dict[str, list[str]]:
-        """Convert word alignments to grid column structure.
+    def _build_grid_structure(self, sentence: Sentence) -> list[tuple[str, list[str]]]:
+        """Convert word alignments to grid columns in source word order.
 
         Args:
             sentence: Sentence with word alignments
 
         Returns:
-            Dict mapping source_word → list of target_words
+            One (source_word, target_words) entry per alignment; repeated words stay separate
         """
-        source_words = tokenize_clean(sentence.source_text)
-        sorted_alignments = sorted(sentence.word_alignments, key=lambda a: a.position)
+        targets = sentence.target_tokens
+        return [
+            (sentence.source_word(alignment), [targets[index] for index in alignment.target_indices])
+            for alignment in sentence.sorted_alignments()
+        ]
 
-        grid: dict[str, list[str]] = {word: [] for word in source_words}
-
-        for alignment in sorted_alignments:
-            source = alignment.source_word
-            target_parts = split_hyphenated(alignment.target_word)
-
-            if source in grid:
-                grid[source].extend(target_parts)
-
-        return grid
-
-    def _render_columns(self, grid: dict[str, list[str]]) -> None:
+    def _render_columns(self, grid: list[tuple[str, list[str]]]) -> None:
         """Render grid columns from structure.
 
         Args:
-            grid: Grid structure (source → target words)
+            grid: Grid columns (source word, target words)
         """
-        for col_index, (source_word, target_words) in enumerate(grid.items()):
+        for col_index, (source_word, target_words) in enumerate(grid):
             self._add_column(col_index, source_word, target_words)
 
     def _add_column(self, col: int, source: str, targets: list[str]) -> None:

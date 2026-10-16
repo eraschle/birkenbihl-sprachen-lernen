@@ -6,7 +6,8 @@ from uuid import uuid4
 import pytest
 
 from birkenbihl.models import dateutils
-from birkenbihl.models.translation import Sentence, Translation, WordAlignment
+from birkenbihl.models.alignment import align_word_pairs
+from birkenbihl.models.translation import Sentence, Translation
 from birkenbihl.presenters.models import SentencePresentation, TranslationPresentation
 from birkenbihl.presenters.translation_presenter import TranslationPresenter
 from birkenbihl.services import language_service as ls
@@ -18,17 +19,9 @@ def sample_translation() -> Translation:
     sentence_uuid = uuid4()
     translation_uuid = uuid4()
 
-    sentence = Sentence(
-        uuid=sentence_uuid,
-        source_text="Yo te extrañaré",
-        natural_translation="Ich werde dich vermissen",
-        word_alignments=[
-            WordAlignment(source_word="Yo", target_word="Ich", position=0),
-            WordAlignment(source_word="te", target_word="dich", position=1),
-            WordAlignment(source_word="extrañaré", target_word="werde-vermissen", position=2),
-        ],
-        created_at=dateutils.create_now(),
-    )
+    sentence = align_word_pairs(
+        "Yo te extrañaré", "Ich werde dich vermissen", [("Yo", "Ich"), ("te", "dich"), ("extrañaré", "werde-vermissen")]
+    ).model_copy(update={"uuid": sentence_uuid, "created_at": dateutils.create_now()})
 
     return Translation(
         uuid=translation_uuid,
@@ -164,10 +157,10 @@ class TestTranslationPresenterSentences:
             target_language=ls.get_language_by("de"),
             sentences=[
                 Sentence(
-                    uuid=uuid4(),
                     source_text="Test",
                     natural_translation="Test",
                     word_alignments=[],
+                    uuid=uuid4(),
                     created_at=dateutils.create_now(),
                 )
             ],
@@ -196,24 +189,24 @@ class TestTranslationPresenterMultipleSentences:
             target_language=ls.get_language_by("de"),
             sentences=[
                 Sentence(
-                    uuid=uuid4(),
                     source_text="First",
                     natural_translation="Erste",
                     word_alignments=[],
+                    uuid=uuid4(),
                     created_at=dateutils.create_now(),
                 ),
                 Sentence(
-                    uuid=uuid4(),
                     source_text="Second",
                     natural_translation="Zweite",
                     word_alignments=[],
+                    uuid=uuid4(),
                     created_at=dateutils.create_now(),
                 ),
                 Sentence(
-                    uuid=uuid4(),
                     source_text="Third",
                     natural_translation="Dritte",
                     word_alignments=[],
+                    uuid=uuid4(),
                     created_at=dateutils.create_now(),
                 ),
             ],

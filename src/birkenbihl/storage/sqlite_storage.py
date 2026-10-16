@@ -6,7 +6,7 @@ from uuid import UUID
 from sqlmodel import Session, SQLModel, create_engine, desc, select
 
 from birkenbihl.models import dateutils
-from birkenbihl.models.translation import Sentence, Translation, WordAlignment
+from birkenbihl.models.translation import AlignmentStatus, Sentence, Translation, WordAlignment
 from birkenbihl.storage.dao_models import (
     SentenceDAO,
     TranslationDAO,
@@ -231,9 +231,9 @@ class SqliteStorageProvider:
         return [
             WordAlignmentDAO(
                 sentence_id=sentence.uuid,
-                source_word=wa.source_word,
-                target_word=wa.target_word,
-                position=wa.position,
+                source_index=wa.source_index,
+                target_indices=wa.target_indices,
+                status=wa.status.value,
             )
             for wa in sentence.word_alignments
         ]
@@ -294,15 +294,15 @@ class SqliteStorageProvider:
             sentence_dao: SentenceDAO database model
 
         Returns:
-            List of domain WordAlignment objects, sorted by position
+            List of domain WordAlignment objects, sorted by source position
         """
         return [
             WordAlignment(
-                source_word=wa_dao.source_word,
-                target_word=wa_dao.target_word,
-                position=wa_dao.position,
+                source_index=wa_dao.source_index,
+                target_indices=list(wa_dao.target_indices),
+                status=AlignmentStatus(wa_dao.status),
             )
-            for wa_dao in sorted(sentence_dao.word_alignments, key=lambda x: x.position)
+            for wa_dao in sorted(sentence_dao.word_alignments, key=lambda x: x.source_index)
         ]
 
     def __enter__(self):

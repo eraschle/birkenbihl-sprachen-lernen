@@ -17,15 +17,17 @@ class WordTag(QLabel):
     drag_started = Signal()
     drag_ended = Signal()
 
-    def __init__(self, word: str, parent: QWidget = None):
+    def __init__(self, word: str, target_index: int, parent: QWidget | None = None):
         """Initialize word tag.
 
         Args:
             word: The word text to display
+            target_index: Position of the word in the natural translation (identifies repeated words)
             parent: Parent widget
         """
         super().__init__(word, parent)
         self._word = word
+        self._target_index = target_index
         self._is_dragging = False
         self._setup_style()
 
@@ -36,6 +38,14 @@ class WordTag(QLabel):
             Word text
         """
         return self._word
+
+    def get_target_index(self) -> int:
+        """Get the word's position in the natural translation.
+
+        Returns:
+            Target token index
+        """
+        return self._target_index
 
     def _setup_style(self) -> None:
         """Configure tag appearance."""
@@ -59,10 +69,8 @@ class WordTag(QLabel):
         """Execute drag operation."""
         drag = QDrag(self)
         mime_data = QMimeData()
+        mime_data.setText(str(self._target_index))
         drag.setMimeData(mime_data)
-        mime = drag.mimeData()
-        mime.setText(self._word)
-        drag.setMimeData(mime)
         drag.exec(Qt.DropAction.MoveAction)
         self._end_drag()
 

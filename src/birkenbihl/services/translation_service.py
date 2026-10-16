@@ -43,12 +43,12 @@ class TranslationService:
             request: Translation request with text, languages, and title
 
         Returns:
-            Translation object with natural and word-by-word translations (unsaved)
+            Translation object with natural and word-by-word translations (unsaved);
+            sentences whose AI alignment did not match are flagged (Sentence.needs_review())
 
         Raises:
             ValueError: If translator not configured
             ProviderError: If provider configuration fails
-            TranslationError: If translation or alignment fails
         """
         if not self._translator:
             raise ValueError("Translator required for translate operation")
@@ -138,7 +138,6 @@ class TranslationService:
         Raises:
             ValueError: If translator not configured
             ProviderError: If provider configuration fails
-            TranslationError: If detection or translation fails
         """
         if not self._translator:
             raise ValueError("Translator required for auto_detect_and_translate operation")
@@ -161,7 +160,6 @@ class TranslationService:
         Raises:
             NotFoundError: If translation or sentence not found
             ProviderError: If provider configuration fails
-            TranslationError: If suggestion generation fails
         """
         translation, sentence = self._find_translation_and_sentence(request.translation_id, request.sentence_uuid)
 
@@ -285,6 +283,7 @@ class TranslationService:
         Raises:
             ValueError: If alignment validation fails
         """
-        is_valid, error_message = validate_alignment_complete(sentence.natural_translation, alignments)
+        candidate = sentence.model_copy(update={"word_alignments": alignments})
+        is_valid, error_message = validate_alignment_complete(candidate)
         if not is_valid:
             raise ValueError(f"Invalid alignment: {error_message}")

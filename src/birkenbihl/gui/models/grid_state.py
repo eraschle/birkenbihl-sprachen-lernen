@@ -1,140 +1,85 @@
-"""Grid state model for managing interleaved grid UI state."""
+"""Grid state model for the editable interleaved grid (word alignment editor).
+
+Words are identified by their position in the natural translation, so repeated words
+("der Hund und der Mann") can be moved independently.
+"""
 
 from dataclasses import dataclass, field
 
-from birkenbihl.models.translation import Sentence, WordAlignment
-from birkenbihl.utils.text_extractor import split_hyphenated, tokenize_clean
+from birkenbihl.models.translation import AlignmentStatus, Sentence, WordAlignment
+from birkenbihl.models.validation import validate_alignment_complete
 
 
 @dataclass
 class ColumnState:
-    """State for a single grid column."""
+    """One source word and the target words assigned to it."""
 
+    source_index: int
     source_word: str
-    assigned_words: list[str] = field(default_factory=list)
+    target_indices: list[int] = field(default_factory=list)
+    status: AlignmentStatus = AlignmentStatus.SUGGESTED
 
     def is_empty(self) -> bool:
-        """Check if column has no assigned words.
+        return not self.target_indices
 
-        Returns:
-            True if no words assigned
-        """
-        return len(self.assigned_words) == 0
+    def is_flagged(self) -> bool:
+        return self.status == AlignmentStatus.FLAGGED
 
 
 @dataclass
 class GridState:
-    """Complete grid state for UI management."""
+    """Editable state of one sentence's word-by-word alignment."""
 
+    sentence: Sentence
     columns: list[ColumnState] = field(default_factory=list)
-    unassigned_words: list[str] = field(default_factory=list)
+    unassigned: list[int] = field(default_factory=list)
 
-    def is_valid(self) -> bool:
-        """Check if all columns have at least one word.
+    def target_word(self, target_index: int) -> str:
+        return self.sentence.target_tokens[target_index]
 
-        Returns:
-            True if valid (all columns non-empty)
+    def move(self, target_index: int, to_column: int | None) -> None:
+        """Move a target word into a column, or into the unassigned pool when to_column is None.
+
+        Columns the user changes count as reviewed and become CONFIRMED.
         """
-        return all(not col.is_empty() for col in self.columns)
+        self._take(target_index)
+        if to_column is None:
+            self.unassigned.append(target_index)
+            return
+        column = self.columns[to_column]
+        column.target_indices.append(target_index)
+        column.status = AlignmentStatus.CONFIRMED
 
-    def get_error_columns(self) -> list[str]:
-        """Get list of empty column source words.
-
-        Returns:
-            List of source words with no assignments
-        """
-        return [col.source_word for col in self.columns if col.is_empty()]
+    def _take(self, target_index: int) -> None:
+        if target_index in self.unassigned:
+            self.unassigned.remove(target_index)
+            return
+        for column in self.columns:
+            if target_index in column.target_indices:
+                column.target_indices.remove(target_index)
+                column.status = AlignmentStatus.CONFIRMED
+                return
 
     def to_word_alignments(self) -> list[WordAlignment]:
-        """Convert grid state to word alignment list.
+        return [
+            WordAlignment(source_index=c.source_index, target_indices=list(c.target_indices), status=c.status)
+            for c in self.columns
+        ]
 
-        Returns:
-            List of word alignments
-        """
-        alignments = []
-        for position, column in enumerate(self.columns):
-            for word in column.assigned_words:
-                alignment = WordAlignment(
-                    source_word=column.source_word,
-                    target_word=word,
-                    position=position
-                )
-                alignments.append(alignment)
-        return alignments
+    def validate(self) -> tuple[bool, str | None]:
+        """Same Birkenbihl rules as TranslationService applies when saving."""
+        edited = self.sentence.model_copy(update={"word_alignments": self.to_word_alignments()})
+        return validate_alignment_complete(edited)
 
 
 def build_grid_state(sentence: Sentence) -> GridState:
-    """Build grid state from sentence (Domain → UI conversion).
-
-    Args:
-        sentence: Sentence with word alignments
-
-    Returns:
-        Grid state for UI rendering
-    """
-    source_words = tokenize_clean(sentence.source_text)
-    sorted_alignments = sorted(sentence.word_alignments, key=lambda a: a.position)
-
-    columns = _build_columns(source_words, sorted_alignments)
-    unassigned = _find_unassigned_words(sentence, columns)
-
-    return GridState(columns=columns, unassigned_words=unassigned)
+    """Build grid state from sentence (Domain → UI conversion), one column per source word."""
+    by_source = {alignment.source_index: alignment for alignment in sentence.word_alignments}
+    columns = [_column(index, word, by_source.get(index)) for index, word in enumerate(sentence.source_tokens)]
+    return GridState(sentence=sentence, columns=columns, unassigned=sentence.unassigned_target_indices())
 
 
-def _build_columns(
-    source_words: list[str],
-    alignments: list[WordAlignment]
-) -> list[ColumnState]:
-    """Build column states from alignments.
-
-    Args:
-        source_words: List of source words
-        alignments: Sorted word alignments
-
-    Returns:
-        List of column states
-    """
-    columns = []
-    for source_word in source_words:
-        target_words = _get_target_words(source_word, alignments)
-        columns.append(ColumnState(source_word, target_words))
-    return columns
-
-
-def _get_target_words(
-    source_word: str,
-    alignments: list[WordAlignment]
-) -> list[str]:
-    """Get target words for source word from alignments.
-
-    Args:
-        source_word: Source word to find
-        alignments: Word alignments
-
-    Returns:
-        List of target words (hyphenated words split)
-    """
-    target_words = []
-    for alignment in alignments:
-        if alignment.source_word == source_word:
-            parts = split_hyphenated(alignment.target_word)
-            target_words.extend(parts)
-    return target_words
-
-
-def _find_unassigned_words(
-    sentence: Sentence,
-    columns: list[ColumnState]
-) -> list[str]:
-    """Find words in natural translation not assigned to any column.
-
-    Args:
-        sentence: Original sentence
-        columns: Column states
-
-    Returns:
-        List of unassigned words
-    """
-    all_target = set(tokenize_clean(sentence.natural_translation))
-    assigned = {word for col in columns for word in col.assigned_words}
-    return list(all_target - assigned)
+def _column(source_index: int, source_word: str, alignment: WordAlignment | None) -> ColumnState:
+    if alignment is None:
+        return ColumnState(source_index, source_word, status=AlignmentStatus.FLAGGED)
+    return ColumnState(source_index, source_word, list(alignment.target_indices), alignment.status)

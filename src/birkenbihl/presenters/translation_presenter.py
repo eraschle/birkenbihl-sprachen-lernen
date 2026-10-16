@@ -67,7 +67,7 @@ class TranslationPresenter:
         Returns:
             Immutable sentence presentation
         """
-        alignments = [(wa.source_word, wa.target_word) for wa in sentence.word_alignments]
+        alignments = [(sentence.source_word(wa), sentence.target_text(wa)) for wa in sentence.sorted_alignments()]
 
         return SentencePresentation(
             uuid=sentence.uuid,

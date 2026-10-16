@@ -25,6 +25,6 @@ jobs:
       - name: Ruff
         run: uv run ruff check .
 
-      # Coverage is at 36%; the 80% gate in pytest.ini is the target, CI only blocks regressions below today's level.
+      # Coverage is at 56%; the 80% gate in pytest.ini is the target, CI only blocks regressions below today's level.
       - name: Tests
-        run: uv run pytest --cov-fail-under=35
+        run: uv run pytest --cov-fail-under=55

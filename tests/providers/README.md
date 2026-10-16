@@ -101,13 +101,11 @@ Word-Alignments:
 
 ## Fixtures (conftest.py)
 
-Gemeinsame Test-Daten für konsistente Tests:
+- `openai_provider_config`, `anthropic_provider_config`: Provider-Konfiguration aus Umgebungsvariablen
+  (Integrationstests werden ohne API-Key übersprungen)
 
-- `sample_english_german_response`: "Hello world" EN→DE
-- `sample_spanish_german_response`: "Yo te extrañaré" ES→DE
-- `sample_multi_sentence_response`: Mehrere Sätze
-- `sample_complex_spanish_response`: "Fueron tantos..."
-- `sample_dekodierung_example`: "Lo que parecía..."
+KI-Antworten für Unit-Tests werden in `test_base_translator.py` mit den Hilfsfunktionen `_natural()` und
+`_alignment()` direkt im Test gebaut.
 
 ## Code Coverage
 

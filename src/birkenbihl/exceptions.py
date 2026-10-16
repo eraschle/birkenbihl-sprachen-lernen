@@ -2,7 +2,6 @@
 
 Exception Hierarchy:
     BirkenbihError (base)
-    ├── TranslationError (translation-related failures)
     ├── AudioError (audio generation/playback failures)
     └── ProviderError (external provider failures)
 """
@@ -10,17 +9,6 @@ Exception Hierarchy:
 
 class BirkenbihError(Exception):
     """Base exception for all Birkenbihl application errors."""
-
-
-class TranslationError(BirkenbihError):
-    """Raised when translation operations fail.
-
-    Examples:
-        - AI model returns invalid response
-        - Language detection fails
-        - Alignment generation fails
-        - API call to translation provider fails
-    """
 
 
 class AudioError(BirkenbihError):

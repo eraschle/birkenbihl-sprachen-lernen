@@ -1,130 +1,134 @@
-"""Tests for grid state model."""
+"""Tests for GridState, the model behind the drag&drop alignment editor."""
 
-from birkenbihl.gui.models.grid_state import ColumnState, GridState, build_grid_state
-from birkenbihl.models.translation import Sentence, WordAlignment
-
-
-class TestColumnState:
-    """Tests for ColumnState."""
-
-    def test_is_empty_with_no_words(self):
-        """Test is_empty returns True when no words assigned."""
-        column = ColumnState(source_word="test")
-        assert column.is_empty() is True
-
-    def test_is_empty_with_words(self):
-        """Test is_empty returns False when words assigned."""
-        column = ColumnState(source_word="test", assigned_words=["Wort"])
-        assert column.is_empty() is False
+from birkenbihl.gui.models.grid_state import GridState, build_grid_state
+from birkenbihl.models.alignment import align_word_pairs
+from birkenbihl.models.translation import AlignmentStatus
 
 
-class TestGridState:
-    """Tests for GridState."""
+def _grid(pairs: list[tuple[str, str]], source: str = "Yo te extrañaré", natural: str = "Ich werde dich vermissen"):
+    return build_grid_state(align_word_pairs(source, natural, pairs))
 
-    def test_is_valid_all_columns_filled(self):
-        """Test is_valid returns True when all columns have words."""
-        columns = [
-            ColumnState("hello", ["Hallo"]),
-            ColumnState("world", ["Welt"]),
-        ]
-        state = GridState(columns=columns)
-        assert state.is_valid() is True
 
-    def test_is_valid_some_columns_empty(self):
-        """Test is_valid returns False when some columns empty."""
-        columns = [
-            ColumnState("hello", ["Hallo"]),
-            ColumnState("world", []),
-        ]
-        state = GridState(columns=columns)
-        assert state.is_valid() is False
+def _words(grid: GridState) -> list[list[str]]:
+    return [[grid.target_word(i) for i in column.target_indices] for column in grid.columns]
 
-    def test_get_error_columns(self):
-        """Test get_error_columns returns empty column source words."""
-        columns = [
-            ColumnState("hello", ["Hallo"]),
-            ColumnState("world", []),
-            ColumnState("test", []),
-        ]
-        state = GridState(columns=columns)
-        errors = state.get_error_columns()
-        assert errors == ["world", "test"]
 
-    def test_to_word_alignments(self):
-        """Test conversion to word alignments."""
-        columns = [
-            ColumnState("hello", ["Hallo"]),
-            ColumnState("world", ["Welt", "da"]),
-        ]
-        state = GridState(columns=columns)
-        alignments = state.to_word_alignments()
-
-        assert len(alignments) == 3
-        assert alignments[0].source_word == "hello"
-        assert alignments[0].target_word == "Hallo"
-        assert alignments[0].position == 0
-
-        assert alignments[1].source_word == "world"
-        assert alignments[1].target_word == "Welt"
-        assert alignments[1].position == 1
-
-        assert alignments[2].source_word == "world"
-        assert alignments[2].target_word == "da"
-        assert alignments[2].position == 1
+CORRECT = [("Yo", "Ich"), ("te", "dich"), ("extrañaré", "vermissen-werde")]
 
 
 class TestBuildGridState:
-    """Tests for build_grid_state function."""
+    def test_one_column_per_source_word(self) -> None:
+        grid = _grid(CORRECT)
 
-    def test_build_simple_grid(self):
-        """Test building grid from simple sentence."""
-        sentence = Sentence(
-            source_text="Hello world",
-            natural_translation="Hallo Welt",
-            word_alignments=[
-                WordAlignment(source_word="Hello", target_word="Hallo", position=0),
-                WordAlignment(source_word="world", target_word="Welt", position=1),
-            ],
+        assert [c.source_word for c in grid.columns] == ["Yo", "te", "extrañaré"]
+        assert _words(grid) == [["Ich"], ["dich"], ["vermissen", "werde"]]
+        assert grid.unassigned == []
+
+    def test_unmatched_ai_word_lands_in_pool_and_column_is_flagged(self) -> None:
+        grid = _grid([("Yo", "Ich"), ("te", "dir"), ("extrañaré", "vermissen-werde")])
+
+        assert grid.columns[1].is_flagged()
+        assert grid.columns[1].is_empty()
+        assert [grid.target_word(i) for i in grid.unassigned] == ["dich"]
+
+    def test_repeated_source_words_keep_their_own_targets(self) -> None:
+        grid = _grid(
+            [("the", "der"), ("dog", "Hund"), ("and", "und"), ("the", "die"), ("man", "Frau")],
+            source="the dog and the man",
+            natural="der Hund und die Frau",
         )
 
-        state = build_grid_state(sentence)
+        assert _words(grid)[0] == ["der"]
+        assert _words(grid)[3] == ["die"]
 
-        assert len(state.columns) == 2
-        assert state.columns[0].source_word == "Hello"
-        assert state.columns[0].assigned_words == ["Hallo"]
-        assert state.columns[1].source_word == "world"
-        assert state.columns[1].assigned_words == ["Welt"]
-        assert state.unassigned_words == []
-
-    def test_build_with_hyphenated_words(self):
-        """Test building grid with hyphenated target words."""
-        sentence = Sentence(
-            source_text="I miss",
-            natural_translation="Ich vermisse",
-            word_alignments=[
-                WordAlignment(source_word="I", target_word="Ich", position=0),
-                WordAlignment(source_word="miss", target_word="vermisse", position=1),
-            ],
+    def test_repeated_target_words_are_distinct(self) -> None:
+        grid = _grid(
+            [("The", "der"), ("dog", "Hund"), ("and", "und"), ("the", "der"), ("man", "Mann")],
+            source="The dog and the man",
+            natural="der Hund und der Mann",
         )
 
-        state = build_grid_state(sentence)
+        assert grid.columns[0].target_indices == [0]
+        assert grid.columns[3].target_indices == [3]
 
-        assert len(state.columns) == 2
-        assert state.columns[0].assigned_words == ["Ich"]
-        assert state.columns[1].assigned_words == ["vermisse"]
 
-    def test_build_with_unassigned_words(self):
-        """Test building grid with unassigned words in natural translation."""
-        sentence = Sentence(
-            source_text="Hello world",
-            natural_translation="Hallo schöne Welt",
-            word_alignments=[
-                WordAlignment(source_word="Hello", target_word="Hallo", position=0),
-                WordAlignment(source_word="world", target_word="Welt", position=1),
-            ],
+class TestMove:
+    def test_move_between_columns_confirms_both(self) -> None:
+        grid = _grid(CORRECT)
+
+        grid.move(1, to_column=1)  # "werde" from extrañaré to te
+
+        assert _words(grid) == [["Ich"], ["dich", "werde"], ["vermissen"]]
+        assert grid.columns[1].status == AlignmentStatus.CONFIRMED
+        assert grid.columns[2].status == AlignmentStatus.CONFIRMED
+        assert grid.columns[0].status == AlignmentStatus.SUGGESTED
+
+    def test_move_to_pool_and_back(self) -> None:
+        grid = _grid(CORRECT)
+
+        grid.move(0, to_column=None)
+        assert grid.unassigned == [0]
+        assert grid.columns[0].is_empty()
+
+        grid.move(0, to_column=0)
+        assert grid.unassigned == []
+        assert _words(grid)[0] == ["Ich"]
+
+    def test_moving_one_of_two_equal_words_moves_only_that_one(self) -> None:
+        grid = _grid(
+            [("The", "der"), ("dog", "Hund"), ("and", "und"), ("the", "der"), ("man", "Mann")],
+            source="The dog and the man",
+            natural="der Hund und der Mann",
         )
 
-        state = build_grid_state(sentence)
+        grid.move(3, to_column=None)
 
-        assert len(state.unassigned_words) == 1
-        assert "schöne" in state.unassigned_words
+        assert grid.columns[0].target_indices == [0]
+        assert grid.columns[3].target_indices == []
+        assert grid.unassigned == [3]
+
+    def test_fixing_a_flagged_column_confirms_it(self) -> None:
+        grid = _grid([("Yo", "Ich"), ("te", "dir"), ("extrañaré", "vermissen-werde")])
+
+        grid.move(grid.unassigned[0], to_column=1)
+
+        assert grid.columns[1].status == AlignmentStatus.CONFIRMED
+        assert grid.validate() == (True, None)
+
+
+class TestValidate:
+    def test_valid_alignment(self) -> None:
+        assert _grid(CORRECT).validate() == (True, None)
+
+    def test_empty_column_is_invalid(self) -> None:
+        grid = _grid(CORRECT)
+        grid.move(2, to_column=0)  # "dich" away from te
+
+        is_valid, message = grid.validate()
+
+        assert not is_valid
+        assert message is not None
+        assert "Quellwörter ohne Zielwort: te" in message
+
+    def test_word_left_in_pool_is_invalid(self) -> None:
+        grid = _grid(CORRECT)
+        grid.move(1, to_column=None)  # "werde" into pool
+
+        is_valid, message = grid.validate()
+
+        assert not is_valid
+        assert message is not None
+        assert "Fehlende Wörter: werde" in message
+
+    def test_to_word_alignments_carries_status(self) -> None:
+        grid = _grid(CORRECT)
+        grid.move(1, to_column=1)
+
+        alignments = grid.to_word_alignments()
+
+        assert [(a.source_index, a.target_indices) for a in alignments] == [(0, [0]), (1, [2, 1]), (2, [3])]
+        assert [a.status for a in alignments] == [
+            AlignmentStatus.SUGGESTED,
+            AlignmentStatus.CONFIRMED,
+            AlignmentStatus.CONFIRMED,
+        ]

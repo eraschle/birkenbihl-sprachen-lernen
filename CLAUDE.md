@@ -101,7 +101,9 @@ Original:     "Yo te extrañaré"
 Natural:      "Ich werde dich vermissen"
 Word-by-Word: "Ich dich vermissen-werde"
 ```
-It is important that all word of the `natural` translation are used in the `word-by-word`
+It is important that all word of the `natural` translation are used in the `word-by-word`, each exactly once
+(checked on token positions by `models/validation.py`). See `specs/ALIGNMENT_QUALITY.md` for how wrong AI
+alignments are handled.
 
 ### Data Models
 
@@ -109,7 +111,12 @@ It is important that all word of the `natural` translation are used in the `word
 - Uses Pydantic models for validation and serialization
 - **UUIDs for Identity:** All entities use UUIDs for cross-storage compatibility (JSON, DB, Excel)
 - Domain models (not tied to specific storage implementation):
-  - `WordAlignment`: Maps source_word ↔ target_word with position for UI ordering
+  - `WordAlignment`: Maps one source token (`source_index`) to target tokens (`target_indices`) by position,
+    with a `status` (`suggested` from AI, `flagged` for review, `confirmed` by the user). Tokens come from
+    `Sentence.source_tokens` / `Sentence.target_tokens` (`tokenize_clean`), so the tokenizer is part of the
+    stored data format. Never align by word text: repeated words ("der ... der") must stay distinct.
+  - `models/alignment.py`: `align_word_pairs()` turns AI text pairs ("extrañaré" → "vermissen-werde") into
+    positions; anything it cannot match is FLAGGED, never guessed
   - `Sentence`: Single sentence with source_text, natural_translation, word_alignments[]
     - Each sentence has unique UUID for referencing in UI/storage
   - `Translation`: Root aggregate containing multiple sentences

@@ -4,6 +4,7 @@ import warnings
 from datetime import datetime
 from uuid import UUID, uuid4
 
+from sqlalchemy import JSON, Column
 from sqlalchemy.exc import SAWarning
 from sqlmodel import Field, Relationship, SQLModel
 
@@ -57,9 +58,9 @@ class WordAlignmentDAO(SQLModel, table=True):
 
     id: int | None = Field(default=None, primary_key=True)
     sentence_id: UUID = Field(foreign_key="sentences.id", index=True)
-    source_word: str
-    target_word: str
-    position: int
+    source_index: int
+    target_indices: list[int] = Field(sa_column=Column(JSON, nullable=False))
+    status: str
 
     sentence: "SentenceDAO" = Relationship(back_populates="word_alignments")
 

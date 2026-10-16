@@ -7,22 +7,15 @@ import datetime
 import logging
 import time
 from collections.abc import AsyncIterator
-from typing import Protocol
 
 from langdetect import detector_factory
 from pydantic_ai import Agent
 from pydantic_ai.models import Model
 
+from birkenbihl.models.alignment import align_word_pairs
 from birkenbihl.models.languages import Language
 from birkenbihl.models.translation import Sentence, Translation, WordAlignment
-from birkenbihl.providers import text_utils
-from birkenbihl.providers.models import (
-    AlignmentResponse,
-    AlternativesResponse,
-    NaturalTranslationResponse,
-    TranslationResponse,
-    WordAlignmentResponse,
-)
+from birkenbihl.providers.models import AlignmentResponse, AlternativesResponse, NaturalTranslationResponse
 from birkenbihl.providers.prompts import (
     BIRKENBIHL_SYSTEM_PROMPT,
     NATURAL_TRANSLATION_SYSTEM_PROMPT,
@@ -31,12 +24,9 @@ from birkenbihl.providers.prompts import (
     create_regenerate_alignment_prompt,
     create_word_by_word_prompt,
 )
+from birkenbihl.utils.text_extractor import split_into_sentences
 
 logger = logging.getLogger(__name__)
-
-
-class IWordAlignmentResponse(Protocol):
-    word_alignments: list[WordAlignmentResponse]
 
 
 class BaseTranslator:
@@ -57,11 +47,7 @@ class BaseTranslator:
         Args:
             model: PydanticAI Model instance (OpenAIModel, AnthropicModel, etc.)
         """
-        self._agent = Agent(
-            model=model,
-            output_type=TranslationResponse,
-            system_prompt=BIRKENBIHL_SYSTEM_PROMPT,
-        )
+        self._model = model
 
     def _generate_natural_translations(
         self, sentences: list[str], source_lang: Language, target_lang: Language
@@ -77,7 +63,7 @@ class BaseTranslator:
             NaturalTranslationResponse with natural translations only
         """
         agent = Agent(
-            model=self._agent.model,
+            model=self._model,
             output_type=NaturalTranslationResponse,
             system_prompt=NATURAL_TRANSLATION_SYSTEM_PROMPT,
         )
@@ -88,9 +74,9 @@ class BaseTranslator:
         logger.info("Step 1 complete: %d natural translations generated", len(result.output.sentences))
         return result.output
 
-    def _generate_word_alignments_for_sentence(
+    def _generate_aligned_sentence(
         self, source_text: str, natural_translation: str, source_lang: Language, target_lang: Language
-    ) -> list[WordAlignment]:
+    ) -> Sentence:
         """Generate word alignments for a single sentence (Step 2).
 
         Args:
@@ -100,13 +86,13 @@ class BaseTranslator:
             target_lang: Target language
 
         Returns:
-            List of WordAlignment objects
+            Sentence whose alignments reference token positions; AI pairs that do not match are FLAGGED
         """
         source_words = source_text.split()
         target_words = natural_translation.split()
 
         agent = Agent(
-            model=self._agent.model,
+            model=self._model,
             output_type=AlignmentResponse,
             system_prompt=BIRKENBIHL_SYSTEM_PROMPT,
         )
@@ -114,7 +100,7 @@ class BaseTranslator:
         prompt = create_word_by_word_prompt(source_words, target_words, source_lang, target_lang)
         result = agent.run_sync(prompt)
 
-        return self._create_word_alignments(result.output)
+        return align_word_pairs(source_text, natural_translation, self._word_pairs(result.output))
 
     def _generate_all_alignments(
         self, natural_response: NaturalTranslationResponse, source_lang: Language, target_lang: Language
@@ -135,15 +121,11 @@ class BaseTranslator:
         for idx, nat_sent in enumerate(natural_response.sentences, 1):
             logger.debug("Generating alignments for sentence %d/%d", idx, len(natural_response.sentences))
 
-            alignments = self._generate_word_alignments_for_sentence(
+            sentence = self._generate_aligned_sentence(
                 nat_sent.source_text, nat_sent.natural_translation, source_lang, target_lang
             )
-
-            sentence = Sentence(
-                source_text=nat_sent.source_text,
-                natural_translation=nat_sent.natural_translation,
-                word_alignments=alignments,
-            )
+            if sentence.needs_review():
+                logger.warning("Sentence %d needs review: AI alignment did not match the sentence", idx)
             sentences.append(sentence)
 
         logger.info("Step 2 complete: %d sentences with alignments", len(sentences))
@@ -166,12 +148,12 @@ class BaseTranslator:
         Raises:
             Exception: If translation fails
         """
-        sentences = text_utils.split_into_sentences(text)
+        sentences = split_into_sentences(text)
         logger.info("Split text into %d sentences", len(sentences))
         logger.info("=" * 60)
         logger.info("TWO-STEP TRANSLATION START")
         logger.info("=" * 60)
-        logger.info("Model: %s", self._agent.model)
+        logger.info("Model: %s", self._model)
         logger.info("Source: %s → Target: %s", source_lang, target_lang)
 
         start_time = time.time()
@@ -225,7 +207,7 @@ class BaseTranslator:
         Raises:
             Exception: If translation fails
         """
-        sentences = text_utils.split_into_sentences(text)
+        sentences = split_into_sentences(text)
         logger.info("Starting two-step streaming translation: %d sentences", len(sentences))
 
         start_time = time.time()
@@ -273,59 +255,10 @@ class BaseTranslator:
         code = detector_factory.detect(text)
         return get_language_by(code)
 
-    def _create_word_alignments(self, response: IWordAlignmentResponse) -> list[WordAlignment]:
-        """Create WordAlignment models from AI response model."""
-        alignments = []
-        for align in response.word_alignments:
-            word_alignment = WordAlignment(
-                source_word=align.source_word,
-                target_word=align.target_word,
-                position=align.position,
-            )
-            alignments.append(word_alignment)
-        return alignments
-
-    def _create_sentences(self, translation: TranslationResponse) -> list[Sentence]:
-        """Create Sentence models from AI response model."""
-        sentences = []
-        for sent in translation.sentences:
-            sentence = Sentence(
-                source_text=sent.source_text,
-                natural_translation=sent.natural_translation,
-                word_alignments=self._create_word_alignments(sent),
-            )
-            sentences.append(sentence)
-        return sentences
-
-    def _convert_to_domain_model(
-        self, response: TranslationResponse, source_lang: Language, target_lang: Language, title: str | None = None
-    ) -> Translation:
-        """Convert AI response model to domain Translation model.
-
-        Args:
-            response: AI response with translations
-            source_lang: Source language code
-            target_lang: Target language code
-
-        Returns:
-            Domain Translation model with UUIDs and timestamps
-        """
-        # Create Translation with metadata
-        now = datetime.datetime.now(datetime.UTC)
-
-        # Generate default title from first sentence and timestamp
-        first_text = title if title else "Übersetzung"
-        # Truncate to 50 chars max
-        title = first_text[:50] + ("..." if len(first_text) > 50 else "")
-
-        return Translation(
-            title=title,
-            source_language=source_lang,
-            target_language=target_lang,
-            sentences=self._create_sentences(response),
-            created_at=now,
-            updated_at=now,
-        )
+    @staticmethod
+    def _word_pairs(response: AlignmentResponse) -> list[tuple[str, str]]:
+        ordered = sorted(response.word_alignments, key=lambda alignment: alignment.position)
+        return [(alignment.source_word, alignment.target_word) for alignment in ordered]
 
     def generate_alternatives(
         self,
@@ -349,7 +282,7 @@ class BaseTranslator:
             Exception: If generation fails
         """
         agent = Agent(
-            model=self._agent.model,
+            model=self._model,
             output_type=AlternativesResponse,
             system_prompt="You are a language translation expert providing multiple translation alternatives.",
         )
@@ -375,13 +308,14 @@ class BaseTranslator:
             target_lang: Target language
 
         Returns:
-            List of WordAlignment objects mapping source words to target words
+            Alignments referencing token positions of source_text and natural_translation;
+            AI pairs that do not match the sentence are FLAGGED
 
         Raises:
             Exception: If alignment generation fails
         """
         agent = Agent(
-            model=self._agent.model,
+            model=self._model,
             output_type=AlignmentResponse,
             system_prompt=BIRKENBIHL_SYSTEM_PROMPT,
         )
@@ -389,5 +323,4 @@ class BaseTranslator:
         prompt = create_regenerate_alignment_prompt(source_text, natural_translation, source_lang, target_lang)
         result = agent.run_sync(prompt)
 
-        alignments = self._create_word_alignments(result.output)
-        return alignments
+        return align_word_pairs(source_text, natural_translation, self._word_pairs(result.output)).word_alignments

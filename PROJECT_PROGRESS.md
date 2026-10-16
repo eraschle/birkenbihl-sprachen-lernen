@@ -849,13 +849,14 @@ Before moving to Phase 4, verify:
 **Phase 1**: Done (provider/audio parameter counts still >2)
 **Phase 2**: One alignment editor: the drag&drop grid in the translation tab's edit mode
   (`InterleavedGridEditable` + `GridState`). The duplicate `InterleavedAlignmentEditor` was removed.
-  Known bug: repeated source words share targets (xfail test), fixed by step 3.
+  Alignments are stored as token positions with a status (suggested/flagged/confirmed) since step 3;
+  repeated words are handled correctly, AI mismatches are flagged and shown in the editor.
 **Phase 3**: AudioService done, but NOT yet wired into the GUI
 **Phase 4**: Deferred (optional feature)
 
-Test status (`QT_QPA_PLATFORM=offscreen uv run pytest`): 396 passed, 36 skipped, 0 failed
+Test status (`QT_QPA_PLATFORM=offscreen uv run pytest`): 373 passed, 36 skipped, 0 failed
 - Skipped: tests needing AI API keys or network access to Google TTS
-- Coverage gate fails: 36% total vs. `--cov-fail-under=80` (many GUI modules have no tests)
+- Coverage 56% vs. `--cov-fail-under=80` in pytest.ini; CI enforces 55% so coverage cannot drop
 - `pydantic-ai` pinned to `>=1.0,<2`; the provider registry maps renamed pydantic-ai
   prefixes (`google` → `google-gla`, `google-cloud` → `google-vertex`) to stable IDs
 
@@ -863,12 +864,11 @@ Test status (`QT_QPA_PLATFORM=offscreen uv run pytest`): 396 passed, 36 skipped,
 
 See `specs/ALIGNMENT_QUALITY.md` for the alignment quality design (rules, self-correction, Jev).
 
-1. Merge this branch into `master`
-2. Step 3: store alignments as token positions with `confidence`/`status`; editor highlights flagged words
-3. Step 4: simplify provider layer, migrate to pydantic-ai >= 2.45 (required for Jev), LLM self-correction
-4. Benchmark on `tests/fixtures/birkenbihl_unit1_1.json`; evaluate Jev as aligner and as checker
-5. Wire audio playback into the translation tab
-6. Add GUI tests (coverage 36%, target 80%)
+1. Step 4: simplify provider layer, migrate to pydantic-ai >= 2.45 (required for Jev), LLM self-correction
+2. Benchmark on `tests/fixtures/birkenbihl_unit1_1.json`; evaluate Jev as aligner and as checker
+3. Editor: "confirm" action for flagged columns that are already correct
+4. Wire audio playback into the translation tab
+5. Add GUI tests (coverage 56%, target 80%)
 
 ---
 
@@ -877,7 +877,7 @@ See `specs/ALIGNMENT_QUALITY.md` for the alignment quality design (rules, self-c
 | Metric | Current | Target | Status |
 |--------|---------|--------|--------|
 | Tests failing | 0 | 0 | ✅ |
-| Coverage | 36% | 80% | 🔴 Below gate |
+| Coverage | 56% | 80% | 🟡 Below gate |
 | Ruff | clean | clean | ✅ |
 | Alignment editor in app | no | yes | 🔴 Open |
 | Audio playback in app | no | yes | 🔴 Open |

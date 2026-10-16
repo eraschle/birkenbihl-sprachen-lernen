@@ -1,25 +1,37 @@
 """Domain models for translation data."""
 
 from datetime import datetime
+from enum import StrEnum
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
 
 from birkenbihl.models import dateutils
 from birkenbihl.models.languages import Language
-from birkenbihl.utils.text_extractor import clean_trailing_punctuation
+from birkenbihl.utils.text_extractor import tokenize_clean
+
+TARGET_JOINER = "-"
+
+
+class AlignmentStatus(StrEnum):
+    """How far a word alignment can be trusted."""
+
+    SUGGESTED = "suggested"  # proposed by AI, no problems detected
+    FLAGGED = "flagged"  # needs human review (e.g. AI output could not be matched to the sentence)
+    CONFIRMED = "confirmed"  # set by the user in the editor
 
 
 class WordAlignment(BaseModel):
-    """Word-by-word alignment between source and target language.
+    """Word-by-word alignment of one source word (Birkenbihl decoding).
 
-    Represents the mapping of a single word from source to target language,
-    used for the Birkenbihl method's word-by-word translation (Dekodierung).
+    Words are referenced by their position in the tokenized sentences, not by text, so repeated
+    words ("der Hund und der Mann") stay unambiguous. Tokenization: Sentence.source_tokens and
+    Sentence.target_tokens.
     """
 
-    source_word: str
-    target_word: str
-    position: int  # Position in sentence for correct ordering in UI
+    source_index: int
+    target_indices: list[int]  # in display order, joined with "-" (e.g. "vermissen-werde")
+    status: AlignmentStatus = AlignmentStatus.SUGGESTED
 
 
 class Sentence(BaseModel):
@@ -27,7 +39,7 @@ class Sentence(BaseModel):
 
     Contains both translation types required by the Birkenbihl method:
     1. Natural translation (natürliche Übersetzung)
-    2. Word-by-word alignment (Wort-für-Wort Dekodierung)
+    2. Word-by-word alignment (Wort-für-Wort Dekodierung), one WordAlignment per source token
     """
 
     uuid: UUID = Field(default_factory=uuid4)
@@ -37,48 +49,47 @@ class Sentence(BaseModel):
 
     created_at: datetime = Field(default_factory=dateutils.create_now)
 
-    def get_word_by_word(self, with_punctuation: bool = False) -> str:
-        """Get word-by-word translation as string.
+    @property
+    def source_tokens(self) -> list[str]:
+        """Source words that alignments refer to by index.
 
-        Args:
-            with_punctuation: If True, preserve punctuation from source text.
+        Derived from the text, so the tokenizer is part of the stored data format.
+        """
+        return tokenize_clean(self.source_text)
 
-        Returns:
-            Space-separated word-by-word translation
+    @property
+    def target_tokens(self) -> list[str]:
+        """Words of the natural translation that alignments refer to by index."""
+        return tokenize_clean(self.natural_translation)
+
+    def source_word(self, alignment: WordAlignment) -> str:
+        return self.source_tokens[alignment.source_index]
+
+    def target_text(self, alignment: WordAlignment) -> str:
+        """Target words of one alignment as shown to the learner, e.g. "vermissen-werde"."""
+        tokens = self.target_tokens
+        return TARGET_JOINER.join(tokens[index] for index in alignment.target_indices)
+
+    def sorted_alignments(self) -> list[WordAlignment]:
+        return sorted(self.word_alignments, key=lambda alignment: alignment.source_index)
+
+    def unassigned_target_indices(self) -> list[int]:
+        used = {index for alignment in self.word_alignments for index in alignment.target_indices}
+        return [index for index in range(len(self.target_tokens)) if index not in used]
+
+    def needs_review(self) -> bool:
+        flagged = any(alignment.status == AlignmentStatus.FLAGGED for alignment in self.word_alignments)
+        return flagged or bool(self.unassigned_target_indices())
+
+    def get_word_by_word(self) -> str:
+        """Word-by-word translation in source word order.
 
         Example:
-            >>> sentence.get_word_by_word(with_punctuation=False)
-            'Gestern ich traf Leute'
-            >>> sentence.get_word_by_word(with_punctuation=True)
-            'Gestern ich traf Leute.'
+            >>> sentence.get_word_by_word()
+            'Ich dich vermissen-werde'
         """
-        # Sort by position for correct order
-        sorted_alignments = sorted(self.word_alignments, key=lambda a: a.position)
-
-        if not with_punctuation:
-            # Simple case: just join target words
-            return " ".join(a.target_word for a in sorted_alignments if a.target_word.strip())
-
-        # TODO: Punctuation preservation is provisional - do not use yet!
-        source_words = self.source_text.split()
-        result = []
-
-        for idx, alignment in enumerate(sorted_alignments):
-            if not alignment.target_word.strip():
-                continue
-
-            target_word = alignment.target_word
-
-            # Extract trailing punctuation from source word
-            if idx < len(source_words):
-                source_word_with_punct = source_words[idx]
-                _, punctuation = clean_trailing_punctuation(source_word_with_punct)
-                if punctuation:
-                    target_word += punctuation
-
-            result.append(target_word)
-
-        return " ".join(result)
+        texts = (self.target_text(alignment) for alignment in self.sorted_alignments())
+        return " ".join(text for text in texts if text)
 
 
 class Translation(BaseModel):

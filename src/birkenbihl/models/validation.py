@@ -1,148 +1,72 @@
-"""Validation functions for translation models."""
+"""Validation of word-by-word alignments against the Birkenbihl rules.
 
-from birkenbihl.models.translation import WordAlignment
-from birkenbihl.utils.text_extractor import extract_normalized_words, split_hyphenated
+Rules (checked on token positions, so repeated words count individually):
+1. Every source word has exactly one alignment with at least one target word.
+2. Every word of the natural translation is used exactly once.
+"""
+
+from collections import Counter
+
+from birkenbihl.models.translation import Sentence
 
 
-def validate_alignment_complete(natural_translation: str, alignments: list[WordAlignment]) -> tuple[bool, str | None]:
-    """Validate that all words from natural translation are present in alignments.
-
-    Rules:
-    1. Split natural_translation into words (whitespace-separated)
-    2. Extract all target_words from alignments
-    3. Handle hyphenated combinations: "werde-vermissen" counts as ["werde", "vermissen"]
-    4. Check that every word from natural_translation appears in target_words
-    5. Check that no words are missing or extra
-
-    Args:
-        natural_translation: The natural translation text
-        alignments: List of WordAlignment objects
+def validate_alignment_complete(sentence: Sentence) -> tuple[bool, str | None]:
+    """Check a sentence's alignments.
 
     Returns:
-        Tuple of (is_valid, error_message)
-        - (True, None) if validation passes
-        - (False, "Fehlende Wörter: X, Y") if words are missing
-        - (False, "Zusätzliche Wörter: X, Y") if extra words present
+        (True, None) if valid, otherwise (False, German error message listing every problem)
 
     Example:
-        natural = "Ich werde dich vermissen"
-        alignments = [
-            WordAlignment(..., target_word="Ich", ...),
-            WordAlignment(..., target_word="dich", ...),
-            WordAlignment(..., target_word="werde-vermissen", ...)
-        ]
-        Returns: (True, None)
+        "Yo te extrañaré" / "Ich werde dich vermissen" with te→dich, extrañaré→vermissen-werde, Yo→Ich
+        is valid; leaving out "werde" reports "Fehlende Wörter: werde".
     """
-    if not natural_translation.strip():
-        if not alignments:
-            return (True, None)
-        return (False, "Natürliche Übersetzung ist leer, aber Alignments vorhanden")
+    errors = _source_errors(sentence) + _target_errors(sentence)
+    if errors:
+        return False, " ".join(errors)
+    return True, None
 
-    if not alignments:
-        return (False, "Keine Alignments vorhanden")
 
-    expected_words = _extract_words(natural_translation)
-    actual_words = _extract_alignment_words(alignments)
+def _source_errors(sentence: Sentence) -> list[str]:
+    tokens = sentence.source_tokens
+    counts = Counter(alignment.source_index for alignment in sentence.word_alignments)
+    errors = []
 
-    expected_set = set(expected_words)
-    actual_set = set(actual_words)
+    invalid = sorted(index for index in counts if not 0 <= index < len(tokens))
+    if invalid:
+        errors.append(f"Ungültige Quellwort-Positionen: {_join(invalid)}.")
 
-    missing_words = expected_set - actual_set
-    extra_words = actual_set - expected_set
+    duplicated = [tokens[i] for i in sorted(counts) if 0 <= i < len(tokens) and counts[i] > 1]
+    if duplicated:
+        errors.append(f"Quellwörter mehrfach zugeordnet: {_join(duplicated)}.")
 
-    if missing_words and extra_words:
-        error_msg = f"Fehlende Wörter: {', '.join(sorted(missing_words))}; "
-        error_msg += f"Zusätzliche Wörter: {', '.join(sorted(extra_words))}. "
-        error_msg += (
-            "Die Wort-für-Wort Übersetzung muss ALLE Wörter aus der "
-            "natürlichen Übersetzung verwenden (keine zusammengesetzten "
-            "Wörter, wenn diese in der natürlichen Übersetzung separat sind)."
+    mapped = {a.source_index for a in sentence.word_alignments if a.target_indices}
+    unmapped = [token for index, token in enumerate(tokens) if index not in mapped]
+    if unmapped:
+        errors.append(f"Quellwörter ohne Zielwort: {_join(unmapped)}.")
+    return errors
+
+
+def _target_errors(sentence: Sentence) -> list[str]:
+    tokens = sentence.target_tokens
+    counts = Counter(index for alignment in sentence.word_alignments for index in alignment.target_indices)
+    errors = []
+
+    invalid = sorted(index for index in counts if not 0 <= index < len(tokens))
+    if invalid:
+        errors.append(f"Ungültige Zielwort-Positionen: {_join(invalid)}.")
+
+    duplicated = [tokens[i] for i in sorted(counts) if 0 <= i < len(tokens) and counts[i] > 1]
+    if duplicated:
+        errors.append(f"Mehrfach verwendete Wörter: {_join(duplicated)}.")
+
+    missing = [token for index, token in enumerate(tokens) if index not in counts]
+    if missing:
+        errors.append(
+            f"Fehlende Wörter: {_join(missing)}. "
+            "Die Wort-für-Wort-Übersetzung muss jedes Wort der natürlichen Übersetzung genau einmal verwenden."
         )
-        return (False, error_msg)
-    elif missing_words:
-        error_msg = f"Fehlende Wörter: {', '.join(sorted(missing_words))}. "
-        error_msg += "Diese Wörter aus der natürlichen Übersetzung fehlen in den Wort-Alignments."
-        return False, error_msg
-    elif extra_words:
-        error_msg = f"Zusätzliche Wörter: {', '.join(sorted(extra_words))}. "
-        error_msg += "Diese Wörter sind in den Alignments, aber nicht in der natürlichen Übersetzung."
-        return False, error_msg
-
-    return (True, None)
+    return errors
 
 
-def _extract_words(text: str) -> list[str]:
-    """Extract normalized words from text.
-
-    - Removes punctuation (except apostrophes and hyphens)
-    - Converts to lowercase
-    - Splits on whitespace
-
-    Args:
-        text: Input text
-
-    Returns:
-        List of normalized words
-    """
-    return extract_normalized_words(text)
-
-
-def validate_source_words_mapped(alignments: list[WordAlignment]) -> tuple[bool, str | None]:
-    """Validate that all source words have non-empty target words.
-
-    Checks for:
-    1. Empty or whitespace-only target words
-    2. Source words without proper mapping
-
-    Args:
-        alignments: List of WordAlignment objects
-
-    Returns:
-        Tuple of (is_valid, error_message)
-        - (True, None) if all source words have valid targets
-        - (False, "error message") if validation fails
-
-    Example:
-        # Invalid: source word with empty target
-        alignments = [
-            WordAlignment(source_word="no", target_word="", position=0),
-            WordAlignment(source_word="importante", target_word="unwichtig", position=1),
-        ]
-        Returns: (False, "Quellwort 'no' hat kein Zielwort")
-    """
-    unmapped_sources = []
-
-    for alignment in alignments:
-        # Check if target is empty or only whitespace
-        target_stripped = alignment.target_word.strip()
-        if not target_stripped:
-            unmapped_sources.append(alignment.source_word)
-
-    if unmapped_sources:
-        words_str = ", ".join(f"'{w}'" for w in unmapped_sources)
-        return (False, f"Quellwörter ohne Zielwort: {words_str}")
-
-    return (True, None)
-
-
-def _extract_alignment_words(alignments: list[WordAlignment]) -> list[str]:
-    """Extract all words from alignments, splitting hyphenated combinations.
-
-    Removes punctuation (except hyphens used for word combination) to match
-    the normalization done in _extract_words().
-
-    Args:
-        alignments: List of WordAlignment objects
-
-    Returns:
-        List of normalized words (hyphenated words are split, punctuation removed)
-    """
-    words = []
-    for alignment in alignments:
-        # Normalize: lowercase
-        target_word = alignment.target_word.lower()
-        # Split hyphenated and clean punctuation in one call
-        parts = split_hyphenated(target_word)
-        words.extend(parts)
-
-    return words
+def _join(items: list[str] | list[int]) -> str:
+    return ", ".join(str(item) for item in items)

@@ -8,7 +8,7 @@ import pytest
 
 from birkenbihl.exceptions import ProviderError
 from birkenbihl.models.settings import ProviderConfig
-from birkenbihl.models.translation import Translation
+from birkenbihl.models.translation import Sentence, Translation
 from birkenbihl.providers.pydantic_ai_translator import PydanticAITranslator
 from birkenbihl.services.language_service import get_language_by
 
@@ -199,12 +199,10 @@ class TestPydanticAITranslatorBirkenbilhCompliance:
         assert len(sentence.natural_translation.strip()) > 0
         assert len(sentence.word_alignments) > 0
 
-        for alignment in sentence.word_alignments:
-            assert alignment.source_word.strip() != ""
-            assert alignment.target_word.strip() != ""
+        assert [a.source_index for a in sentence.word_alignments] == list(range(len(sentence.source_tokens)))
 
-    def test_word_alignment_positions_sequential(self, anthropic_provider_config: ProviderConfig) -> None:
-        """Test that word alignment positions are sequential."""
+    def test_one_alignment_per_source_word(self, anthropic_provider_config: ProviderConfig) -> None:
+        """Test that every source word gets exactly one alignment, in source order."""
         # Arrange
         translator = PydanticAITranslator(anthropic_provider_config)
 
@@ -213,8 +211,7 @@ class TestPydanticAITranslatorBirkenbilhCompliance:
 
         # Assert
         sentence = result.sentences[0]
-        for i, alignment in enumerate(sentence.word_alignments):
-            assert alignment.position == i
+        assert [a.source_index for a in sentence.word_alignments] == list(range(len(sentence.source_tokens)))
 
     def test_metadata_present_in_translation(self, openai_provider_config: ProviderConfig) -> None:
         """Test that translation includes all required metadata."""
@@ -292,11 +289,8 @@ class TestPydanticAITranslatorEditingFeatures:
         assert isinstance(alignments, list)
         assert len(alignments) > 0
 
-        # Check all alignments are valid WordAlignment objects
-        for i, alignment in enumerate(alignments):
-            assert alignment.source_word.strip() != ""
-            assert alignment.target_word.strip() != ""
-            assert alignment.position == i  # Sequential positions
+        # One alignment per source word ("Hello", "world"), in source order
+        assert [a.source_index for a in alignments] == [0, 1]
 
     def test_regenerate_alignment_preserves_all_words(self, anthropic_provider_config: ProviderConfig) -> None:
         """Test that regenerate_alignment includes all words from natural translation."""
@@ -310,19 +304,8 @@ class TestPydanticAITranslatorEditingFeatures:
             source_text, natural_translation, get_language_by("en"), get_language_by("de")
         )
 
-        # Assert
-        # Extract all target words from alignments (handle hyphenated combinations)
-        target_words = []
-        for alignment in alignments:
-            if "-" in alignment.target_word:
-                target_words.extend(alignment.target_word.split("-"))
-            else:
-                target_words.append(alignment.target_word)
-
-        # All words from natural_translation should be present (case-insensitive)
-        natural_words = natural_translation.split()
-        natural_words_lower = [w.lower() for w in natural_words]
-        target_words_lower = [w.lower() for w in target_words]
-
-        for word in natural_words_lower:
-            assert word in target_words_lower, f"Word '{word}' from natural translation not found in alignments"
+        # Assert: every word of the natural translation is assigned
+        sentence = Sentence(
+            source_text=source_text, natural_translation=natural_translation, word_alignments=alignments
+        )
+        assert sentence.unassigned_target_indices() == []

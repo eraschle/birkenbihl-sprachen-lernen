@@ -12,9 +12,10 @@ from uuid import uuid4
 import pytest
 
 from birkenbihl.models import dateutils
+from birkenbihl.models.alignment import align_word_pairs
 from birkenbihl.models.requests import AlignmentUpdateRequest, SentenceUpdateRequest, SuggestionRequest
 from birkenbihl.models.settings import ProviderConfig
-from birkenbihl.models.translation import Sentence, Translation, WordAlignment
+from birkenbihl.models.translation import Translation, WordAlignment
 from birkenbihl.protocols import IStorageProvider, ITranslationProvider
 from birkenbihl.services.language_service import get_language_by
 from birkenbihl.services.translation_service import TranslationService
@@ -57,17 +58,9 @@ def sample_translation() -> Translation:
     sentence_uuid = uuid4()
     translation_id = uuid4()
 
-    sentence = Sentence(
-        uuid=sentence_uuid,
-        source_text="Yo te extrañaré",
-        natural_translation="Ich werde dich vermissen",
-        word_alignments=[
-            WordAlignment(source_word="Yo", target_word="Ich", position=0),
-            WordAlignment(source_word="te", target_word="dich", position=1),
-            WordAlignment(source_word="extrañaré", target_word="werde-vermissen", position=2),
-        ],
-        created_at=dateutils.create_now(),
-    )
+    sentence = align_word_pairs(
+        "Yo te extrañaré", "Ich werde dich vermissen", [("Yo", "Ich"), ("te", "dich"), ("extrañaré", "werde-vermissen")]
+    ).model_copy(update={"uuid": sentence_uuid, "created_at": dateutils.create_now()})
 
     return Translation(
         uuid=translation_id,
@@ -183,9 +176,9 @@ class TestUpdateSentenceNatural:
         # Arrange
         new_natural = "Du wirst mir fehlen"
         new_alignments = [
-            WordAlignment(source_word="Yo", target_word="Du", position=0),
-            WordAlignment(source_word="te", target_word="mir", position=1),
-            WordAlignment(source_word="extrañaré", target_word="wirst-fehlen", position=2),
+            WordAlignment(source_index=0, target_indices=[0]),  # Yo → Du
+            WordAlignment(source_index=1, target_indices=[2]),  # te → mir
+            WordAlignment(source_index=2, target_indices=[3, 1]),  # extrañaré → fehlen-wirst
         ]
 
         request = SentenceUpdateRequest(
@@ -296,10 +289,9 @@ class TestUpdateSentenceAlignment:
         # Arrange
         sentence_uuid = sample_translation.sentences[0].uuid
         new_alignments = [
-            WordAlignment(source_word="Yo", target_word="Ich", position=0),
-            WordAlignment(source_word="te", target_word="dich", position=1),
-            WordAlignment(source_word="extrañaré", target_word="werde", position=2),
-            WordAlignment(source_word="extrañaré", target_word="vermissen", position=3),
+            WordAlignment(source_index=0, target_indices=[0]),  # Yo → Ich
+            WordAlignment(source_index=1, target_indices=[2]),  # te → dich
+            WordAlignment(source_index=2, target_indices=[1, 3]),  # extrañaré → werde-vermissen
         ]
 
         mock_storage.get.return_value = sample_translation  # type: ignore[reportAttributeAccessIssue]
@@ -324,10 +316,10 @@ class TestUpdateSentenceAlignment:
         """Test that invalid alignment raises ValueError."""
         # Arrange
         sentence_uuid = sample_translation.sentences[0].uuid
-        # Missing "dich" from natural translation
+        # "te" has no target and "dich" is unused
         invalid_alignments = [
-            WordAlignment(source_word="Yo", target_word="Ich", position=0),
-            WordAlignment(source_word="extrañaré", target_word="werde-vermissen", position=1),
+            WordAlignment(source_index=0, target_indices=[0]),
+            WordAlignment(source_index=2, target_indices=[1, 3]),
         ]
 
         mock_storage.get.return_value = sample_translation  # type: ignore[reportAttributeAccessIssue]
@@ -350,9 +342,9 @@ class TestUpdateSentenceAlignment:
         sentence_uuid = sample_translation.sentences[0].uuid
         # Missing "vermissen" from natural translation
         incomplete_alignments = [
-            WordAlignment(source_word="Yo", target_word="Ich", position=0),
-            WordAlignment(source_word="te", target_word="dich", position=1),
-            WordAlignment(source_word="extrañaré", target_word="werde", position=2),
+            WordAlignment(source_index=0, target_indices=[0]),
+            WordAlignment(source_index=1, target_indices=[2]),
+            WordAlignment(source_index=2, target_indices=[1]),
         ]
 
         mock_storage.get.return_value = sample_translation  # type: ignore[reportAttributeAccessIssue]

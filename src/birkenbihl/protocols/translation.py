@@ -71,6 +71,7 @@ class ITranslationProvider(Protocol):
             target_lang: Target language
 
         Returns:
-            List of WordAlignment objects mapping source words to target words
+            Alignments referencing token positions of source_text and natural_translation;
+            AI pairs that do not match the sentence are FLAGGED
         """
         ...

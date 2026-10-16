@@ -11,7 +11,8 @@ from uuid import uuid4
 
 import pytest
 
-from birkenbihl.models.translation import Sentence, Translation, WordAlignment
+from birkenbihl.models.alignment import align_word_pairs
+from birkenbihl.models.translation import AlignmentStatus, Sentence, Translation
 from birkenbihl.services.language_service import get_language_by
 from birkenbihl.storage import NotFoundError, SqliteStorageProvider
 
@@ -39,24 +40,13 @@ def sample_translation() -> Translation:
         source_language=get_language_by("es"),
         target_language=get_language_by("de"),
         sentences=[
-            Sentence(
-                uuid=uuid4(),
-                source_text="Yo te extrañaré",
-                natural_translation="Ich werde dich vermissen",
-                word_alignments=[
-                    WordAlignment(source_word="Yo", target_word="Ich", position=0),
-                    WordAlignment(source_word="te", target_word="dich", position=1),
-                    WordAlignment(source_word="extrañaré", target_word="vermissen-werde", position=2),
-                ],
-            ),
-            Sentence(
-                uuid=uuid4(),
-                source_text="Buenos días",
-                natural_translation="Guten Morgen",
-                word_alignments=[
-                    WordAlignment(source_word="Buenos", target_word="Guten", position=0),
-                    WordAlignment(source_word="días", target_word="Morgen", position=1),
-                ],
+            align_word_pairs(
+                "Yo te extrañaré",
+                "Ich werde dich vermissen",
+                [("Yo", "Ich"), ("te", "dich"), ("extrañaré", "vermissen-werde")],
+            ).model_copy(update={"uuid": uuid4()}),
+            align_word_pairs("Buenos días", "Guten Morgen", [("Buenos", "Guten"), ("días", "Morgen")]).model_copy(
+                update={"uuid": uuid4()}
             ),
         ],
     )
@@ -118,11 +108,24 @@ class TestSqliteStorageProviderSave:
         """Test that word alignments are correctly saved and retrieved."""
         saved = storage_provider.save(sample_translation)
 
-        first_sentence = saved.sentences[0]
-        assert len(first_sentence.word_alignments) == 3
-        assert first_sentence.word_alignments[0].source_word == "Yo"
-        assert first_sentence.word_alignments[0].target_word == "Ich"
-        assert first_sentence.word_alignments[0].position == 0
+        retrieved = storage_provider.get(saved.uuid)
+        assert retrieved is not None
+        first_sentence = retrieved.sentences[0]
+        assert first_sentence.word_alignments == sample_translation.sentences[0].word_alignments
+        assert first_sentence.get_word_by_word() == "Ich dich vermissen-werde"
+
+    def test_save_preserves_alignment_status(
+        self, storage_provider: SqliteStorageProvider, sample_translation: Translation
+    ) -> None:
+        sample_translation.sentences[0].word_alignments[1].status = AlignmentStatus.FLAGGED
+        sample_translation.sentences[0].word_alignments[2].status = AlignmentStatus.CONFIRMED
+        storage_provider.save(sample_translation)
+
+        retrieved = storage_provider.get(sample_translation.uuid)
+
+        assert retrieved is not None
+        statuses = [a.status for a in retrieved.sentences[0].word_alignments]
+        assert statuses == [AlignmentStatus.SUGGESTED, AlignmentStatus.FLAGGED, AlignmentStatus.CONFIRMED]
 
     def test_save_existing_translation_updates_it(
         self, storage_provider: SqliteStorageProvider, sample_translation: Translation
@@ -175,14 +178,13 @@ class TestSqliteStorageProviderGet:
     def test_get_preserves_word_alignment_order(
         self, storage_provider: SqliteStorageProvider, sample_translation: Translation
     ) -> None:
-        """Test that word alignment order is preserved by position."""
+        """Test that word alignments come back in source word order."""
         storage_provider.save(sample_translation)
         retrieved = storage_provider.get(sample_translation.uuid)
 
         assert retrieved is not None
         first_sentence = retrieved.sentences[0]
-        positions = [wa.position for wa in first_sentence.word_alignments]
-        assert positions == sorted(positions)
+        assert [wa.source_index for wa in first_sentence.word_alignments] == [0, 1, 2]
 
 
 @pytest.mark.unit
@@ -201,28 +203,14 @@ class TestSqliteStorageProviderListAll:
             title="Translation 1",
             source_language=get_language_by("es"),
             target_language=get_language_by("de"),
-            sentences=[
-                Sentence(
-                    uuid=uuid4(),
-                    source_text="Hola",
-                    natural_translation="Hallo",
-                    word_alignments=[WordAlignment(source_word="Hola", target_word="Hallo", position=0)],
-                )
-            ],
+            sentences=[align_word_pairs("Hola", "Hallo", [("Hola", "Hallo")]).model_copy(update={"uuid": uuid4()})],
         )
         translation2 = Translation(
             uuid=uuid4(),
             title="Translation 2",
             source_language=get_language_by("es"),
             target_language=get_language_by("de"),
-            sentences=[
-                Sentence(
-                    uuid=uuid4(),
-                    source_text="Hello",
-                    natural_translation="Hallo",
-                    word_alignments=[WordAlignment(source_word="Hello", target_word="Hallo", position=0)],
-                )
-            ],
+            sentences=[align_word_pairs("Hello", "Hallo", [("Hello", "Hallo")]).model_copy(update={"uuid": uuid4()})],
         )
 
         storage_provider.save(translation1)
@@ -241,14 +229,7 @@ class TestSqliteStorageProviderListAll:
             title="First",
             source_language=get_language_by("es"),
             target_language=get_language_by("de"),
-            sentences=[
-                Sentence(
-                    uuid=uuid4(),
-                    source_text="Uno",
-                    natural_translation="Eins",
-                    word_alignments=[WordAlignment(source_word="Uno", target_word="Eins", position=0)],
-                )
-            ],
+            sentences=[align_word_pairs("Uno", "Eins", [("Uno", "Eins")]).model_copy(update={"uuid": uuid4()})],
             created_at=datetime(2024, 1, 1, 0, 0, 0, tzinfo=UTC),
             updated_at=datetime(2024, 1, 1, 0, 0, 0, tzinfo=UTC),
         )
@@ -257,14 +238,7 @@ class TestSqliteStorageProviderListAll:
             title="Second",
             source_language=get_language_by("es"),
             target_language=get_language_by("de"),
-            sentences=[
-                Sentence(
-                    uuid=uuid4(),
-                    source_text="Dos",
-                    natural_translation="Zwei",
-                    word_alignments=[WordAlignment(source_word="Dos", target_word="Zwei", position=0)],
-                )
-            ],
+            sentences=[align_word_pairs("Dos", "Zwei", [("Dos", "Zwei")]).model_copy(update={"uuid": uuid4()})],
             created_at=datetime(2024, 1, 2, 0, 0, 0, tzinfo=UTC),
             updated_at=datetime(2024, 1, 2, 0, 0, 0, tzinfo=UTC),
         )
@@ -370,14 +344,8 @@ class TestSqliteStorageProviderUpdate:
         storage_provider.save(sample_translation)
 
         sample_translation.sentences = [
-            Sentence(
-                uuid=uuid4(),
-                source_text="New sentence",
-                natural_translation="Neuer Satz",
-                word_alignments=[
-                    WordAlignment(source_word="New", target_word="Neuer", position=0),
-                    WordAlignment(source_word="sentence", target_word="Satz", position=1),
-                ],
+            align_word_pairs("New sentence", "Neuer Satz", [("New", "Neuer"), ("sentence", "Satz")]).model_copy(
+                update={"uuid": uuid4()}
             )
         ]
 
@@ -411,14 +379,7 @@ class TestSqliteStorageProviderEdgeCases:
             title="No alignments",
             source_language=get_language_by("es"),
             target_language=get_language_by("de"),
-            sentences=[
-                Sentence(
-                    uuid=uuid4(),
-                    source_text="Hola",
-                    natural_translation="Hallo",
-                    word_alignments=[],
-                )
-            ],
+            sentences=[Sentence(source_text="Hola", natural_translation="Hallo", word_alignments=[], uuid=uuid4())],
         )
 
         saved = storage_provider.save(translation)
@@ -432,14 +393,7 @@ class TestSqliteStorageProviderEdgeCases:
                 title="Test",
                 source_language=get_language_by("es"),
                 target_language=get_language_by("de"),
-                sentences=[
-                    Sentence(
-                        uuid=uuid4(),
-                        source_text="Hola",
-                        natural_translation="Hallo",
-                        word_alignments=[WordAlignment(source_word="Hola", target_word="Hallo", position=0)],
-                    )
-                ],
+                sentences=[align_word_pairs("Hola", "Hallo", [("Hola", "Hallo")]).model_copy(update={"uuid": uuid4()})],
             )
             provider1.save(translation)
 

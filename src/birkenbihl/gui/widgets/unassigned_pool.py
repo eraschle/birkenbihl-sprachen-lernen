@@ -15,7 +15,7 @@ class UnassignedPool(QFrame):
         [Nicht zugeordnet] → [Tag1] [Tag2] [Tag3]
     """
 
-    word_dropped = Signal(str)
+    word_dropped = Signal(int)  # target index of the dropped word
 
     def __init__(self, parent: QWidget | None = None):
         """Initialize unassigned pool.
@@ -116,8 +116,7 @@ class UnassignedPool(QFrame):
         Args:
             event: Drop event
         """
-        word = event.mimeData().text()
-        self.word_dropped.emit(word)
+        self.word_dropped.emit(int(event.mimeData().text()))
         self._set_highlighted(False)
         event.acceptProposedAction()
 

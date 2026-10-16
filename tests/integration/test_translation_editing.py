@@ -20,7 +20,7 @@ from birkenbihl.models.requests import (
     TranslationRequest,
 )
 from birkenbihl.models.settings import ProviderConfig
-from birkenbihl.models.translation import WordAlignment
+from birkenbihl.models.translation import AlignmentStatus, WordAlignment
 from birkenbihl.providers.pydantic_ai_translator import PydanticAITranslator
 from birkenbihl.services.language_service import get_language_by
 from birkenbihl.services.translation_service import TranslationService
@@ -159,25 +159,22 @@ class TestFullWorkflowEditAlignmentManually:
         original_sentence = translation.sentences[0]
         natural_translation = original_sentence.natural_translation  # e.g., "Hallo Welt"
 
-        # Step 2: Manually create new alignments
-        # Parse the natural translation to create proper alignments
-        words = natural_translation.split()
-        if len(words) >= 2:
-            new_alignments = [
-                WordAlignment(source_word="Hello", target_word=words[0], position=0),
-                WordAlignment(source_word="world", target_word=words[1], position=1),
-            ]
-        else:
-            # Fallback if natural translation is single word or hyphenated
-            new_alignments = [
-                WordAlignment(source_word="Hello", target_word=natural_translation.split()[0], position=0),
-                WordAlignment(source_word="world", target_word="world", position=1),
-            ]
+        # Step 2: Manually create new alignments: "Hello" gets every word except the last, "world" the last
+        target_count = len(original_sentence.target_tokens)
+        assert target_count >= 2, f"Expected at least two words in {natural_translation!r}"
+        new_alignments = [
+            WordAlignment(
+                source_index=0, target_indices=list(range(target_count - 1)), status=AlignmentStatus.CONFIRMED
+            ),
+            WordAlignment(source_index=1, target_indices=[target_count - 1], status=AlignmentStatus.CONFIRMED),
+        ]
 
         # Step 3: Validate alignments
         from birkenbihl.models.validation import validate_alignment_complete
 
-        is_valid, error = validate_alignment_complete(natural_translation, new_alignments)
+        is_valid, error = validate_alignment_complete(
+            original_sentence.model_copy(update={"word_alignments": new_alignments})
+        )
         assert is_valid, f"Manual alignments are invalid: {error}"
 
         # Step 4: Update sentence with new alignments

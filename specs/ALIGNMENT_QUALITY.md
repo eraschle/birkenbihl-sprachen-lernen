@@ -1,7 +1,7 @@
 # Qualität der Wort-für-Wort-Übersetzung
 
 **Stand:** 2026-10-16
-**Status:** Entwurf, Grundlage für Schritt 3 (Positionen) und Schritt 4 (Provider/pydantic-ai 2.x)
+**Status:** Datenmodell umgesetzt (Schritt 3); Jev und Selbstkorrektur folgen mit Schritt 4
 
 Die Wort-für-Wort-Übersetzung („Dekodieren“) ist der Kern der Birkenbihl-Methode und muss stimmen.
 Sprachmodelle sind dafür nicht trainiert und machen Fehler. Deshalb vertraut die App keinem einzelnen
@@ -18,21 +18,26 @@ Modell, sondern kombiniert harte Regeln, unabhängige Zweitmeinungen und den Men
 | Unsicherheit erkennen | Jev und/oder Zweitlauf | Markiert Wörter zur Prüfung |
 | Endgültige Entscheidung | Nutzer im Editor | Geprüfte Sätze werden nie von der KI überschrieben |
 
-## Datenmodell (Voraussetzung, Schritt 3)
+## Datenmodell (umgesetzt in Schritt 3)
 
-Zuordnungen werden über **Positionen** gespeichert, nicht über Wort-Texte:
+Zuordnungen werden über **Positionen** gespeichert, nicht über Wort-Texte (`models/translation.py`):
 
-- `source_tokens`: Zerlegung des Originalsatzes (Code)
-- `target_tokens`: Zerlegung der natürlichen Übersetzung (Code)
-- Zuordnung: pro Quell-Position eine Liste von Ziel-Positionen
-- Pro Zuordnung: `confidence` (0–1, optional) und `status` (`suggested` | `flagged` | `confirmed`)
+- `Sentence.source_tokens` / `Sentence.target_tokens`: Zerlegung per `tokenize_clean`, aus dem Text abgeleitet
+  (nicht gespeichert, damit Text und Zerlegung nie auseinanderlaufen; der Tokenizer gehört damit zum Datenformat)
+- `WordAlignment`: `source_index`, `target_indices` (Anzeige-Reihenfolge), `status`
+  (`suggested` | `flagged` | `confirmed`)
+- `models/alignment.py`: `align_word_pairs()` übersetzt KI-Wortpaare in Positionen. Wiederholte Wörter werden der
+  Reihe nach zugeordnet. Was nicht passt, wird nicht geraten: Die Spalte wird `flagged`, übrig gebliebene Wörter
+  landen im Pool des Editors.
+- `models/validation.py`: Positionsgenaue Prüfung. Jedes Quellwort genau eine Zuordnung mit mindestens einem
+  Zielwort, jedes Wort der natürlichen Übersetzung genau einmal. Die frühere Mengen-Prüfung hat doppelte Wörter
+  („der … der“) nicht erkannt.
+- Editor (`GridState`): Dieselbe Validierung wie beim Speichern; vom Nutzer veränderte Spalten werden `confirmed`,
+  `flagged` Spalten sind orange markiert, leere rot.
 
-Die Birkenbihl-Regel wird damit zu einer Mengenprüfung: Die Ziel-Positionen aller Spalten bilden genau
-`{0 … len(target_tokens)-1}`, ohne Doppelte. Der Bindestrich-Text („vermissen-werde“) wird nur für die Anzeige
-erzeugt. Wiederholte Wörter („der Hund und der Mann“) sind eindeutig.
-
-Bekannter Fehler im heutigen Editor (`GridState` ordnet über Text zu): siehe
-`tests/integration/test_grid_editing_workflow.py::test_repeated_source_word_keeps_its_own_target` (xfail).
+Noch nicht umgesetzt: `confidence` pro Zuordnung. Das Feld kommt mit dem ersten Erzeuger (Jev oder Zweitlauf),
+damit kein ungenutztes Feld im Modell steht. Ebenso fehlt ein „Bestätigen“ ohne Verschieben für korrekt
+markierte Spalten.
 
 ## Jev (TypeSafe AI)
 
@@ -93,6 +98,6 @@ der Nutzer ihn prüft. Gefährlich ist nur der unmarkierte Fehler.
 
 ## Reihenfolge
 
-1. Schritt 3: Positionen + `confidence`/`status` im Modell, Editor hebt `flagged` hervor.
+1. ~~Schritt 3: Positionen + `status` im Modell, Editor hebt `flagged` hervor.~~ Erledigt.
 2. Schritt 4: Provider-Schicht vereinfachen, pydantic-ai ≥ 2.45 (Voraussetzung für Jev), Selbstkorrektur.
 3. Prüfdatensatz-Benchmark, dann Jev Rolle A und B messen.

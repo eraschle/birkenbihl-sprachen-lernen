@@ -31,6 +31,10 @@ class Colors:
     ERROR_RED = "#ff0000"
     ERROR_BG = "rgba(255, 0, 0, 0.05)"
 
+    # Flagged colors (needs human review)
+    FLAGGED_ORANGE = "#e69500"
+    FLAGGED_BG = "rgba(255, 165, 0, 0.12)"
+
     # Text colors
     TEXT_PRIMARY = "black"
     TEXT_SECONDARY = "#666666"
@@ -115,6 +119,21 @@ def get_error_frame_style() -> str:
         QFrame {{
             background-color: {Colors.ERROR_BG};
             border: 1px solid {Colors.ERROR_RED};
+            border-radius: {Spacing.RADIUS_NORMAL};
+        }}
+    """
+
+
+def get_flagged_frame_style() -> str:
+    """Get stylesheet for columns whose alignment needs review (e.g. AI output did not match).
+
+    Returns:
+        CSS stylesheet for flagged state
+    """
+    return f"""
+        QFrame {{
+            background-color: {Colors.FLAGGED_BG};
+            border: 1px dashed {Colors.FLAGGED_ORANGE};
             border-radius: {Spacing.RADIUS_NORMAL};
         }}
     """

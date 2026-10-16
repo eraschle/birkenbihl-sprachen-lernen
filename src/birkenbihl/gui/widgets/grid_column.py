@@ -20,7 +20,7 @@ class GridColumn(QFrame):
         [Tag2]
     """
 
-    word_dropped = Signal(str)
+    word_dropped = Signal(int)  # target index of the dropped word
 
     def __init__(self, source_word: str, parent: QWidget | None = None):
         """Initialize grid column.
@@ -128,14 +128,20 @@ class GridColumn(QFrame):
         if self._drop_zone:
             self._drop_zone.setStyleSheet(theme.get_drop_zone_style(highlighted))
 
-    def set_error_state(self, error: bool) -> None:
-        """Mark column as error (red) when empty.
+    def set_state(self, error: bool, flagged: bool) -> None:
+        """Mark column as error (red, empty) or flagged (orange, needs review); error wins.
 
         Args:
-            error: True to show error state
+            error: True if the column has no target word
+            flagged: True if the alignment needs review
         """
-        style = theme.get_error_frame_style() if error else ""
-        self.setStyleSheet(style)
+        if error:
+            self.setStyleSheet(theme.get_error_frame_style())
+        elif flagged:
+            self.setStyleSheet(theme.get_flagged_frame_style())
+        else:
+            self.setStyleSheet("")
+        self.setToolTip("Bitte prüfen: KI-Vorschlag war unsicher" if flagged and not error else "")
 
     def dragEnterEvent(self, event: QDragEnterEvent) -> None:
         """Handle drag entering column.
@@ -162,7 +168,6 @@ class GridColumn(QFrame):
         Args:
             event: Drop event
         """
-        word = event.mimeData().text()
-        self.word_dropped.emit(word)
+        self.word_dropped.emit(int(event.mimeData().text()))
         self.set_highlighted(False)
         event.acceptProposedAction()
