@@ -35,9 +35,11 @@ Zuordnungen werden über **Positionen** gespeichert, nicht über Wort-Texte (`mo
 - Editor (`GridState`): Dieselbe Validierung wie beim Speichern; vom Nutzer veränderte Spalten werden `confirmed`,
   `flagged` Spalten sind orange markiert, leere rot.
 
+- „✓ Stimmt“-Knopf auf markierten Spalten mit Wort: bestätigt einen korrekten KI-Vorschlag ohne Verschieben.
+  Bewusst nur pro Spalte, kein „alle bestätigen“: jede unsichere Zuordnung soll einzeln angesehen werden.
+
 Noch nicht umgesetzt: `confidence` pro Zuordnung. Das Feld kommt mit dem ersten Erzeuger (Jev oder Zweitlauf),
-damit kein ungenutztes Feld im Modell steht. Ebenso fehlt ein „Bestätigen“ ohne Verschieben für korrekt
-markierte Spalten.
+damit kein ungenutztes Feld im Modell steht.
 
 ## Jev (TypeSafe AI)
 

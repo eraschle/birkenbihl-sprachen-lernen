@@ -21,18 +21,16 @@ def storage_path(tmp_path: Path) -> Path:
     return tmp_path / "translations.json"
 
 
-@pytest.fixture
-def panel_with_ai_error(qtbot: QtBot, tmp_path: Path, storage_path: Path) -> tuple[EditModePanel, Translation]:
-    """Edit panel showing 'Yo te extrañaré' where the AI answered 'dir' instead of 'dich'."""
+def _panel(
+    qtbot: QtBot, tmp_path: Path, storage_path: Path, ai_pairs: list[tuple[str, str]]
+) -> tuple[EditModePanel, Translation]:
     service = TranslationService(None, JsonStorageProvider(storage_path))
     settings = SettingsService(tmp_path / "settings.yaml")
     settings.load_settings()
-    sentence = align_word_pairs(
-        "Yo te extrañaré", "Ich werde dich vermissen", [("Yo", "Ich"), ("te", "dir"), ("extrañaré", "vermissen-werde")]
-    )
+    sentence = align_word_pairs("Yo te extrañaré", "Ich werde dich vermissen", ai_pairs)
     translation = service.save_translation(
         Translation(
-            title="AI error",
+            title="AI suggestion",
             source_language=get_language_by("es"),
             target_language=get_language_by("de"),
             sentences=[sentence],
@@ -43,6 +41,12 @@ def panel_with_ai_error(qtbot: QtBot, tmp_path: Path, storage_path: Path) -> tup
     qtbot.addWidget(panel)
     state.select_translation(translation)
     return panel, translation
+
+
+@pytest.fixture
+def panel_with_ai_error(qtbot: QtBot, tmp_path: Path, storage_path: Path) -> tuple[EditModePanel, Translation]:
+    """Edit panel showing 'Yo te extrañaré' where the AI answered 'dir' instead of 'dich'."""
+    return _panel(qtbot, tmp_path, storage_path, [("Yo", "Ich"), ("te", "dir"), ("extrañaré", "vermissen-werde")])
 
 
 class TestEditModePanel:
@@ -81,3 +85,22 @@ class TestEditModePanel:
         grid._pool.word_dropped.emit(0)  # "Ich" into the pool
 
         assert not panel._save_button.isEnabled()
+
+    def test_confirming_a_flagged_suggestion_enables_save_and_persists(
+        self, qtbot: QtBot, tmp_path: Path, storage_path: Path
+    ) -> None:
+        """'wird' is not in the translation, so the column is flagged, but all real words are placed correctly."""
+        panel, translation = _panel(
+            qtbot, tmp_path, storage_path, [("Yo", "Ich"), ("te", "dich"), ("extrañaré", "vermissen-werde-wird")]
+        )
+        assert not panel._save_button.isEnabled()
+
+        panel._interleaved_grid._columns[2]._confirm_button.click()
+
+        assert panel._save_button.isEnabled()
+        with patch("birkenbihl.gui.views.edit_mode_panel.QMessageBox"):
+            panel._save_button.click()
+        reloaded = JsonStorageProvider(storage_path).get(translation.uuid)
+        assert reloaded is not None
+        assert reloaded.sentences[0].word_alignments[2].status == AlignmentStatus.CONFIRMED
+        assert not reloaded.sentences[0].needs_review()

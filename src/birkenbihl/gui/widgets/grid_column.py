@@ -2,7 +2,7 @@
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QDragEnterEvent, QDragLeaveEvent, QDropEvent
-from PySide6.QtWidgets import QFrame, QLabel, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QFrame, QLabel, QPushButton, QVBoxLayout, QWidget
 
 from birkenbihl.gui.styles import theme
 from birkenbihl.gui.widgets.word_tag import WordTag
@@ -13,6 +13,7 @@ class GridColumn(QFrame):
 
     Visual layout:
         [Source Word]  ← Header (bold, fixed)
+        [✓ Stimmt]     ← Only for flagged columns with a word: confirm without changing
         ┌─────────┐
         │DropZone │    ← Invisible until drag starts
         └─────────┘
@@ -21,6 +22,7 @@ class GridColumn(QFrame):
     """
 
     word_dropped = Signal(int)  # target index of the dropped word
+    confirm_requested = Signal()
 
     def __init__(self, source_word: str, parent: QWidget | None = None):
         """Initialize grid column.
@@ -33,15 +35,18 @@ class GridColumn(QFrame):
         self._source_word = source_word
         self._tags: list[WordTag] = []
         self._drop_zone: QLabel | None = None
+        self._confirm_button = self._create_confirm_button()
         self._init_ui()
 
     def _init_ui(self) -> None:
         """Initialize UI components."""
+        self.setObjectName(theme.GRID_COLUMN_OBJECT_NAME)
         self.setAcceptDrops(True)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(5, 5, 5, 5)
         layout.setSpacing(2)
         layout.addWidget(self._create_header())
+        layout.addWidget(self._confirm_button)
         self._drop_zone = self._create_drop_zone()
         layout.addWidget(self._drop_zone)
         self._drop_zone.hide()
@@ -59,6 +64,18 @@ class GridColumn(QFrame):
         font.setBold(True)
         label.setFont(font)
         return label
+
+    def _create_confirm_button(self) -> QPushButton:
+        """Create the button that confirms a flagged alignment as correct.
+
+        Returns:
+            Hidden confirm button
+        """
+        button = QPushButton("✓ Stimmt")
+        button.setToolTip("KI-Vorschlag geprüft und korrekt")
+        button.clicked.connect(self.confirm_requested.emit)
+        button.hide()
+        return button
 
     def _create_drop_zone(self) -> QLabel:
         """Create drop zone indicator.
@@ -141,7 +158,9 @@ class GridColumn(QFrame):
             self.setStyleSheet(theme.get_flagged_frame_style())
         else:
             self.setStyleSheet("")
-        self.setToolTip("Bitte prüfen: KI-Vorschlag war unsicher" if flagged and not error else "")
+        needs_review = flagged and not error
+        self.setToolTip("Bitte prüfen: KI-Vorschlag war unsicher" if needs_review else "")
+        self._confirm_button.setVisible(needs_review)
 
     def dragEnterEvent(self, event: QDragEnterEvent) -> None:
         """Handle drag entering column.

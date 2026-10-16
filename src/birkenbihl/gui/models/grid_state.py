@@ -50,6 +50,15 @@ class GridState:
         column.target_indices.append(target_index)
         column.status = AlignmentStatus.CONFIRMED
 
+    def confirm(self, column_index: int) -> None:
+        """Mark a column as reviewed without changing it (e.g. a flagged AI suggestion that is correct).
+
+        Empty columns cannot be confirmed: they still need a target word.
+        """
+        column = self.columns[column_index]
+        if not column.is_empty():
+            column.status = AlignmentStatus.CONFIRMED
+
     def _take(self, target_index: int) -> None:
         if target_index in self.unassigned:
             self.unassigned.remove(target_index)

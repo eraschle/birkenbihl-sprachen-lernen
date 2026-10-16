@@ -132,3 +132,22 @@ class TestValidate:
             AlignmentStatus.CONFIRMED,
             AlignmentStatus.CONFIRMED,
         ]
+
+
+class TestConfirm:
+    def test_confirm_flagged_column_without_changing_it(self) -> None:
+        grid = _grid([("Yo", "Ich"), ("te", "dich"), ("extrañaré", "vermissen-werde-wird")])
+        assert grid.columns[2].is_flagged()
+
+        grid.confirm(2)
+
+        assert grid.columns[2].status == AlignmentStatus.CONFIRMED
+        assert _words(grid)[2] == ["vermissen", "werde"]
+        assert grid.validate() == (True, None)
+
+    def test_empty_column_cannot_be_confirmed(self) -> None:
+        grid = _grid([("Yo", "Ich"), ("te", "dir"), ("extrañaré", "vermissen-werde")])
+
+        grid.confirm(1)
+
+        assert grid.columns[1].status == AlignmentStatus.FLAGGED

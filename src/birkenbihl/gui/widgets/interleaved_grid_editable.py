@@ -75,11 +75,23 @@ class InterleavedGridEditable(QWidget):
         if not self._grid_state:
             return
         self._grid_state.move(target_index, column_index)
+        self._apply_change()
+
+    def _apply_change(self) -> None:
+        """Re-render after an edit and report it."""
+        assert self._grid_state is not None
         self._render()
         # Report the change before the validation result: the edit panel enables Save on a valid result
         # only once it knows there are unsaved changes.
         self.alignments_changed.emit(self._grid_state.to_word_alignments())
         self._validate()
+
+    def _on_confirm(self, column_index: int) -> None:
+        """Confirm a flagged column as correct without moving words."""
+        if not self._grid_state:
+            return
+        self._grid_state.confirm(column_index)
+        self._apply_change()
 
     def _render(self) -> None:
         """Rebuild columns and pool from the current state."""
@@ -89,6 +101,7 @@ class InterleavedGridEditable(QWidget):
         for column_index, column_state in enumerate(self._grid_state.columns):
             column = GridColumn(column_state.source_word)
             column.word_dropped.connect(lambda target_index, col=column_index: self._on_drop(target_index, col))
+            column.confirm_requested.connect(lambda col=column_index: self._on_confirm(col))
             for target_index in column_state.target_indices:
                 column.add_tag(self._create_tag(target_index))
             self._columns.append(column)

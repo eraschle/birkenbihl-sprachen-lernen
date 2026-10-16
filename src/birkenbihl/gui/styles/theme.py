@@ -109,14 +109,18 @@ def get_drop_zone_style(highlighted: bool = False) -> str:
     """
 
 
+# Grid column frames are styled by object name so the style does not leak into the labels inside
+GRID_COLUMN_OBJECT_NAME = "gridColumn"
+
+
 def get_error_frame_style() -> str:
-    """Get stylesheet for error state frames.
+    """Get stylesheet for error state grid columns.
 
     Returns:
         CSS stylesheet for error state
     """
     return f"""
-        QFrame {{
+        QFrame#{GRID_COLUMN_OBJECT_NAME} {{
             background-color: {Colors.ERROR_BG};
             border: 1px solid {Colors.ERROR_RED};
             border-radius: {Spacing.RADIUS_NORMAL};
@@ -131,7 +135,7 @@ def get_flagged_frame_style() -> str:
         CSS stylesheet for flagged state
     """
     return f"""
-        QFrame {{
+        QFrame#{GRID_COLUMN_OBJECT_NAME} {{
             background-color: {Colors.FLAGGED_BG};
             border: 1px dashed {Colors.FLAGGED_ORANGE};
             border-radius: {Spacing.RADIUS_NORMAL};

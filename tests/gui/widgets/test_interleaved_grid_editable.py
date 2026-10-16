@@ -77,3 +77,25 @@ class TestInterleavedGridEditable:
 
         assert editor._columns[2].styleSheet() == theme.get_flagged_frame_style()
         assert editor._columns[2].toolTip() != ""
+
+    def test_confirm_button_only_on_flagged_columns_with_a_word(self, qtbot: QtBot) -> None:
+        editor = _editor(qtbot, [("Yo", "Ich"), ("te", "dich"), ("extrañaré", "vermissen-werde-wird")])
+
+        hidden = [column._confirm_button.isHidden() for column in editor._columns]
+
+        assert hidden == [True, True, False]
+
+    def test_flagged_and_empty_column_has_no_confirm_button(self, qtbot: QtBot) -> None:
+        editor = _editor(qtbot, [("Yo", "Ich"), ("te", "dir"), ("extrañaré", "vermissen-werde")])
+
+        assert editor._columns[1]._confirm_button.isHidden()
+
+    def test_confirm_clears_flag_and_emits_alignments(self, qtbot: QtBot) -> None:
+        editor = _editor(qtbot, [("Yo", "Ich"), ("te", "dich"), ("extrañaré", "vermissen-werde-wird")])
+
+        with qtbot.waitSignal(editor.alignments_changed, timeout=1000) as blocker:
+            editor._columns[2]._confirm_button.click()
+
+        assert blocker.args[0][2].status == AlignmentStatus.CONFIRMED
+        assert editor._columns[2].styleSheet() == ""
+        assert editor._columns[2]._confirm_button.isHidden()
