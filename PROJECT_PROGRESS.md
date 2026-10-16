@@ -854,12 +854,15 @@ Before moving to Phase 4, verify:
 - Step 4: four fixed provider types (`providers/catalog.py`) on pydantic-ai-slim 2.x; the alignment step
   self-corrects (validator + ModelRetry) before flagging. Removed: provider registry, unused streaming.
 - Editor: "✓ Stimmt" button on flagged columns confirms a correct AI suggestion without moving words.
+- All AI calls go through TranslationService (translator factory, per-request provider); language detection
+  needs no AI provider. Removed unused: GUI TranslationUIService, sentence suggestions (generate_alternatives),
+  update_sentence_natural, update_translation.
 **Phase 3**: AudioService done, but NOT yet wired into the GUI
 **Phase 4**: Deferred (optional feature)
 
 Test status (`QT_QPA_PLATFORM=offscreen uv run pytest`): 373 passed, 36 skipped, 0 failed
 - Skipped: tests needing AI API keys or network access to Google TTS
-- Coverage 56% vs. `--cov-fail-under=80` in pytest.ini; CI enforces 55% so coverage cannot drop
+- Coverage 61% vs. `--cov-fail-under=80` in pytest.ini; CI enforces 60% so coverage cannot drop
 - `pydantic-ai` pinned to `>=1.0,<2`; the provider registry maps renamed pydantic-ai
   prefixes (`google` → `google-gla`, `google-cloud` → `google-vertex`) to stable IDs
 
@@ -869,8 +872,9 @@ See `specs/ALIGNMENT_QUALITY.md` for the alignment quality design (rules, self-c
 
 1. Benchmark on `tests/fixtures/birkenbihl_unit1_1.json` (needs API keys); evaluate Jev as aligner and checker
    (add `typesafe` to the pydantic-ai-slim extras and a catalog entry when used)
-2. Move AI calls out of the GUI panels (edit/create mode call PydanticAITranslator directly)
-3. Wire audio playback into the translation tab
+2. Wire audio playback into the translation tab
+3. Edit mode: save through TranslationService validation (today it calls save_translation directly; the grid
+   already enforces the same rules)
 4. Add GUI tests (target 80%)
 
 ---
@@ -880,7 +884,7 @@ See `specs/ALIGNMENT_QUALITY.md` for the alignment quality design (rules, self-c
 | Metric | Current | Target | Status |
 |--------|---------|--------|--------|
 | Tests failing | 0 | 0 | ✅ |
-| Coverage | 56% | 80% | 🟡 Below gate |
+| Coverage | 61% | 80% | 🟡 Below gate |
 | Ruff | clean | clean | ✅ |
 | Alignment editor in app | no | yes | 🔴 Open |
 | Audio playback in app | no | yes | 🔴 Open |

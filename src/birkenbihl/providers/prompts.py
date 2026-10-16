@@ -281,31 +281,3 @@ Note: In complex examples, target words may appear in different order than in na
 The alignment follows SOURCE order, but uses target words from wherever they appear.
 
 Generate the word-by-word alignment following these rules."""
-
-
-def create_alternatives_prompt(source_text: str, source_lang: Language, target_lang: Language, count: int) -> str:
-    """Create prompt for generating alternative translations.
-
-    Args:
-        source_text: Original text to translate
-        source_lang: Source language
-        target_lang: Target language
-        count: Number of alternatives to generate
-
-    Returns:
-        Formatted prompt for generating alternatives
-    """
-    source_name = source_lang.name_en
-    target_name = target_lang.name_en
-
-    return f"""Generate {count} alternative natural translations for the following text.
-
-Source text ({source_name}):
-{source_text}
-
-Provide {count} different translations in {target_name} that:
-1. Maintain the original meaning
-2. Vary in formality, word choice, or structure
-3. Are all fluent and natural-sounding
-
-Return only the alternative translations."""

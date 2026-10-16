@@ -1,25 +1,18 @@
-"""Unit tests for TranslationService editing features.
+"""Unit tests for TranslationService: AI calls (translate, auto-detect, alignment preview) and alignment updates."""
 
-Tests cover the new editing workflows introduced in Phase 1:
-- get_sentence_suggestions
-- update_sentence_natural
-- update_sentence_alignment
-"""
-
-from unittest.mock import MagicMock, Mock
+from unittest.mock import MagicMock, Mock, patch
 from uuid import uuid4
 
 import pytest
 
 from birkenbihl.models import dateutils
 from birkenbihl.models.alignment import align_word_pairs
-from birkenbihl.models.requests import AlignmentUpdateRequest, SentenceUpdateRequest, SuggestionRequest
+from birkenbihl.models.requests import AlignmentRequest, AlignmentUpdateRequest, AutoDetectRequest, TranslationRequest
 from birkenbihl.models.settings import ProviderConfig
 from birkenbihl.models.translation import Translation, WordAlignment
 from birkenbihl.protocols import IStorageProvider, ITranslationProvider
 from birkenbihl.services.language_service import get_language_by
 from birkenbihl.services.translation_service import TranslationService
-from birkenbihl.storage.exceptions import NotFoundError
 
 
 @pytest.fixture
@@ -35,9 +28,17 @@ def mock_storage() -> IStorageProvider:
 
 
 @pytest.fixture
-def translation_service(mock_translator: ITranslationProvider, mock_storage: IStorageProvider) -> TranslationService:
+def translator_factory() -> MagicMock:
+    """Factory that builds translators for providers chosen per request."""
+    return MagicMock()
+
+
+@pytest.fixture
+def translation_service(
+    mock_translator: ITranslationProvider, mock_storage: IStorageProvider, translator_factory: MagicMock
+) -> TranslationService:
     """Create TranslationService with mocked dependencies."""
-    return TranslationService(mock_translator, mock_storage)
+    return TranslationService(mock_translator, mock_storage, translator_factory)
 
 
 @pytest.fixture
@@ -74,205 +75,70 @@ def sample_translation() -> Translation:
 
 
 @pytest.mark.unit
-class TestGetSentenceSuggestions:
-    """Tests for get_sentence_suggestions method."""
+class TestAICalls:
+    """All AI calls go through the service, with the default translator or one built for a chosen provider."""
 
-    def test_get_sentence_suggestions_success(
+    def test_translate_uses_default_translator(
+        self, translation_service: TranslationService, mock_translator: Mock, translator_factory: MagicMock
+    ) -> None:
+        request = TranslationRequest("Hola", get_language_by("es"), get_language_by("de"), "t")
+
+        translation_service.translate(request)
+
+        mock_translator.translate.assert_called_once()  # type: ignore[attr-defined]
+        translator_factory.assert_not_called()
+
+    def test_translate_with_chosen_provider(
         self,
         translation_service: TranslationService,
-        mock_storage: IStorageProvider,
+        mock_translator: Mock,
+        translator_factory: MagicMock,
         provider_config: ProviderConfig,
-        sample_translation: Translation,
     ) -> None:
-        """Test successful generation of alternative translations."""
-        # Arrange
-        sentence_uuid = sample_translation.sentences[0].uuid
-        mock_storage.get.return_value = sample_translation  # type: ignore[reportAttributeAccessIssue]
+        request = TranslationRequest("Hola", get_language_by("es"), get_language_by("de"), "t", provider_config)
 
-        expected_alternatives = [
-            "Ich werde dich vermissen",
-            "Du wirst mir fehlen",
-            "Ich vermisse dich",
-        ]
+        result = translation_service.translate(request)
 
-        # Mock PydanticAITranslator.generate_alternatives
-        with MagicMock() as mock_pydantic:
-            mock_pydantic.return_value.generate_alternatives.return_value = expected_alternatives
+        translator_factory.assert_called_once_with(provider_config)
+        assert result is translator_factory.return_value.translate.return_value
+        mock_translator.translate.assert_not_called()  # type: ignore[attr-defined]
 
-            # We need to patch the actual import
-            from unittest.mock import patch
+    def test_translate_without_any_translator_fails(self, mock_storage: IStorageProvider) -> None:
+        service = TranslationService(None, mock_storage)
+        request = TranslationRequest("Hola", get_language_by("es"), get_language_by("de"))
 
-            with patch("birkenbihl.services.translation_service.PydanticAITranslator") as mock_translator_class:
-                mock_translator_class.return_value.generate_alternatives.return_value = expected_alternatives
+        with pytest.raises(ValueError, match="No provider given"):
+            service.translate(request)
 
-                # Act
-                request = SuggestionRequest(
-                    translation_id=sample_translation.uuid,
-                    sentence_uuid=sentence_uuid,
-                    provider=provider_config,
-                    count=3,
-                )
-                alternatives = translation_service.get_sentence_suggestions(request)
+    def test_auto_detect_needs_no_ai_for_detection(
+        self, translation_service: TranslationService, mock_translator: Mock
+    ) -> None:
+        with patch("birkenbihl.services.translation_service.detect_language", return_value=get_language_by("es")):
+            translation_service.auto_detect_and_translate(AutoDetectRequest("Hola amigo", get_language_by("de")))
 
-                # Assert
-                assert alternatives == expected_alternatives
-                mock_storage.get.assert_called_once_with(sample_translation.uuid)  # type: ignore[reportAttributeAccessIssue]
-                mock_translator_class.assert_called_once_with(provider_config)
+        kwargs = mock_translator.translate.call_args.kwargs  # type: ignore[attr-defined]
+        assert kwargs["source_lang"].code == "es"
 
-    def test_get_sentence_suggestions_translation_not_found(
+    def test_generate_alignment_is_a_preview(
         self,
         translation_service: TranslationService,
-        mock_storage: IStorageProvider,
+        mock_storage: Mock,
+        translator_factory: MagicMock,
         provider_config: ProviderConfig,
     ) -> None:
-        """Test error when translation not found."""
-        # Arrange
-        translation_id = uuid4()
-        sentence_uuid = uuid4()
-        mock_storage.get.return_value = None  # type: ignore[reportAttributeAccessIssue]
+        expected = [WordAlignment(source_index=0, target_indices=[0])]
+        translator_factory.return_value.regenerate_alignment.return_value = expected
+        request = AlignmentRequest("Hola", "Hallo", get_language_by("es"), get_language_by("de"), provider_config)
 
-        # Act & Assert
-        request = SuggestionRequest(
-            translation_id=translation_id, sentence_uuid=sentence_uuid, provider=provider_config
+        alignments = translation_service.generate_alignment(request)
+
+        assert alignments == expected
+        translator_factory.assert_called_once_with(provider_config)
+        translator_factory.return_value.regenerate_alignment.assert_called_once_with(
+            "Hola", "Hallo", get_language_by("es"), get_language_by("de")
         )
-        with pytest.raises(NotFoundError, match=f"Translation {translation_id} not found"):
-            translation_service.get_sentence_suggestions(request)
-
-    def test_get_sentence_suggestions_sentence_not_found(
-        self,
-        translation_service: TranslationService,
-        mock_storage: IStorageProvider,
-        provider_config: ProviderConfig,
-        sample_translation: Translation,
-    ) -> None:
-        """Test error when sentence not found in translation."""
-        # Arrange
-        wrong_sentence_uuid = uuid4()
-        mock_storage.get.return_value = sample_translation  # type: ignore[reportAttributeAccessIssue]
-
-        # Act & Assert
-        request = SuggestionRequest(
-            translation_id=sample_translation.uuid, sentence_uuid=wrong_sentence_uuid, provider=provider_config
-        )
-        with pytest.raises(
-            NotFoundError,
-            match=f"Sentence {wrong_sentence_uuid} not found in translation {sample_translation.uuid}",
-        ):
-            translation_service.get_sentence_suggestions(request)
-
-
-@pytest.mark.unit
-class TestUpdateSentenceNatural:
-    """Tests for update_sentence_natural method."""
-
-    def test_update_sentence_natural_success(
-        self,
-        translation_service: TranslationService,
-        mock_storage: IStorageProvider,
-        provider_config: ProviderConfig,
-        sample_translation: Translation,
-    ) -> None:
-        """Test successful update of natural translation and alignment regeneration."""
-        # Arrange
-        new_natural = "Du wirst mir fehlen"
-        new_alignments = [
-            WordAlignment(source_index=0, target_indices=[0]),  # Yo → Du
-            WordAlignment(source_index=1, target_indices=[2]),  # te → mir
-            WordAlignment(source_index=2, target_indices=[3, 1]),  # extrañaré → fehlen-wirst
-        ]
-
-        request = SentenceUpdateRequest(
-            translation_id=sample_translation.uuid,
-            sentence_idx=0,
-            new_text=new_natural,
-            provider=provider_config,
-        )
-
-        mock_storage.get.return_value = sample_translation  # type: ignore[reportAttributeAccessIssue]
-        mock_storage.update.return_value = sample_translation  # type: ignore[reportAttributeAccessIssue]
-
-        from unittest.mock import patch
-
-        with patch("birkenbihl.services.translation_service.PydanticAITranslator") as mock_translator_class:
-            mock_translator_class.return_value.regenerate_alignment.return_value = new_alignments
-
-            # Act
-            result = translation_service.update_sentence_natural(request)
-
-            # Assert
-            assert result.sentences[0].natural_translation == new_natural
-            assert result.sentences[0].word_alignments == new_alignments
-            mock_storage.update.assert_called_once()  # type: ignore[reportAttributeAccessIssue]
-            mock_translator_class.return_value.regenerate_alignment.assert_called_once()
-
-    def test_update_sentence_natural_regenerates_alignment(
-        self,
-        translation_service: TranslationService,
-        mock_storage: IStorageProvider,
-        provider_config: ProviderConfig,
-        sample_translation: Translation,
-    ) -> None:
-        """Test that update_sentence_natural calls regenerate_alignment."""
-        # Arrange
-        new_natural = "Neuer Text"
-        request = SentenceUpdateRequest(
-            translation_id=sample_translation.uuid,
-            sentence_idx=0,
-            new_text=new_natural,
-            provider=provider_config,
-        )
-
-        mock_storage.get.return_value = sample_translation  # type: ignore[reportAttributeAccessIssue]
-        mock_storage.update.return_value = sample_translation  # type: ignore[reportAttributeAccessIssue]
-
-        from unittest.mock import patch
-
-        with patch("birkenbihl.services.translation_service.PydanticAITranslator") as mock_translator_class:
-            mock_translator_class.return_value.regenerate_alignment.return_value = []
-
-            # Act
-            translation_service.update_sentence_natural(request)
-
-            # Assert
-            mock_translator_class.return_value.regenerate_alignment.assert_called_once_with(
-                sample_translation.sentences[0].source_text,
-                new_natural,
-                sample_translation.source_language,
-                sample_translation.target_language,
-            )
-
-    def test_update_sentence_natural_updates_timestamp(
-        self,
-        translation_service: TranslationService,
-        mock_storage: IStorageProvider,
-        provider_config: ProviderConfig,
-        sample_translation: Translation,
-    ) -> None:
-        """Test that update_sentence_natural updates updated_at timestamp."""
-        # Arrange
-        new_natural = "Neuer Text"
-        old_updated_at = sample_translation.updated_at
-
-        request = SentenceUpdateRequest(
-            translation_id=sample_translation.uuid,
-            sentence_idx=0,
-            new_text=new_natural,
-            provider=provider_config,
-        )
-
-        mock_storage.get.return_value = sample_translation  # type: ignore[reportAttributeAccessIssue]
-        mock_storage.update.return_value = sample_translation  # type: ignore[reportAttributeAccessIssue]
-
-        from unittest.mock import patch
-
-        with patch("birkenbihl.services.translation_service.PydanticAITranslator") as mock_translator_class:
-            mock_translator_class.return_value.regenerate_alignment.return_value = []
-
-            # Act
-            result = translation_service.update_sentence_natural(request)
-
-            # Assert
-            assert result.updated_at > old_updated_at or result.updated_at != old_updated_at
+        mock_storage.update.assert_not_called()
+        mock_storage.save.assert_not_called()
 
 
 @pytest.mark.unit

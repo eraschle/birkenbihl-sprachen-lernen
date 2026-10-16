@@ -122,3 +122,16 @@ def get_default_target_language() -> Language:
         Language object
     """
     return get_language_by("de")
+
+
+def detect_language(text: str) -> Language:
+    """Detect the language of a text (langdetect, no AI call).
+
+    Raises:
+        langdetect.LangDetectException: If the text gives no clue (e.g. empty)
+        RuntimeError: If the detected language is not supported
+    """
+    from langdetect import detector_factory
+
+    detector_factory.DetectorFactory.seed = 0  # langdetect is random by default; same text, same answer
+    return get_language_by(detector_factory.detect(text))

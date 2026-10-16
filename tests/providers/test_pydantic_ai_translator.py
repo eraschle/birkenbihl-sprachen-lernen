@@ -58,17 +58,6 @@ class TestPydanticAITranslatorOpenAIIntegration:
         assert sentence.natural_translation.strip() != ""
         assert len(sentence.word_alignments) >= 2
 
-    def test_detect_language_with_openai(self, openai_provider_config: ProviderConfig) -> None:
-        """Test language detection using OpenAI through universal translator."""
-        # Arrange
-        translator = PydanticAITranslator(openai_provider_config)
-
-        # Act
-        result = translator.detect_language("Hola mundo")
-
-        # Assert
-        assert result.code == "es"
-
 
 @pytest.mark.integration
 @pytest.mark.slow
@@ -93,17 +82,6 @@ class TestPydanticAITranslatorAnthropicIntegration:
         assert sentence.source_text.strip() != ""
         assert sentence.natural_translation.strip() != ""
         assert len(sentence.word_alignments) >= 2
-
-    def test_detect_language_with_anthropic(self, anthropic_provider_config: ProviderConfig) -> None:
-        """Test language detection using Anthropic through universal translator."""
-        # Arrange
-        translator = PydanticAITranslator(anthropic_provider_config)
-
-        # Act
-        result = translator.detect_language("Hello world, how are you?")
-
-        # Assert
-        assert result.code == "en"
 
     def test_spanish_translation_with_anthropic(self, anthropic_provider_config: ProviderConfig) -> None:
         """Test Spanish to German translation using Anthropic."""
@@ -156,28 +134,6 @@ class TestPydanticAITranslatorMultiProviderCompatibility:
         # Both should have word alignments
         assert len(openai_result.sentences[0].word_alignments) >= 2
         assert len(anthropic_result.sentences[0].word_alignments) >= 2
-
-    def test_consistent_language_detection_openai_vs_anthropic(
-        self, openai_provider_config: ProviderConfig, anthropic_provider_config: ProviderConfig
-    ) -> None:
-        """Test that language detection is consistent across providers."""
-        # Arrange
-        openai_translator = PydanticAITranslator(openai_provider_config)
-        anthropic_translator = PydanticAITranslator(anthropic_provider_config)
-
-        test_cases = [
-            ("Hello world, how are you?", "en"),
-            ("Hola mundo, ¿cómo estás?", "es"),
-            ("Hallo Welt, wie geht es dir?", "de"),
-        ]
-
-        # Act & Assert
-        for text, expected_lang in test_cases:
-            openai_lang = openai_translator.detect_language(text)
-            anthropic_lang = anthropic_translator.detect_language(text)
-
-            assert openai_lang.code == expected_lang
-            assert anthropic_lang.code == expected_lang
 
 
 @pytest.mark.integration
@@ -236,42 +192,7 @@ class TestPydanticAITranslatorBirkenbilhCompliance:
 @pytest.mark.integration
 @pytest.mark.slow
 class TestPydanticAITranslatorEditingFeatures:
-    """Tests for translation editing features (generate_alternatives, regenerate_alignment)."""
-
-    def test_generate_alternatives_returns_multiple(self, openai_provider_config: ProviderConfig) -> None:
-        """Test that generate_alternatives returns multiple translation options."""
-        # Arrange
-        translator = PydanticAITranslator(openai_provider_config)
-        source_text = "Yo te extrañaré"
-
-        # Act
-        alternatives = translator.generate_alternatives(
-            source_text, get_language_by("es"), get_language_by("de"), count=3
-        )
-
-        # Assert
-        assert isinstance(alternatives, list)
-        assert len(alternatives) == 3
-        assert all(isinstance(alt, str) for alt in alternatives)
-        assert all(len(alt.strip()) > 0 for alt in alternatives)
-        # Should have different translations
-        assert len(set(alternatives)) >= 2  # At least 2 unique alternatives
-
-    def test_generate_alternatives_custom_count(self, anthropic_provider_config: ProviderConfig) -> None:
-        """Test that generate_alternatives respects custom count parameter."""
-        # Arrange
-        translator = PydanticAITranslator(anthropic_provider_config)
-        source_text = "Hello world"
-
-        # Act
-        alternatives = translator.generate_alternatives(
-            source_text, get_language_by("en"), get_language_by("de"), count=5
-        )
-
-        # Assert
-        assert len(alternatives) == 5
-        assert all(isinstance(alt, str) for alt in alternatives)
-        assert all(len(alt.strip()) > 0 for alt in alternatives)
+    """Tests for regenerating the word-by-word alignment."""
 
     def test_regenerate_alignment_creates_valid_alignments(self, openai_provider_config: ProviderConfig) -> None:
         """Test that regenerate_alignment creates valid WordAlignment objects."""

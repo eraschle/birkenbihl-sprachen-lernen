@@ -1,7 +1,6 @@
 """Unit tests for BaseTranslator with a scripted model (real pydantic-ai agents, no API calls)."""
 
 from datetime import datetime
-from unittest.mock import patch
 from uuid import UUID
 
 import pytest
@@ -185,13 +184,3 @@ class TestRegenerateAlignment:
 
         assert alignments[1].target_indices == [2]
         assert len(script.retry_feedback) == 1
-
-
-@pytest.mark.unit
-class TestDetectLanguage:
-    @pytest.mark.parametrize(("code", "text"), [("en", "Hello world"), ("es", "Hola mundo"), ("de", "Hallo Welt")])
-    def test_detect_language(self, code: str, text: str) -> None:
-        translator = BaseTranslator(ScriptedModel().model())
-        with patch("birkenbihl.providers.base_translator.detector_factory.detect", return_value=code) as detect:
-            assert translator.detect_language(text).code == code
-            detect.assert_called_once_with(text)

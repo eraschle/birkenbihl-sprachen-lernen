@@ -16,8 +16,10 @@ from birkenbihl.gui.widgets.interleaved_grid_editable import InterleavedGridEdit
 from birkenbihl.gui.widgets.natural_editor import NaturalEditor
 from birkenbihl.gui.widgets.sentence_list import SentenceList
 from birkenbihl.models import dateutils
+from birkenbihl.models.languages import Language
+from birkenbihl.models.requests import AlignmentRequest
+from birkenbihl.models.settings import ProviderConfig
 from birkenbihl.models.translation import Translation, WordAlignment
-from birkenbihl.providers.pydantic_ai_translator import PydanticAITranslator
 from birkenbihl.services.settings_service import SettingsService
 from birkenbihl.services.translation_service import TranslationService
 
@@ -246,7 +248,7 @@ class EditModePanel(QWidget):
 
         self._start_ai_generation(provider_config)
 
-    def _start_ai_generation(self, provider_config: object) -> None:
+    def _start_ai_generation(self, provider_config: ProviderConfig) -> None:
         """Start AI generation in background thread.
 
         Args:
@@ -275,24 +277,24 @@ class EditModePanel(QWidget):
         self,
         source_text: str,
         natural_translation: str,
-        source_lang: str,
-        target_lang: str,
-        provider_config: object,
+        source_lang: Language,
+        target_lang: Language,
+        provider_config: ProviderConfig,
     ) -> list[WordAlignment]:
         """Regenerate word alignments using AI.
 
         Args:
             source_text: Source sentence text
             natural_translation: Natural translation text
-            source_lang: Source language code
-            target_lang: Target language code
+            source_lang: Source language
+            target_lang: Target language
             provider_config: Provider configuration
 
         Returns:
             List of word alignments
         """
-        translator = PydanticAITranslator(provider_config)  # type: ignore
-        return translator.regenerate_alignment(source_text, natural_translation, source_lang, target_lang)  # type: ignore
+        request = AlignmentRequest(source_text, natural_translation, source_lang, target_lang, provider_config)
+        return self._service.generate_alignment(request)
 
     def _on_generation_success(self, new_alignments: list[WordAlignment]) -> None:
         """Handle successful AI generation.

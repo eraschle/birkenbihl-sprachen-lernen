@@ -44,19 +44,6 @@ class WordAlignmentResponse(BaseModel):
     position: int = Field(description="Sequential position in sentence (0-indexed)")
 
 
-class AlternativesResponse(BaseModel):
-    """Alternative natural translations response from AI.
-
-    Contains multiple translation alternatives for a single sentence.
-    """
-
-    alternatives: list[str] = Field(
-        description="List of alternative natural translations",
-        min_length=1,
-        max_length=10,
-    )
-
-
 class AlignmentResponse(BaseModel):
     """Word-by-word alignment response from AI.
 

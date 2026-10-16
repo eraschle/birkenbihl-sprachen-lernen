@@ -140,11 +140,16 @@ Services orchestrate business logic by coordinating protocols/providers:
 
 **TranslationService** (`src/birkenbihl/services/translation_service.py`):
 - Coordinates TranslationProvider (AI) + StorageProvider (persistence)
+- **All AI calls go through this service.** Views never build translators; they pass the chosen
+  `ProviderConfig` in the request and the service builds the translator via its `translator_factory`
+  (tests inject a factory with pydantic-ai's `FunctionModel`). Only the composition roots (`gui/main.py`,
+  `app.py`, `cli.py`) create translators.
 - High-level workflows:
-  - `translate_and_save()`: Translate text and persist to storage
-  - `auto_detect_and_translate()`: Auto-detect language before translation
-  - `get_translation()`, `list_all_translations()`: Retrieval operations
-  - `update_translation()`, `delete_translation()`: Modification operations
+  - `translate()`: Translate text (default translator, or `TranslationRequest.provider`), unsaved
+  - `auto_detect_and_translate()`: Detect language (`language_service.detect_language`, langdetect, no AI)
+  - `generate_alignment()`: AI word-by-word alignment preview for the editor, nothing saved
+  - `save_translation()`, `get_translation()`, `list_all_translations()`, `delete_translation()`
+  - `update_sentence_alignment()`: Save an edited alignment after validating the Birkenbihl rules
 - Follows dependency injection via Protocol-based constructors
 - No business logic in providers - services orchestrate the flow
 

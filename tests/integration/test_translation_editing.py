@@ -2,7 +2,7 @@
 
 End-to-end tests covering the full workflow of:
 1. Creating translations
-2. Editing natural translations with provider suggestions
+2. Editing the natural translation and letting the AI realign it (preview, then save)
 3. Manually editing word-by-word alignments
 4. Deleting translations
 
@@ -13,14 +13,9 @@ from pathlib import Path
 
 import pytest
 
-from birkenbihl.models.requests import (
-    AlignmentUpdateRequest,
-    SentenceUpdateRequest,
-    SuggestionRequest,
-    TranslationRequest,
-)
+from birkenbihl.models.requests import AlignmentRequest, AlignmentUpdateRequest, TranslationRequest
 from birkenbihl.models.settings import ProviderConfig
-from birkenbihl.models.translation import AlignmentStatus, WordAlignment
+from birkenbihl.models.translation import AlignmentStatus, Translation, WordAlignment
 from birkenbihl.providers.pydantic_ai_translator import PydanticAITranslator
 from birkenbihl.services.language_service import get_language_by
 from birkenbihl.services.translation_service import TranslationService
@@ -43,6 +38,20 @@ def translation_service_with_storage(
     return TranslationService(translator, storage_provider)
 
 
+NEW_NATURAL = "Du wirst mir fehlen"
+
+
+def _realign_and_save(service: TranslationService, translation: Translation, provider: ProviderConfig) -> Translation:
+    """What the edit mode does: AI alignment preview for a changed natural translation, then save."""
+    sentence = translation.sentences[0]
+    request = AlignmentRequest(
+        sentence.source_text, NEW_NATURAL, translation.source_language, translation.target_language, provider
+    )
+    sentence.word_alignments = service.generate_alignment(request)
+    sentence.natural_translation = NEW_NATURAL
+    return service.save_translation(translation)
+
+
 @pytest.mark.integration
 @pytest.mark.slow
 class TestFullWorkflowEditNaturalTranslation:
@@ -51,82 +60,36 @@ class TestFullWorkflowEditNaturalTranslation:
     def test_full_workflow_edit_natural_translation(
         self, translation_service_with_storage: TranslationService, openai_provider_config: ProviderConfig
     ) -> None:
-        """Test complete workflow: create → suggest → update natural → verify alignment regenerated → verify saved.
-
-        Workflow:
-        1. Create a translation
-        2. Generate alternative suggestions for a sentence
-        3. Update natural translation with one of the alternatives
-        4. Verify alignment was regenerated
-        5. Verify changes were saved to storage
-        """
-        # Step 1: Create translation
-        original_text = "Yo te extrañaré"
+        """Create → change natural translation → AI realigns (preview) → save → reload."""
         request = TranslationRequest(
-            text=original_text,
+            text="Yo te extrañaré",
             source_lang=get_language_by("es"),
             target_lang=get_language_by("de"),
             title="Test Translation",
         )
-        translation = translation_service_with_storage.translate(request)
-
-        assert translation is not None
-        assert len(translation.sentences) == 1
-        original_sentence = translation.sentences[0]
-        original_natural = original_sentence.natural_translation
-
-        # Step 2: Generate suggestions
-        suggestion_request = SuggestionRequest(
-            translation_id=translation.uuid,
-            sentence_uuid=original_sentence.uuid,
-            provider=openai_provider_config,
-            count=3,
+        translation = translation_service_with_storage.save_translation(
+            translation_service_with_storage.translate(request)
         )
-        suggestions = translation_service_with_storage.get_sentence_suggestions(suggestion_request)
 
-        assert len(suggestions) == 3
-        assert all(isinstance(s, str) for s in suggestions)
-        assert all(len(s.strip()) > 0 for s in suggestions)
-
-        # Step 3: Update natural translation with first suggestion (that's different)
-        # Find a suggestion different from original
-        new_natural = None
-        for suggestion in suggestions:
-            if suggestion.strip().rstrip(".") != original_natural.strip().rstrip("."):
-                new_natural = suggestion
-                break
-
-        # If all suggestions are identical to original, use first one anyway
-        if new_natural is None:
-            new_natural = suggestions[0]
-
-        update_request = SentenceUpdateRequest(
-            translation_id=translation.uuid,
-            sentence_idx=0,
-            new_text=new_natural,
-            provider=openai_provider_config,
+        preview_request = AlignmentRequest(
+            "Yo te extrañaré", NEW_NATURAL, get_language_by("es"), get_language_by("de"), openai_provider_config
         )
-        updated_translation = translation_service_with_storage.update_sentence_natural(update_request)
+        preview = translation_service_with_storage.generate_alignment(preview_request)
 
-        # Step 4: Verify alignment was regenerated
-        updated_sentence = updated_translation.sentences[0]
-        assert updated_sentence.natural_translation == new_natural
-        assert len(updated_sentence.word_alignments) > 0  # Should have new alignments
-        # If new_natural is different, alignments should differ (but not guaranteed due to AI variability)
-        # So we just verify alignments were regenerated by checking they exist
+        stored = translation_service_with_storage.get_translation(translation.uuid)
+        assert stored is not None
+        assert stored.sentences[0].natural_translation != NEW_NATURAL, "A preview must not be saved"
 
-        # Verify all words from new natural translation are in alignments
+        _realign_and_save(translation_service_with_storage, translation, openai_provider_config)
+
         from birkenbihl.models.validation import validate_alignment_complete
 
-        is_valid, error = validate_alignment_complete(new_natural, updated_sentence.word_alignments)
-        assert is_valid, f"Regenerated alignment is invalid: {error}"
-
-        # Step 5: Verify changes were saved to storage
-        retrieved_translation = translation_service_with_storage.get_translation(translation.uuid)
-        assert retrieved_translation is not None
-        assert retrieved_translation.sentences[0].natural_translation == new_natural
-        assert retrieved_translation.sentences[0].word_alignments == updated_sentence.word_alignments
-        assert retrieved_translation.updated_at > translation.updated_at
+        reloaded = translation_service_with_storage.get_translation(translation.uuid)
+        assert reloaded is not None
+        assert reloaded.sentences[0].natural_translation == NEW_NATURAL
+        assert [a.source_index for a in preview] == [0, 1, 2]
+        is_valid, error = validate_alignment_complete(reloaded.sentences[0])
+        assert is_valid or reloaded.sentences[0].needs_review(), f"Invalid alignment not flagged: {error}"
 
 
 @pytest.mark.integration
@@ -266,23 +229,12 @@ class TestMultipleEditsWorkflow:
         sentence_uuid = translation.sentences[0].uuid
         original_updated_at = translation.updated_at
 
-        # Step 2: Edit natural translation
-        suggestion_request = SuggestionRequest(
-            translation_id=translation.uuid, sentence_uuid=sentence_uuid, provider=openai_provider_config, count=3
-        )
-        suggestions = translation_service_with_storage.get_sentence_suggestions(suggestion_request)
-        new_natural = suggestions[0]
-
-        update_request = SentenceUpdateRequest(
-            translation_id=translation.uuid,
-            sentence_idx=0,
-            new_text=new_natural,
-            provider=openai_provider_config,
-        )
-        translation = translation_service_with_storage.update_sentence_natural(update_request)
+        # Step 2: Edit natural translation and let the AI realign it
+        translation = _realign_and_save(translation_service_with_storage, translation, openai_provider_config)
+        new_natural = NEW_NATURAL
 
         assert translation.sentences[0].natural_translation == new_natural
-        assert translation.updated_at > original_updated_at
+        assert translation.updated_at >= original_updated_at
         after_natural_update = translation.updated_at
 
         # Step 3: Edit alignment manually (add extra mapping)

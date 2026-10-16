@@ -15,9 +15,10 @@ from birkenbihl.gui.models.app_state import AppMode, AppState
 from birkenbihl.gui.widgets.language_selector import LanguageSelector
 from birkenbihl.gui.widgets.provider_selector import ProviderSelector
 from birkenbihl.models.languages import Language
+from birkenbihl.models.requests import TranslationRequest
 from birkenbihl.models.settings import ProviderConfig
 from birkenbihl.models.translation import Sentence, Translation
-from birkenbihl.providers.pydantic_ai_translator import PydanticAITranslator
+from birkenbihl.services.language_service import detect_language
 from birkenbihl.services.settings_service import SettingsService
 from birkenbihl.services.translation_service import TranslationService
 
@@ -210,8 +211,10 @@ class CreateModePanel(QWidget):
         Returns:
             AI-generated Translation
         """
-        translator = PydanticAITranslator(provider)
-        return translator.translate(text, source_lang, target_lang, title)
+        request = TranslationRequest(
+            text=text, source_lang=source_lang, target_lang=target_lang, title=title, provider=provider
+        )
+        return self._service.translate(request)
 
     def _create_manual_translation(
         self, title: str, text: str, source_lang: Language, target_lang: Language
@@ -240,11 +243,7 @@ class CreateModePanel(QWidget):
         """
         code = self._source_selector.get_selected_language()
         if code == "auto":
-            text = self._text_input.toPlainText().strip()
-            provider = self._get_default_provider()
-            translator = PydanticAITranslator(provider)
-            detected = translator.detect_language(text)
-            return detected
+            return detect_language(self._text_input.toPlainText().strip())
         return self._language_from_code(code)
 
     def _get_target_language(self) -> Language:
@@ -280,17 +279,6 @@ class CreateModePanel(QWidget):
         manual = ProviderConfig(name="Manual", provider_type="manual", model="", api_key="")
         providers.append(manual)
         return providers
-
-    def _get_default_provider(self) -> ProviderConfig:
-        """Get default provider for auto-detection.
-
-        Returns:
-            Default provider config
-        """
-        provider = self._settings_service.get_default_provider()
-        if not provider:
-            raise ValueError("No default provider configured")
-        return provider
 
     def _is_manual_mode(self, provider: ProviderConfig | None) -> bool:
         """Check if manual mode is selected.

@@ -1,20 +1,19 @@
 """Translation service for orchestrating translation and storage operations."""
 
+from collections.abc import Callable
 from uuid import UUID
 
 from birkenbihl.models import dateutils
-from birkenbihl.models.requests import (
-    AlignmentUpdateRequest,
-    AutoDetectRequest,
-    SentenceUpdateRequest,
-    SuggestionRequest,
-    TranslationRequest,
-)
+from birkenbihl.models.requests import AlignmentRequest, AlignmentUpdateRequest, AutoDetectRequest, TranslationRequest
+from birkenbihl.models.settings import ProviderConfig
 from birkenbihl.models.translation import Sentence, Translation, WordAlignment
 from birkenbihl.models.validation import validate_alignment_complete
 from birkenbihl.protocols import IStorageProvider, ITranslationProvider
 from birkenbihl.providers.pydantic_ai_translator import PydanticAITranslator
+from birkenbihl.services.language_service import detect_language
 from birkenbihl.storage.exceptions import NotFoundError
+
+TranslatorFactory = Callable[[ProviderConfig], ITranslationProvider]
 
 
 class TranslationService:
@@ -22,38 +21,43 @@ class TranslationService:
 
     Coordinates between TranslationProvider (AI translation) and
     StorageProvider (persistence) to provide high-level translation workflows.
+    All AI calls of the application go through this service; views never build translators themselves.
 
     Follows SOLID principles with dependency injection via protocols.
     """
 
-    def __init__(self, translator: ITranslationProvider | None, storage: IStorageProvider):
+    def __init__(
+        self,
+        translator: ITranslationProvider | None,
+        storage: IStorageProvider,
+        translator_factory: TranslatorFactory = PydanticAITranslator,
+    ):
         """Initialize service with providers.
 
         Args:
-            translator: Provider for AI-based translations (optional, only needed for translate_and_save)
+            translator: Default translator, used when a request names no provider (optional)
             storage: Provider for persistence operations
+            translator_factory: Builds a translator for a provider chosen per request
         """
         self._translator = translator
         self._storage = storage
+        self._translator_factory = translator_factory
 
     def translate(self, request: TranslationRequest) -> Translation:
         """Translate text using Birkenbihl method (returns unsaved Translation).
 
         Args:
-            request: Translation request with text, languages, and title
+            request: Translation request with text, languages, title and optionally the provider to use
 
         Returns:
             Translation object with natural and word-by-word translations (unsaved);
             sentences whose AI alignment did not match are flagged (Sentence.needs_review())
 
         Raises:
-            ValueError: If translator not configured
+            ValueError: If no provider is given and no default translator is configured
             ProviderError: If provider configuration fails
         """
-        if not self._translator:
-            raise ValueError("Translator required for translate operation")
-
-        return self._translator.translate(
+        return self._translator_for(request.provider).translate(
             text=request.text,
             source_lang=request.source_lang,
             target_lang=request.target_lang,
@@ -112,20 +116,6 @@ class TranslationService:
         """
         return self._storage.delete(translation_id)
 
-    def update_translation(self, translation: Translation) -> Translation:
-        """Update existing translation.
-
-        Args:
-            translation: Translation with updated data
-
-        Returns:
-            Updated translation
-
-        Raises:
-            NotFoundError: If translation doesn't exist
-        """
-        return self._storage.update(translation)
-
     def auto_detect_and_translate(self, request: AutoDetectRequest) -> Translation:
         """Auto-detect source language and translate (returns unsaved Translation).
 
@@ -139,62 +129,27 @@ class TranslationService:
             ValueError: If translator not configured
             ProviderError: If provider configuration fails
         """
-        if not self._translator:
-            raise ValueError("Translator required for auto_detect_and_translate operation")
-
-        source_lang = self._translator.detect_language(request.text)
+        source_lang = detect_language(request.text)
         trans_request = TranslationRequest(
             text=request.text, source_lang=source_lang, target_lang=request.target_lang, title=request.title
         )
         return self.translate(trans_request)
 
-    def get_sentence_suggestions(self, request: SuggestionRequest) -> list[str]:
-        """Get alternative natural translation suggestions for a sentence.
+    def generate_alignment(self, request: AlignmentRequest) -> list[WordAlignment]:
+        """Let the AI propose a word-by-word alignment for a sentence (nothing is saved).
 
-        Args:
-            request: Suggestion generation request
+        Used by the editor after the user changed the natural translation; the result is a preview the
+        user can still edit, save or cancel.
 
         Returns:
-            List of alternative natural translations
+            Alignments referencing token positions of the request's texts; problems are FLAGGED
 
         Raises:
-            NotFoundError: If translation or sentence not found
             ProviderError: If provider configuration fails
         """
-        translation, sentence = self._find_translation_and_sentence(request.translation_id, request.sentence_uuid)
-
-        translator = PydanticAITranslator(request.provider)
-        alternatives = translator.generate_alternatives(
-            sentence.source_text, translation.source_language, translation.target_language, request.count
+        return self._translator_factory(request.provider).regenerate_alignment(
+            request.source_text, request.natural_translation, request.source_lang, request.target_lang
         )
-        return alternatives
-
-    def update_sentence_natural(self, request: SentenceUpdateRequest) -> Translation:
-        """Update natural translation of a sentence and regenerate word-by-word.
-
-        Args:
-            request: Update request with translation_id, sentence_idx, new_text, provider
-
-        Returns:
-            Updated Translation object
-
-        Raises:
-            NotFoundError: If translation or sentence not found
-            Exception: If alignment regeneration fails
-        """
-        translation = self._find_translation_by_id(request.translation_id)
-        sentence = self._get_sentence_by_index(translation, request.sentence_idx)
-
-        translator = PydanticAITranslator(request.provider)
-        new_alignments = translator.regenerate_alignment(
-            sentence.source_text, request.new_text, translation.source_language, translation.target_language
-        )
-
-        sentence.natural_translation = request.new_text
-        sentence.word_alignments = new_alignments
-        translation.updated_at = dateutils.create_now()
-
-        return self._storage.update(translation)
 
     def update_sentence_alignment(self, request: AlignmentUpdateRequest) -> Translation:
         """Update word-by-word alignment of a sentence manually.
@@ -256,22 +211,12 @@ class TranslationService:
 
         return translation, sentence
 
-    def _get_sentence_by_index(self, translation: Translation, sentence_idx: int) -> Sentence:
-        """Get sentence by index or raise error.
-
-        Args:
-            translation: Translation object
-            sentence_idx: Index of sentence (0-based)
-
-        Returns:
-            Sentence object
-
-        Raises:
-            NotFoundError: If index out of range
-        """
-        if sentence_idx < 0 or sentence_idx >= len(translation.sentences):
-            raise NotFoundError(f"Sentence index {sentence_idx} out of range for translation {translation.uuid}")
-        return translation.sentences[sentence_idx]
+    def _translator_for(self, provider: ProviderConfig | None) -> ITranslationProvider:
+        if provider is not None:
+            return self._translator_factory(provider)
+        if self._translator is None:
+            raise ValueError("No provider given and no default translator configured")
+        return self._translator
 
     def _validate_alignments(self, sentence: Sentence, alignments: list[WordAlignment]) -> None:
         """Validate word alignments for completeness.

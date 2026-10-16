@@ -8,7 +8,6 @@ import logging
 import os
 import time
 
-from langdetect import detector_factory
 from pydantic_ai import Agent, ModelRetry
 from pydantic_ai.exceptions import UnexpectedModelBehavior
 from pydantic_ai.models import Model
@@ -17,11 +16,10 @@ from birkenbihl.models.alignment import align_word_pairs
 from birkenbihl.models.languages import Language
 from birkenbihl.models.translation import AlignmentStatus, Sentence, Translation, WordAlignment
 from birkenbihl.models.validation import validate_alignment_complete
-from birkenbihl.providers.models import AlignmentResponse, AlternativesResponse, NaturalTranslationResponse
+from birkenbihl.providers.models import AlignmentResponse, NaturalTranslationResponse
 from birkenbihl.providers.prompts import (
     BIRKENBIHL_SYSTEM_PROMPT,
     NATURAL_TRANSLATION_SYSTEM_PROMPT,
-    create_alternatives_prompt,
     create_natural_translation_prompt,
     create_word_by_word_prompt,
 )
@@ -40,7 +38,6 @@ class BaseTranslator:
     """Base translator using PydanticAI for structured outputs.
 
     Provides common functionality for translation providers:
-    - Language detection with langdetect
     - Structured translation using PydanticAI Agent
     - Response model → Domain model conversion
 
@@ -205,61 +202,10 @@ class BaseTranslator:
 
         return translation
 
-    def detect_language(self, text: str) -> Language:
-        """Detect language of given text.
-
-        Args:
-            text: Text to analyze
-
-        Returns:
-            Language object
-
-        Raises:
-            langdetect.LangDetectException: If detection fails
-            KeyError: If detected language is not supported
-        """
-        from birkenbihl.services.language_service import get_language_by
-
-        # Use langdetect library for language detection
-        code = detector_factory.detect(text)
-        return get_language_by(code)
-
     @staticmethod
     def _word_pairs(response: AlignmentResponse) -> list[tuple[str, str]]:
         ordered = sorted(response.word_alignments, key=lambda alignment: alignment.position)
         return [(alignment.source_word, alignment.target_word) for alignment in ordered]
-
-    def generate_alternatives(
-        self,
-        source_text: str,
-        source_lang: Language,
-        target_lang: Language,
-        count: int = 3,
-    ) -> list[str]:
-        """Generate alternative natural translations for a sentence.
-
-        Args:
-            source_text: Original sentence to translate
-            source_lang: Source language
-            target_lang: Target language
-            count: Number of alternative translations to generate (default: 3)
-
-        Returns:
-            List of natural translation alternatives
-
-        Raises:
-            Exception: If generation fails
-        """
-        agent = Agent(
-            model=self._model,
-            output_type=AlternativesResponse,
-            system_prompt="You are a language translation expert providing multiple translation alternatives.",
-        )
-
-        prompt = create_alternatives_prompt(source_text, source_lang, target_lang, count)
-        result = agent.run_sync(prompt)
-
-        return result.output.alternatives
 
     def regenerate_alignment(
         self,

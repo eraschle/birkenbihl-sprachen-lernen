@@ -24,29 +24,14 @@ class TranslationRequest:
         source_lang: Source language
         target_lang: Target language
         title: Optional title for the translation (empty string if not provided)
+        provider: Provider to translate with; None uses the service's default translator
     """
 
     text: str
     source_lang: Language
     target_lang: Language
     title: str = ""
-
-
-@dataclass
-class SentenceUpdateRequest:
-    """Request for updating sentence translation.
-
-    Args:
-        translation_id: UUID of the translation
-        sentence_idx: Index of sentence to update (0-based)
-        new_text: New natural translation text
-        provider: Provider config for regenerating alignments
-    """
-
-    translation_id: UUID
-    sentence_idx: int
-    new_text: str
-    provider: ProviderConfig
+    provider: ProviderConfig | None = None
 
 
 @dataclass
@@ -65,23 +50,6 @@ class AutoDetectRequest:
 
 
 @dataclass
-class SuggestionRequest:
-    """Request for getting alternative translation suggestions.
-
-    Args:
-        translation_id: UUID of the translation
-        sentence_uuid: UUID of the sentence
-        provider: Provider config for generating suggestions
-        count: Number of suggestions to generate (default: 3)
-    """
-
-    translation_id: UUID
-    sentence_uuid: UUID
-    provider: ProviderConfig
-    count: int = 3
-
-
-@dataclass
 class AlignmentUpdateRequest:
     """Request for updating sentence word alignment.
 
@@ -94,3 +62,22 @@ class AlignmentUpdateRequest:
     translation_id: UUID
     sentence_uuid: UUID
     alignments: list["WordAlignment"]
+
+
+@dataclass
+class AlignmentRequest:
+    """Request for an AI word-by-word alignment of one sentence (preview, not saved).
+
+    Args:
+        source_text: Original sentence
+        natural_translation: Natural translation the alignment has to use
+        source_lang: Source language
+        target_lang: Target language
+        provider: Provider to generate the alignment with
+    """
+
+    source_text: str
+    natural_translation: str
+    source_lang: Language
+    target_lang: Language
+    provider: ProviderConfig

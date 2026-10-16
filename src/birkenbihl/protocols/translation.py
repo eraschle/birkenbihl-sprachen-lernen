@@ -24,37 +24,6 @@ class ITranslationProvider(Protocol):
         """
         ...
 
-    def detect_language(self, text: str) -> Language:
-        """Detect language of given text.
-
-        Args:
-            text: Text to analyze
-
-        Returns:
-            Language code (en, es, de)
-        """
-        ...
-
-    def generate_alternatives(
-        self,
-        source_text: str,
-        source_lang: Language,
-        target_lang: Language,
-        count: int = 3,
-    ) -> list[str]:
-        """Generate alternative natural translations for a sentence.
-
-        Args:
-            source_text: Original sentence to translate
-            source_lang: Source language
-            target_lang: Target language
-            count: Number of alternative translations to generate (default: 3)
-
-        Returns:
-            List of natural translation alternatives
-        """
-        ...
-
     def regenerate_alignment(
         self,
         source_text: str,
