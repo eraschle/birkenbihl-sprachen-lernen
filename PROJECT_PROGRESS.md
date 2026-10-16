@@ -847,7 +847,9 @@ Before moving to Phase 4, verify:
 ### Current Status
 
 **Phase 1**: Done (provider/audio parameter counts still >2)
-**Phase 2**: Editor widgets done, but NOT yet reachable from the main window
+**Phase 2**: One alignment editor: the drag&drop grid in the translation tab's edit mode
+  (`InterleavedGridEditable` + `GridState`). The duplicate `InterleavedAlignmentEditor` was removed.
+  Known bug: repeated source words share targets (xfail test), fixed by step 3.
 **Phase 3**: AudioService done, but NOT yet wired into the GUI
 **Phase 4**: Deferred (optional feature)
 
@@ -859,10 +861,14 @@ Test status (`QT_QPA_PLATFORM=offscreen uv run pytest`): 396 passed, 36 skipped,
 
 ### Next Steps
 
-1. Integrate alignment editor and audio playback into the translation tab
-2. Add GUI tests (or adjust the coverage gate) so `uv run pytest` passes
-3. Merge this branch into `master`
-4. Evaluate migrating to pydantic-ai 2.x (provider list changed, groq/bedrock no longer bundled)
+See `specs/ALIGNMENT_QUALITY.md` for the alignment quality design (rules, self-correction, Jev).
+
+1. Merge this branch into `master`
+2. Step 3: store alignments as token positions with `confidence`/`status`; editor highlights flagged words
+3. Step 4: simplify provider layer, migrate to pydantic-ai >= 2.45 (required for Jev), LLM self-correction
+4. Benchmark on `tests/fixtures/birkenbihl_unit1_1.json`; evaluate Jev as aligner and as checker
+5. Wire audio playback into the translation tab
+6. Add GUI tests (coverage 36%, target 80%)
 
 ---
 
