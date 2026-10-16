@@ -8,30 +8,26 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from birkenbihl.gui.models.app_services import AppServices
 from birkenbihl.gui.models.app_state import AppState
 from birkenbihl.gui.viewmodels.settings_vm import SettingsViewModel
 from birkenbihl.gui.views.settings_view import SettingsView
 from birkenbihl.gui.views.translation_view import TranslationView
-from birkenbihl.services.settings_service import SettingsService
-from birkenbihl.services.translation_service import TranslationService
 
 
 class MainWindow(QMainWindow):
     """Main application window with view navigation."""
 
-    def __init__(
-        self, translation_service: TranslationService, settings_service: SettingsService, parent: QWidget | None = None
-    ):
+    def __init__(self, services: AppServices, parent: QWidget | None = None):
         """Initialize main window.
 
         Args:
-            translation_service: TranslationService instance
-            settings_service: SettingsService instance
+            services: Application services (translation, settings, audio)
             parent: Parent widget
         """
         super().__init__(parent)
-        self._translation_service = translation_service
-        self._settings_service = settings_service
+        self._services = services
+        self._settings_service = services.settings
         self._app_state = AppState(parent=self)
         self._init_ui()
         self._create_menu_bar()
@@ -48,10 +44,7 @@ class MainWindow(QMainWindow):
 
         # Translation tab
         self._translation_view = TranslationView(  # type: ignore[reportUninitializedInstanceVariable]
-            self._translation_service,
-            self._settings_service,
-            self._app_state,
-            parent=self,
+            self._services, self._app_state, parent=self
         )
         tabs.addTab(self._translation_view, "Übersetzungen")
 

@@ -1,51 +1,30 @@
-"""Audio provider protocol for text-to-speech functionality."""
+"""Text-to-speech provider protocol."""
 
-from pathlib import Path
+from dataclasses import dataclass
 from typing import Protocol
 
 
+@dataclass(frozen=True)
+class AudioClip:
+    """Synthesized speech, ready to be written to a file."""
+
+    data: bytes
+    file_extension: str  # without dot, e.g. "wav" or "mp3"
+
+
 class IAudioProvider(Protocol):
-    """Protocol for audio/text-to-speech providers.
+    """Turns text into speech for the Birkenbihl listening phase."""
 
-    Defines interface for generating audio from text in the original language,
-    supporting the Birkenbihl method's active listening phase.
-    """
+    name: str
 
-    def generate_audio(self, text: str, language: str) -> bytes:
-        """Generate audio data from text.
-
-        Args:
-            text: Text to convert to speech
-            language: Language code (en, es, de)
-
-        Returns:
-            Audio data as bytes (format depends on implementation)
-
-        Raises:
-            AudioError: If audio generation fails
-        """
+    def supports(self, language_code: str) -> bool:
+        """Whether this provider has a voice for the language (ISO 639-1 code, e.g. "es")."""
         ...
 
-    def save_audio_file(self, text: str, language: str, output_path: Path) -> Path:
-        """Generate and save audio to file.
-
-        Args:
-            text: Text to convert to speech
-            language: Language code (en, es, de)
-            output_path: Path where audio file should be saved
-
-        Returns:
-            Path to saved audio file
+    def synthesize(self, text: str, language_code: str) -> AudioClip:
+        """Speak the text in the given language.
 
         Raises:
-            AudioError: If generation or save fails
-        """
-        ...
-
-    def get_supported_languages(self) -> list[str]:
-        """Get list of supported language codes.
-
-        Returns:
-            List of ISO 639-1 language codes
+            AudioError: If the language is not supported or synthesis fails
         """
         ...

@@ -23,7 +23,7 @@ from PySide6.QtWidgets import (
 from birkenbihl.gui.styles import theme
 from birkenbihl.gui.viewmodels.settings_vm import SettingsViewModel
 from birkenbihl.gui.widgets.language_combo import LanguageCombo
-from birkenbihl.models.settings import ProviderConfig
+from birkenbihl.models.settings import AudioSettings, ProviderConfig
 from birkenbihl.providers import catalog
 from birkenbihl.services import language_service as ls
 
@@ -199,6 +199,7 @@ class SettingsView(QWidget):
         layout = QVBoxLayout(self)
         layout.addWidget(self._create_provider_section())
         layout.addWidget(self._create_general_section())
+        layout.addWidget(self._create_audio_section())
 
     def _create_provider_section(self) -> QGroupBox:
         group = QGroupBox("Provider Management")
@@ -245,6 +246,46 @@ class SettingsView(QWidget):
         group.setLayout(layout)
         return group
 
+    def _create_audio_section(self) -> QGroupBox:
+        group = QGroupBox("Aussprache (Audio)")
+        layout = QFormLayout()
+        self._audio_provider_combo = QComboBox()  # type: ignore[reportUninitializedInstanceVariable]
+        self._audio_provider_combo.addItem("Piper (lokal, kostenlos)", userData="piper")
+        self._audio_provider_combo.addItem("ElevenLabs bevorzugen (Cloud)", userData="elevenlabs")
+        self._elevenlabs_key_edit = QLineEdit()  # type: ignore[reportUninitializedInstanceVariable]
+        self._elevenlabs_key_edit.setEchoMode(QLineEdit.EchoMode.Password)
+        self._elevenlabs_key_edit.setPlaceholderText("Nur nötig für ElevenLabs")
+        self._elevenlabs_voice_edit = QLineEdit()  # type: ignore[reportUninitializedInstanceVariable]
+        self._elevenlabs_voice_edit.setPlaceholderText("Leer = Standardstimme")
+        piper_hint = "Piper spricht lokal und lädt pro Sprache einmalig eine Stimme (~60 MB)."
+        cloud_hint = "Sprachen ohne Piper-Stimme (z. B. Japanisch) brauchen einen ElevenLabs-API-Key."
+        hint = QLabel(f"{piper_hint} {cloud_hint}")
+        hint.setWordWrap(True)
+        layout.addRow("Sprachausgabe:", self._audio_provider_combo)
+        layout.addRow("ElevenLabs API-Key:", self._elevenlabs_key_edit)
+        layout.addRow("ElevenLabs Voice-ID:", self._elevenlabs_voice_edit)
+        layout.addRow(hint)
+        self._audio_provider_combo.currentIndexChanged.connect(self._on_audio_changed)
+        self._elevenlabs_key_edit.editingFinished.connect(self._on_audio_changed)
+        self._elevenlabs_voice_edit.editingFinished.connect(self._on_audio_changed)
+        group.setLayout(layout)
+        return group
+
+    def _on_audio_changed(self) -> None:
+        self._view_model.update_audio(
+            AudioSettings(
+                provider=self._audio_provider_combo.currentData(),
+                elevenlabs_api_key=self._elevenlabs_key_edit.text().strip(),
+                elevenlabs_voice_id=self._elevenlabs_voice_edit.text().strip(),
+            )
+        )
+
+    def _show_audio_settings(self) -> None:
+        audio = self._view_model.audio
+        self._audio_provider_combo.setCurrentIndex(self._audio_provider_combo.findData(audio.provider))
+        self._elevenlabs_key_edit.setText(audio.elevenlabs_api_key)
+        self._elevenlabs_voice_edit.setText(audio.elevenlabs_voice_id)
+
     def _on_target_language_changed(self) -> None:
         """Handle target language selection change."""
         language = self._language_combo.current_language()
@@ -263,6 +304,7 @@ class SettingsView(QWidget):
     def _on_settings_loaded(self) -> None:
         self._refresh_provider_list()
         self._language_combo.set_language(self._view_model.target_language)
+        self._show_audio_settings()
 
     def _on_settings_saved(self) -> None:
         """Settings saved - auto-save, no user notification needed."""

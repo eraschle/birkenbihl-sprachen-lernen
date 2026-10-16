@@ -61,10 +61,8 @@ def _target_errors(sentence: Sentence) -> list[str]:
 
     missing = [token for index, token in enumerate(tokens) if index not in counts]
     if missing:
-        errors.append(
-            f"Fehlende Wörter: {_join(missing)}. "
-            "Die Wort-für-Wort-Übersetzung muss jedes Wort der natürlichen Übersetzung genau einmal verwenden."
-        )
+        rule = "Die Wort-für-Wort-Übersetzung muss jedes Wort der natürlichen Übersetzung genau einmal verwenden."
+        errors.append(f"Fehlende Wörter: {_join(missing)}. {rule}")
     return errors
 
 

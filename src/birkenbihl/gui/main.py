@@ -6,27 +6,32 @@ import types
 
 from PySide6.QtWidgets import QApplication, QMessageBox
 
+from birkenbihl.gui.models.app_services import AppServices
 from birkenbihl.gui.styles.theme import ThemeManager
 from birkenbihl.gui.views.main_window import MainWindow
+from birkenbihl.providers.piper_audio_provider import PiperAudioProvider
 from birkenbihl.providers.pydantic_ai_translator import (
     PydanticAITranslator,
 )
 from birkenbihl.services import path_service as ps
+from birkenbihl.services.audio_service import AudioService
 from birkenbihl.services.settings_service import SettingsService
 from birkenbihl.services.translation_service import TranslationService
 from birkenbihl.storage.json_storage import JsonStorageProvider
 
 
-def create_services() -> tuple[TranslationService, SettingsService]:
-    """Create service instances.
+def create_services() -> AppServices:
+    """Create the application services.
 
     Returns:
-        Tuple of (TranslationService, SettingsService)
+        Translation, settings and audio services
     """
     settings_service = create_settings_service()
     translation_service = create_translation_service(settings_service)
-
-    return translation_service, settings_service
+    audio_service = AudioService(
+        settings_service, PiperAudioProvider(ps.get_app_path("piper-voices")), ps.get_app_path("audio-cache")
+    )
+    return AppServices(translation_service, settings_service, audio_service)
 
 
 def create_settings_service() -> SettingsService:
@@ -98,8 +103,7 @@ def main() -> int:
 
         setup_exception_handler()
 
-        translation_service, settings_service = create_services()
-        window = MainWindow(translation_service, settings_service)
+        window = MainWindow(create_services())
         window.show()
 
         return app.exec()

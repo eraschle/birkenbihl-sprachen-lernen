@@ -1,5 +1,7 @@
 """Application settings domain model."""
 
+from typing import Literal
+
 from pydantic import BaseModel
 
 
@@ -18,6 +20,18 @@ class ProviderConfig(BaseModel):
     is_default: bool = False
 
 
+class AudioSettings(BaseModel):
+    """Text-to-speech preferences for the listening phase.
+
+    Piper runs locally and is used whenever it has a voice for the language, unless ElevenLabs is preferred.
+    ElevenLabs needs an API key and covers languages Piper lacks.
+    """
+
+    provider: Literal["piper", "elevenlabs"] = "piper"
+    elevenlabs_api_key: str = ""
+    elevenlabs_voice_id: str = ""  # empty: the provider's default voice
+
+
 class Settings(BaseModel):
     """Application configuration and preferences.
 
@@ -27,6 +41,7 @@ class Settings(BaseModel):
 
     providers: list[ProviderConfig] = []
     target_language: str = "de"
+    audio: AudioSettings = AudioSettings()
 
     def get_default_provider(self) -> ProviderConfig | None:
         """Get the default provider configuration.

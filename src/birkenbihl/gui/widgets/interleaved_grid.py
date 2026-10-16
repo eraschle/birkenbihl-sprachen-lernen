@@ -48,6 +48,7 @@ class InterleavedGridReadOnly(QWidget):
             item = self._grid.takeAt(0)
             widget = item.widget() if item else None
             if widget:
+                widget.setParent(None)  # hide now; deleteLater alone leaves it visible until the event loop runs
                 widget.deleteLater()
 
     def _show_empty_message(self) -> None:

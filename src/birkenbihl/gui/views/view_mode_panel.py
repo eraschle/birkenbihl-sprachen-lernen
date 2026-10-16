@@ -4,9 +4,11 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QLabel, QSplitter, QVBoxLayout, QWidget
 
 from birkenbihl.gui.models.app_state import AppState
+from birkenbihl.gui.widgets.audio_bar import AudioBar
 from birkenbihl.gui.widgets.sentence_list import SentenceList
 from birkenbihl.gui.widgets.translation_display import TranslationDisplay
 from birkenbihl.models.translation import Translation
+from birkenbihl.services.audio_service import AudioService
 
 
 class ViewModePanel(QWidget):
@@ -17,15 +19,17 @@ class ViewModePanel(QWidget):
     - Right: Natural + word-by-word display for selected sentence
     """
 
-    def __init__(self, state: AppState, parent: QWidget | None = None):
+    def __init__(self, state: AppState, audio_service: AudioService, parent: QWidget | None = None):
         """Initialize view mode panel.
 
         Args:
             state: Application state
+            audio_service: Generates and saves audio of the original text
             parent: Parent widget
         """
         super().__init__(parent)
         self._state = state
+        self._audio_service = audio_service
         self._init_ui()
         self._connect_signals()
 
@@ -34,8 +38,12 @@ class ViewModePanel(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
 
+        self._audio_bar = AudioBar(self._audio_service, self._state, parent=self)  # type: ignore[reportUninitializedInstanceVariable]
+        self._audio_bar.hide()
+        layout.addWidget(self._audio_bar)
+
         splitter = self._create_splitter()
-        layout.addWidget(splitter)
+        layout.addWidget(splitter, stretch=1)
 
     def _create_splitter(self) -> QSplitter:
         """Create horizontal splitter with sentence list and display.
@@ -87,10 +95,12 @@ class ViewModePanel(QWidget):
             self._sentence_list.load_sentences(translation.sentences)
             self._empty_label.hide()
             self._translation_display.show()
+            self._audio_bar.show()
             self._display_first_sentence(translation)
         else:
             self._sentence_list.clear()
             self._translation_display.hide()
+            self._audio_bar.hide()
             self._empty_label.show()
 
     def _display_first_sentence(self, translation: Translation) -> None:

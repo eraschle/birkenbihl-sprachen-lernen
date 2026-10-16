@@ -153,14 +153,15 @@ Services orchestrate business logic by coordinating protocols/providers:
 - Follows dependency injection via Protocol-based constructors
 - No business logic in providers - services orchestrate the flow
 
-**AudioService** (`src/birkenbihl/services/audio_service.py`) - Phase 2:
-- Coordinates AudioProvider for text-to-speech operations
-- Supports active listening phase of Birkenbihl method
-- Workflows:
-  - `generate_sentence_audio()`: Create audio file for single sentence
-  - `play_sentence()`: Direct playback of sentence audio
-  - `batch_generate_audio()`: Generate audio for multiple sentences
-- Status: Stub implementation (raises NotImplementedError)
+**AudioService** (`src/birkenbihl/services/audio_service.py`):
+- Speaks the original (source language) text for the listening phase and saves it as audio file
+- Providers (`protocols/audio.py`, `providers/*_audio_provider.py`):
+  - `PiperAudioProvider`: local, free; one voice per language in `VOICES`, downloaded once on first use
+  - `ElevenLabsAudioProvider`: cloud via HTTP API (httpx), API key in `Settings.audio`
+- Choice per language: ElevenLabs if preferred and it speaks the language, else Piper if it has a voice,
+  else ElevenLabs if a key is set, else `AudioError` explaining what to configure
+- Generated audio is cached by provider + language + text, so repeated listening never re-synthesizes
+- GUI: `gui/widgets/audio_bar.py` in the translation tab (play sentence/text, loop, save as file)
 
 ### Storage Layer
 
@@ -243,7 +244,6 @@ Services orchestrate business logic by coordinating protocols/providers:
 
 - **UI Layer**: interface (planned)
 - **Storage Layer**: SQLite + SQLModel for persistence (planned)
-- **Audio Service**: Text-to-speech for original language playback (planned)
 
 ## Project Structure
 

@@ -8,11 +8,14 @@ fi
 
 cd "$CLAUDE_PROJECT_DIR"
 
-# System libraries PySide6 needs to import QtGui/QtWidgets in a headless container
-QT_LIBS=(libegl1 libgl1 libxkbcommon0 libfontconfig1 libdbus-1-3)
-if ! dpkg -s "${QT_LIBS[@]}" >/dev/null 2>&1; then
+# System libraries PySide6 needs for QtGui/QtWidgets and QtMultimedia (audio) in a headless container
+QT_LIBS=(libegl1 libgl1 libxkbcommon0 libfontconfig1 libdbus-1-3 libpulse0)
+installed() { dpkg-query -W -f='${Status}' "$1" 2>/dev/null | grep -q "install ok installed"; }
+missing=()
+for lib in "${QT_LIBS[@]}"; do installed "$lib" || missing+=("$lib"); done
+if [ ${#missing[@]} -gt 0 ]; then
   apt-get update -qq
-  DEBIAN_FRONTEND=noninteractive apt-get install -y -qq "${QT_LIBS[@]}" >/dev/null
+  DEBIAN_FRONTEND=noninteractive apt-get install -y -qq "${missing[@]}" >/dev/null
 fi
 
 uv sync --quiet

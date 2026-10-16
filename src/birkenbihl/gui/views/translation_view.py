@@ -10,12 +10,11 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from birkenbihl.gui.models.app_services import AppServices
 from birkenbihl.gui.models.app_state import AppMode, AppState
 from birkenbihl.gui.views.create_mode_panel import CreateModePanel
 from birkenbihl.gui.views.edit_mode_panel import EditModePanel
 from birkenbihl.gui.views.view_mode_panel import ViewModePanel
-from birkenbihl.services.settings_service import SettingsService
-from birkenbihl.services.translation_service import TranslationService
 
 
 class TranslationView(QWidget):
@@ -25,24 +24,18 @@ class TranslationView(QWidget):
     and content area that switches between mode-specific panels.
     """
 
-    def __init__(
-        self,
-        translation_service: TranslationService,
-        settings_service: SettingsService,
-        app_state: AppState,
-        parent: QWidget | None = None,
-    ):
+    def __init__(self, services: AppServices, app_state: AppState, parent: QWidget | None = None):
         """Initialize translation view.
 
         Args:
-            translation_service: Service for translation operations
-            settings_service: Service for settings and provider access
+            services: Application services (translation, settings, audio)
             app_state: Global application state
             parent: Parent widget
         """
         super().__init__(parent)
-        self._service = translation_service
-        self._settings_service = settings_service
+        self._services = services
+        self._service = services.translation
+        self._settings_service = services.settings
         self._state = app_state
         self._init_ui()
         self._connect_signals()
@@ -82,7 +75,7 @@ class TranslationView(QWidget):
         """Create stacked widget for mode-specific content."""
         self._content_stack = QStackedWidget()  # type: ignore[reportUninitializedInstanceVariable]
 
-        self._view_panel = ViewModePanel(self._state, parent=self)  # type: ignore[reportUninitializedInstanceVariable]
+        self._view_panel = ViewModePanel(self._state, self._services.audio, parent=self)  # type: ignore[reportUninitializedInstanceVariable]
         self._create_panel = CreateModePanel(  # type: ignore[reportUninitializedInstanceVariable]
             self._service,
             self._settings_service,

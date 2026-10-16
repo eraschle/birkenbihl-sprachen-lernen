@@ -4,7 +4,7 @@ from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QWidget
 
 from birkenbihl.gui.viewmodels.base import BaseViewModel
-from birkenbihl.models.settings import ProviderConfig, Settings
+from birkenbihl.models.settings import AudioSettings, ProviderConfig, Settings
 from birkenbihl.services.settings_service import SettingsService
 
 
@@ -37,6 +37,14 @@ class SettingsViewModel(BaseViewModel):
     @property
     def target_language(self) -> str:
         return self._settings.target_language if self._settings else "de"
+
+    @property
+    def audio(self) -> AudioSettings:
+        return self._settings.audio if self._settings else AudioSettings()
+
+    def update_audio(self, audio: AudioSettings) -> None:
+        if self._settings:
+            self._settings.audio = audio
 
     def load_settings(self) -> None:
         try:
