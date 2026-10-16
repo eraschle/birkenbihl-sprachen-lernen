@@ -9,7 +9,8 @@ from pydantic_ai.messages import ModelMessage, ModelResponse, RetryPromptPart, T
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
 from birkenbihl.models.translation import AlignmentStatus, Translation
-from birkenbihl.providers.base_translator import ALIGNMENT_RETRIES, BaseTranslator
+from birkenbihl.providers.base_translator import BaseTranslator
+from birkenbihl.providers.llm_aligner import ALIGNMENT_RETRIES
 from birkenbihl.providers.models import (
     AlignmentResponse,
     NaturalSentenceResponse,

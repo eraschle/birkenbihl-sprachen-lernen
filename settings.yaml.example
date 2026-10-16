@@ -71,6 +71,12 @@ audio:
   elevenlabs_api_key: ""
   elevenlabs_voice_id: ""   # empty: default voice
 
+# Word-by-word step (one word of the natural translation per column):
+#   llm  the translating provider above (default)
+#   jev  Jev by TypeSafe: much faster, but weaker on complex sentences (https://typesafe.ai)
+word_aligner: llm
+# jev_api_key: your-typesafe-api-key   # or set the environment variable TYPESAFE_API_KEY
+
 # ============================================================================
 # API keys
 #   - Anthropic: https://console.anthropic.com/settings/keys

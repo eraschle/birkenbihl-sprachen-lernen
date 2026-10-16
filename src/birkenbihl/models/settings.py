@@ -4,6 +4,8 @@ from typing import Literal
 
 from pydantic import BaseModel
 
+WordAlignerType = Literal["llm", "jev"]
+
 
 class ProviderConfig(BaseModel):
     """Configuration for a single AI provider.
@@ -42,6 +44,9 @@ class Settings(BaseModel):
     providers: list[ProviderConfig] = []
     target_language: str = "de"
     audio: AudioSettings = AudioSettings()
+    # Word-by-word step: "llm" uses the translating provider, "jev" uses Jev (TypeSafe)
+    word_aligner: WordAlignerType = "llm"
+    jev_api_key: str | None = None  # None: pydantic-ai reads TYPESAFE_API_KEY from the environment
 
     def get_default_provider(self) -> ProviderConfig | None:
         """Get the default provider configuration.

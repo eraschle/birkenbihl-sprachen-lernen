@@ -1,8 +1,9 @@
-"""Turn word pairs (as AI models produce them) into position-based word alignments.
+"""Turn AI answers into position-based word alignments, deterministically.
 
-AI models answer with text pairs such as ("extrañaré", "vermissen-werde"). Matching that text
-back to the sentence is done here, deterministically. Whatever cannot be matched is not guessed:
-the affected alignment is FLAGGED and unmatched target words stay unassigned for the user.
+Language models answer with text pairs such as ("extrañaré", "vermissen-werde"), matched back to the
+sentence by align_word_pairs(). Jev answers with a probability per source/target word pair, distributed by
+align_by_probability(). Whatever is uncertain is not guessed: the affected alignment is FLAGGED and
+unassigned target words stay in the pool for the user.
 """
 
 from birkenbihl.models.translation import TARGET_JOINER, AlignmentStatus, Sentence, WordAlignment
@@ -82,3 +83,42 @@ class _PairMatcher:
             if token == word and index not in self._used_targets:
                 return index
         return None
+
+
+# A target word is only trusted when its column is likely enough and clearly ahead of the runner-up column
+MIN_PROBABILITY = 0.5
+MIN_MARGIN = 0.15
+
+ProbabilityMatrix = list[list[float]]  # [source_index][target_index]: probability that the target translates the source
+
+
+def align_by_probability(source_text: str, natural_translation: str, probabilities: ProbabilityMatrix) -> Sentence:
+    """Build a sentence by giving every target word to the source word most likely to mean it.
+
+    Every target word is used exactly once by construction. Uncertain words are not guessed: their column is
+    FLAGGED, and a source word no target word went to stays empty and FLAGGED for the user.
+    Target words keep the order of the natural translation within a column.
+    """
+    sentence = Sentence(source_text=source_text, natural_translation=natural_translation, word_alignments=[])
+    source_count, target_count = len(sentence.source_tokens), len(sentence.target_tokens)
+    if len(probabilities) != source_count or any(len(row) != target_count for row in probabilities):
+        raise ValueError(f"Probabilities must be a {source_count}x{target_count} matrix (source x target)")
+
+    columns = [[row[target] for row in probabilities] for target in range(target_count)]
+    owners = [column.index(max(column)) for column in columns]
+    uncertain = {owner for owner, column in zip(owners, columns, strict=True) if _is_uncertain(column)}
+    sentence.word_alignments = [
+        _alignment(source, [target for target, owner in enumerate(owners) if owner == source], source in uncertain)
+        for source in range(source_count)
+    ]
+    return sentence
+
+
+def _is_uncertain(column: list[float]) -> bool:
+    best, runner_up = (sorted(column, reverse=True) + [0.0])[:2]
+    return best < MIN_PROBABILITY or best - runner_up < MIN_MARGIN
+
+
+def _alignment(source: int, targets: list[int], uncertain: bool) -> WordAlignment:
+    status = AlignmentStatus.FLAGGED if uncertain or not targets else AlignmentStatus.SUGGESTED
+    return WordAlignment(source_index=source, target_indices=targets, status=status)
