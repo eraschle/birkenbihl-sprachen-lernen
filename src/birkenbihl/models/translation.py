@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 
 from birkenbihl.models import dateutils
 from birkenbihl.models.languages import Language
+from birkenbihl.utils.text_extractor import clean_trailing_punctuation
 
 
 class WordAlignment(BaseModel):
@@ -59,8 +60,6 @@ class Sentence(BaseModel):
             return " ".join(a.target_word for a in sorted_alignments if a.target_word.strip())
 
         # TODO: Punctuation preservation is provisional - do not use yet!
-        import re
-
         source_words = self.source_text.split()
         result = []
 
@@ -73,9 +72,8 @@ class Sentence(BaseModel):
             # Extract trailing punctuation from source word
             if idx < len(source_words):
                 source_word_with_punct = source_words[idx]
-                match = re.search(r"[^\w]+$", source_word_with_punct)
-                if match:
-                    punctuation = match.group()
+                _, punctuation = clean_trailing_punctuation(source_word_with_punct)
+                if punctuation:
                     target_word += punctuation
 
             result.append(target_word)

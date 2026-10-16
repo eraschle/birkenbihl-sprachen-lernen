@@ -1,9 +1,10 @@
 """Tests for base protocols."""
 
 from PySide6.QtCore import QObject, Signal
-from PySide6.QtWidgets import QWidget
+from PySide6.QtWidgets import QApplication, QWidget
 
 from birkenbihl.gui.commands.base import CommandResult
+from tests import conftest
 
 
 # Test Command Protocol Implementation
@@ -48,8 +49,9 @@ class TestCommandProtocol:
 class TestViewModelProtocol:
     """Test ViewModel protocol."""
 
-    def test_viewmodel_protocol_implementation(self):
+    def test_viewmodel_protocol_implementation(self, qapp: QApplication):
         """Test ViewModel protocol implementation."""
+        conftest.skrip_test_when_is_not_valid(qapp)
 
         class TestViewModel(QObject):
             state_changed = Signal()
@@ -74,8 +76,9 @@ class TestViewModelProtocol:
 class TestViewProtocol:
     """Test View protocol."""
 
-    def test_view_protocol_implementation(self):
+    def test_view_protocol_implementation(self, qapp: QApplication):
         """Test View protocol implementation."""
+        conftest.skrip_test_when_is_not_valid(qapp)
 
         class TestView(QWidget):
             def setup_ui(self) -> None:

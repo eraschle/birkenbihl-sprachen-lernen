@@ -1,87 +1,96 @@
-"""Request parameter objects for reducing function argument counts.
+"""Request models for the Birkenbihl application.
 
-Following Clean Code principle: Functions should have ≤2 parameters.
-Parameter objects group related data and provide meaningful names.
+This module defines parameter objects that encapsulate multiple parameters
+into single objects, improving API clarity and reducing parameter count.
 """
 
 from dataclasses import dataclass
-from pathlib import Path
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from birkenbihl.models.languages import Language
 from birkenbihl.models.settings import ProviderConfig
-from birkenbihl.models.translation import Sentence, WordAlignment
+
+if TYPE_CHECKING:
+    from birkenbihl.models.translation import WordAlignment
 
 
-@dataclass(frozen=True)
+@dataclass
 class TranslationRequest:
     """Request for translating text using Birkenbihl method.
 
-    Groups translation parameters to reduce function argument count
-    from 4-5 to 1.
+    Args:
+        text: Text to translate
+        source_lang: Source language
+        target_lang: Target language
+        title: Optional title for the translation (empty string if not provided)
     """
 
     text: str
     source_lang: Language
     target_lang: Language
-    title: str | None = None
-    provider: ProviderConfig | None = None
+    title: str = ""
 
 
-@dataclass(frozen=True)
+@dataclass
 class SentenceUpdateRequest:
-    """Request for updating a sentence's natural translation or alignment.
+    """Request for updating sentence translation.
 
-    Groups sentence update parameters to reduce function argument count
-    from 3-4 to 1.
+    Args:
+        translation_id: UUID of the translation
+        sentence_idx: Index of sentence to update (0-based)
+        new_text: New natural translation text
+        provider: Provider config for regenerating alignments
+    """
+
+    translation_id: UUID
+    sentence_idx: int
+    new_text: str
+    provider: ProviderConfig
+
+
+@dataclass
+class AutoDetectRequest:
+    """Request for auto-detecting language and translating.
+
+    Args:
+        text: Text to translate
+        target_lang: Target language
+        title: Optional title for the translation (empty string if not provided)
+    """
+
+    text: str
+    target_lang: Language
+    title: str = ""
+
+
+@dataclass
+class SuggestionRequest:
+    """Request for getting alternative translation suggestions.
+
+    Args:
+        translation_id: UUID of the translation
+        sentence_uuid: UUID of the sentence
+        provider: Provider config for generating suggestions
+        count: Number of suggestions to generate (default: 3)
     """
 
     translation_id: UUID
     sentence_uuid: UUID
-    new_natural: str | None = None
-    alignments: list[WordAlignment] | None = None
-    provider: ProviderConfig | None = None
-
-
-@dataclass(frozen=True)
-class AlternativesRequest:
-    """Request for generating alternative translations.
-
-    Groups alternative generation parameters to reduce function argument
-    count from 4 to 1.
-    """
-
-    source_text: str
-    source_lang: Language
-    target_lang: Language
+    provider: ProviderConfig
     count: int = 3
 
 
-@dataclass(frozen=True)
-class AlignmentRegenerationRequest:
-    """Request for regenerating word-by-word alignment.
+@dataclass
+class AlignmentUpdateRequest:
+    """Request for updating sentence word alignment.
 
-    Groups alignment regeneration parameters to reduce function argument
-    count from 4 to 1.
+    Args:
+        translation_id: UUID of the translation
+        sentence_uuid: UUID of the sentence
+        alignments: New word-by-word alignments
     """
 
-    source_text: str
-    natural_translation: str
-    source_lang: Language
-    target_lang: Language
-
-
-@dataclass(frozen=True)
-class AudioGenerationRequest:
-    """Request for generating audio from text/sentences.
-
-    Groups audio generation parameters to reduce function argument count
-    from 3 to 1.
-    """
-
-    text: str | None = None
-    sentence: Sentence | None = None
-    sentences: list[Sentence] | None = None
-    language: str | None = None
-    output_dir: Path | None = None
-    output_path: Path | None = None
+    translation_id: UUID
+    sentence_uuid: UUID
+    alignments: list["WordAlignment"]

@@ -7,6 +7,7 @@ from uuid import uuid4
 import pytest
 
 from birkenbihl.gui.viewmodels.alignment_editor_vm import AlignmentEditorViewModel
+from birkenbihl.models.requests import AlignmentUpdateRequest
 from birkenbihl.models.translation import Sentence, Translation, WordAlignment
 from birkenbihl.services.language_service import SUPPORTED_LANGUAGES
 from birkenbihl.services.translation_service import TranslationService
@@ -94,7 +95,7 @@ class TestAlignmentEditorIntegration:
         assert new_alignments[2].target_word == "unten"
 
         translation_service.update_sentence_alignment(
-            translation_id=saved.uuid, sentence_uuid=sentence.uuid, alignments=new_alignments
+            AlignmentUpdateRequest(translation_id=saved.uuid, sentence_uuid=sentence.uuid, alignments=new_alignments)
         )
 
         # Step 6: Verify persistence - reload from storage
@@ -152,7 +153,7 @@ class TestAlignmentEditorIntegration:
         # Save and verify persistence
         alignments = viewmodel.to_word_alignments()
         translation_service.update_sentence_alignment(
-            translation_id=saved.uuid, sentence_uuid=sentence.uuid, alignments=alignments
+            AlignmentUpdateRequest(translation_id=saved.uuid, sentence_uuid=sentence.uuid, alignments=alignments)
         )
 
         reloaded = translation_service.get_translation(saved.uuid)
@@ -205,7 +206,7 @@ class TestAlignmentEditorIntegration:
 
         with pytest.raises(ValueError, match="Invalid alignment"):
             translation_service.update_sentence_alignment(
-                translation_id=saved.uuid, sentence_uuid=sentence.uuid, alignments=alignments
+                AlignmentUpdateRequest(translation_id=saved.uuid, sentence_uuid=sentence.uuid, alignments=alignments)
             )
 
     def test_complex_word_order_changes(self, translation_service):
@@ -248,7 +249,7 @@ class TestAlignmentEditorIntegration:
         # Save
         alignments = viewmodel.to_word_alignments()
         translation_service.update_sentence_alignment(
-            translation_id=saved.uuid, sentence_uuid=sentence.uuid, alignments=alignments
+            AlignmentUpdateRequest(translation_id=saved.uuid, sentence_uuid=sentence.uuid, alignments=alignments)
         )
 
         # Verify
@@ -296,7 +297,7 @@ class TestAlignmentEditorIntegration:
         # Verify can be saved back
         alignments = viewmodel.to_word_alignments()
         translation_service.update_sentence_alignment(
-            translation_id=saved.uuid, sentence_uuid=sentence.uuid, alignments=alignments
+            AlignmentUpdateRequest(translation_id=saved.uuid, sentence_uuid=sentence.uuid, alignments=alignments)
         )
 
         reloaded = translation_service.get_translation(saved.uuid)
@@ -355,7 +356,7 @@ class TestMultipleSentenceEditing:
         # Can't save invalid alignment (column 2 empty)
         with pytest.raises(ValueError, match="Invalid alignment"):
             translation_service.update_sentence_alignment(
-                translation_id=saved.uuid, sentence_uuid=sentence1.uuid, alignments=alignments1
+                AlignmentUpdateRequest(translation_id=saved.uuid, sentence_uuid=sentence1.uuid, alignments=alignments1)
             )
 
         # Edit second sentence
@@ -366,7 +367,7 @@ class TestMultipleSentenceEditing:
         alignments2 = viewmodel.to_word_alignments()
 
         translation_service.update_sentence_alignment(
-            translation_id=saved.uuid, sentence_uuid=sentence2.uuid, alignments=alignments2
+            AlignmentUpdateRequest(translation_id=saved.uuid, sentence_uuid=sentence2.uuid, alignments=alignments2)
         )
 
         # Verify only sentence 2 changed

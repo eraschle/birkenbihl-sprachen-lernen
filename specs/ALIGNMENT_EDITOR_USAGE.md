@@ -27,9 +27,10 @@ The Word Alignment Editor allows users to manually edit word-by-word alignments 
 │                      ↓ save_requested signal              │
 │  ┌────────────────────────────────────────────────────┐  │
 │  │           TranslationService                       │  │
-│  │  update_sentence_alignment(translation_id,         │  │
-│  │                            sentence_uuid,          │  │
-│  │                            alignments)             │  │
+│  │  update_sentence_alignment(                        │  │
+│  │      AlignmentUpdateRequest(translation_id,        │  │
+│  │                             sentence_uuid,         │  │
+│  │                             alignments))           │  │
 │  └────────────────────────────────────────────────────┘  │
 │                      ↓                                    │
 │  ┌────────────────────────────────────────────────────┐  │
@@ -47,6 +48,7 @@ The Word Alignment Editor allows users to manually edit word-by-word alignments 
 from birkenbihl.gui.viewmodels import AlignmentEditorViewModel
 from birkenbihl.gui.views.alignment_editor_view import InterleavedAlignmentEditor
 from birkenbihl.services.translation_service import TranslationService
+from birkenbihl.models.requests import AlignmentUpdateRequest, SentenceUpdateRequest
 from birkenbihl.models.translation import Sentence, WordAlignment
 
 # Create ViewModel
@@ -90,9 +92,11 @@ def on_save_alignment(alignments: list[WordAlignment]) -> None:
     try:
         # Update sentence alignment in service
         updated_translation = translation_service.update_sentence_alignment(
-            translation_id=current_translation_id,
-            sentence_uuid=current_sentence_uuid,
-            alignments=alignments
+            AlignmentUpdateRequest(
+                translation_id=current_translation_id,
+                sentence_uuid=current_sentence_uuid,
+                alignments=alignments,
+            )
         )
 
         # Show success message
@@ -122,10 +126,12 @@ def on_regenerate_ai(sentence: Sentence) -> None:
     try:
         # Call service to regenerate alignment with AI
         updated_translation = translation_service.update_sentence_natural(
-            translation_id=current_translation_id,
-            sentence_uuid=sentence.uuid,
-            new_natural=sentence.natural_translation,
-            provider=current_provider_config
+            SentenceUpdateRequest(
+                translation_id=current_translation_id,
+                sentence_idx=current_sentence_idx,  # 0-based index, not UUID
+                new_text=sentence.natural_translation,
+                provider=current_provider_config,
+            )
         )
 
         # Reload editor with AI-generated alignment
@@ -144,6 +150,7 @@ from birkenbihl.gui.viewmodels import AlignmentEditorViewModel
 from birkenbihl.gui.views.alignment_editor_view import InterleavedAlignmentEditor
 from birkenbihl.services.translation_service import TranslationService
 from birkenbihl.storage.sqlite_storage import SqliteStorageProvider
+from birkenbihl.models.requests import AlignmentUpdateRequest
 from uuid import UUID
 
 class AlignmentEditorWindow(QMainWindow):
@@ -201,9 +208,11 @@ class AlignmentEditorWindow(QMainWindow):
 
         try:
             updated = self.translation_service.update_sentence_alignment(
-                translation_id=self.current_translation_id,
-                sentence_uuid=self.current_sentence_uuid,
-                alignments=alignments
+                AlignmentUpdateRequest(
+                    translation_id=self.current_translation_id,
+                    sentence_uuid=self.current_sentence_uuid,
+                    alignments=alignments,
+                )
             )
             print(f"Saved alignment for sentence {self.current_sentence_uuid}")
             self.close()
@@ -303,7 +312,7 @@ TranslationService handles all storage operations:
 ```python
 # Service validates before saving
 try:
-    service.update_sentence_alignment(translation_id, sentence_uuid, alignments)
+    service.update_sentence_alignment(AlignmentUpdateRequest(translation_id, sentence_uuid, alignments))
 except ValueError as e:
     # e.message contains validation error
     # Example: "Invalid alignment: Word 'Die' from natural translation not used"
@@ -315,7 +324,7 @@ except ValueError as e:
 from birkenbihl.storage.exceptions import NotFoundError
 
 try:
-    service.update_sentence_alignment(translation_id, sentence_uuid, alignments)
+    service.update_sentence_alignment(AlignmentUpdateRequest(translation_id, sentence_uuid, alignments))
 except NotFoundError as e:
     # Translation or sentence doesn't exist
     print(f"Not found: {e}")

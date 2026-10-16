@@ -13,6 +13,12 @@ from pathlib import Path
 
 import pytest
 
+from birkenbihl.models.requests import (
+    AlignmentUpdateRequest,
+    SentenceUpdateRequest,
+    SuggestionRequest,
+    TranslationRequest,
+)
 from birkenbihl.models.settings import ProviderConfig
 from birkenbihl.models.translation import WordAlignment
 from birkenbihl.providers.pydantic_ai_translator import PydanticAITranslator
@@ -56,9 +62,13 @@ class TestFullWorkflowEditNaturalTranslation:
         """
         # Step 1: Create translation
         original_text = "Yo te extrañaré"
-        translation = translation_service_with_storage.translate(
-            original_text, get_language_by("es"), get_language_by("de"), "Test Translation"
+        request = TranslationRequest(
+            text=original_text,
+            source_lang=get_language_by("es"),
+            target_lang=get_language_by("de"),
+            title="Test Translation",
         )
+        translation = translation_service_with_storage.translate(request)
 
         assert translation is not None
         assert len(translation.sentences) == 1
@@ -66,9 +76,13 @@ class TestFullWorkflowEditNaturalTranslation:
         original_natural = original_sentence.natural_translation
 
         # Step 2: Generate suggestions
-        suggestions = translation_service_with_storage.get_sentence_suggestions(
-            translation.uuid, original_sentence.uuid, openai_provider_config, count=3
+        suggestion_request = SuggestionRequest(
+            translation_id=translation.uuid,
+            sentence_uuid=original_sentence.uuid,
+            provider=openai_provider_config,
+            count=3,
         )
+        suggestions = translation_service_with_storage.get_sentence_suggestions(suggestion_request)
 
         assert len(suggestions) == 3
         assert all(isinstance(s, str) for s in suggestions)
@@ -86,9 +100,13 @@ class TestFullWorkflowEditNaturalTranslation:
         if new_natural is None:
             new_natural = suggestions[0]
 
-        updated_translation = translation_service_with_storage.update_sentence_natural(
-            translation.uuid, original_sentence.uuid, new_natural, openai_provider_config
+        update_request = SentenceUpdateRequest(
+            translation_id=translation.uuid,
+            sentence_idx=0,
+            new_text=new_natural,
+            provider=openai_provider_config,
         )
+        updated_translation = translation_service_with_storage.update_sentence_natural(update_request)
 
         # Step 4: Verify alignment was regenerated
         updated_sentence = updated_translation.sentences[0]
@@ -128,9 +146,13 @@ class TestFullWorkflowEditAlignmentManually:
         """
         # Step 1: Create translation
         original_text = "Hello world"
-        translation = translation_service_with_storage.translate(
-            original_text, get_language_by("en"), get_language_by("de"), "Manual Edit Test"
+        request = TranslationRequest(
+            text=original_text,
+            source_lang=get_language_by("en"),
+            target_lang=get_language_by("de"),
+            title="Manual Edit Test",
         )
+        translation = translation_service_with_storage.translate(request)
 
         assert translation is not None
         assert len(translation.sentences) == 1
@@ -159,9 +181,10 @@ class TestFullWorkflowEditAlignmentManually:
         assert is_valid, f"Manual alignments are invalid: {error}"
 
         # Step 4: Update sentence with new alignments
-        updated_translation = translation_service_with_storage.update_sentence_alignment(
-            translation.uuid, original_sentence.uuid, new_alignments
+        alignment_request = AlignmentUpdateRequest(
+            translation_id=translation.uuid, sentence_uuid=original_sentence.uuid, alignments=new_alignments
         )
+        updated_translation = translation_service_with_storage.update_sentence_alignment(alignment_request)
 
         # Verify update succeeded
         updated_sentence = updated_translation.sentences[0]
@@ -189,9 +212,13 @@ class TestDeleteTranslation:
         """
         # Step 1: Create translation
         original_text = "Test deletion"
-        translation = translation_service_with_storage.translate(
-            original_text, get_language_by("en"), get_language_by("de"), "To Be Deleted"
+        request = TranslationRequest(
+            text=original_text,
+            source_lang=get_language_by("en"),
+            target_lang=get_language_by("de"),
+            title="To Be Deleted",
         )
+        translation = translation_service_with_storage.translate(request)
 
         assert translation is not None
         translation_id = translation.uuid
@@ -231,22 +258,31 @@ class TestMultipleEditsWorkflow:
         """
         # Step 1: Create translation
         original_text = "Yo te extrañaré"
-        translation = translation_service_with_storage.translate(
-            original_text, get_language_by("es"), get_language_by("de"), "Multiple Edits Test"
+        request = TranslationRequest(
+            text=original_text,
+            source_lang=get_language_by("es"),
+            target_lang=get_language_by("de"),
+            title="Multiple Edits Test",
         )
+        translation = translation_service_with_storage.translate(request)
 
         sentence_uuid = translation.sentences[0].uuid
         original_updated_at = translation.updated_at
 
         # Step 2: Edit natural translation
-        suggestions = translation_service_with_storage.get_sentence_suggestions(
-            translation.uuid, sentence_uuid, openai_provider_config, count=3
+        suggestion_request = SuggestionRequest(
+            translation_id=translation.uuid, sentence_uuid=sentence_uuid, provider=openai_provider_config, count=3
         )
+        suggestions = translation_service_with_storage.get_sentence_suggestions(suggestion_request)
         new_natural = suggestions[0]
 
-        translation = translation_service_with_storage.update_sentence_natural(
-            translation.uuid, sentence_uuid, new_natural, openai_provider_config
+        update_request = SentenceUpdateRequest(
+            translation_id=translation.uuid,
+            sentence_idx=0,
+            new_text=new_natural,
+            provider=openai_provider_config,
         )
+        translation = translation_service_with_storage.update_sentence_natural(update_request)
 
         assert translation.sentences[0].natural_translation == new_natural
         assert translation.updated_at > original_updated_at
@@ -255,9 +291,10 @@ class TestMultipleEditsWorkflow:
         # Step 3: Edit alignment manually (add extra mapping)
         current_alignments = translation.sentences[0].word_alignments
         # Just verify we can update with current alignments (no-op change)
-        translation = translation_service_with_storage.update_sentence_alignment(
-            translation.uuid, sentence_uuid, current_alignments
+        alignment_request = AlignmentUpdateRequest(
+            translation_id=translation.uuid, sentence_uuid=sentence_uuid, alignments=current_alignments
         )
+        translation = translation_service_with_storage.update_sentence_alignment(alignment_request)
 
         assert translation.updated_at >= after_natural_update
 

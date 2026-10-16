@@ -820,10 +820,10 @@ Before moving to Phase 4, verify:
 - [x] **Phase 1.6** - Two-step translation refactoring (ca90cd3)
   - Separated natural translation from word alignment
   - Follows NLP best practices
-- [ ] **Phase 1.5** - Parameter Objects (DEFERRED)
-  - Would require extensive refactoring of 17+ functions
-  - Breaking changes across services, CLI, GUI, and tests
-  - Not critical for functionality
+- [x] **Phase 1.5** - Parameter Objects (TranslationService only, via merge of `refactoring_code`)
+  - `models/requests.py`: TranslationRequest, AutoDetectRequest, SuggestionRequest,
+    SentenceUpdateRequest, AlignmentUpdateRequest
+  - Provider and AudioService methods still take >2 parameters
 
 **2025-11-04/05 - Phase 2: Word Alignment Editor:**
 - [x] **Phase 2.1** - Specification (6fdef4f)
@@ -838,18 +838,29 @@ Before moving to Phase 4, verify:
   - Implemented text-to-speech with Google TTS
   - Added AudioError exception handling
 
+**2026-10-16 - Branch merge:**
+- [x] Merged `refactoring_code` (tabbed main window, translation tab with VIEW/CREATE/EDIT,
+  parameter objects, presenter, theme, text extraction utils) into this branch
+- Duplicate implementations resolved in favour of `refactoring_code`:
+  CLI, SqliteStorage, presenter (`presenters/display_models.py` removed)
+
 ### Current Status
 
-**Phase 1**: 95% complete (1.5 deferred)
-**Phase 2**: 100% complete ✅
-**Phase 3**: 100% complete ✅
+**Phase 1**: Done (provider/audio parameter counts still >2)
+**Phase 2**: Editor widgets done, but NOT yet reachable from the main window
+**Phase 3**: AudioService done, but NOT yet wired into the GUI
 **Phase 4**: Deferred (optional feature)
+
+Test status after merge (`QT_QPA_PLATFORM=offscreen pytest -m "not slow"`): 364 passed, 13 failed
+- 3 tests still expect `ValueError` where the code now raises `TranslationError`/`ProviderError`
+- 2 alignment editor integration tests have wrong expectations (never passed)
+- 8 registry/settings tests fail (provider registry / `google-gla` support)
 
 ### Next Steps
 
-1. Final validation (Ruff, Pyright)
-2. Push Phase 1 completion
-3. Consider Phase 1.5 (Parameter Objects) in future sprint if needed
+1. Fix the 13 failing tests
+2. Integrate alignment editor and audio playback into the translation tab
+3. Merge this branch into `master`
 
 ---
 
@@ -857,14 +868,12 @@ Before moving to Phase 4, verify:
 
 | Metric | Current | Target | Status |
 |--------|---------|--------|--------|
-| Functions ≤20 LOC | ~95% | 100% | ✅ Excellent |
-| Parameters ≤2 | 88% | 100% | 🟡 Good (deferred) |
-| Test Coverage | 80%+ | 80%+ | ✅ Met |
-| SOLID Compliance | 4.8/5 | 5/5 | ✅ Excellent |
-| DRY Compliance | 90%+ | 95%+ | ✅ Very Good |
-| Exception Handling | 100% | 100% | ✅ Complete |
-| Architecture Score | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ✅ Met |
-| Feature Completeness | 95% | 100% | ✅ Near Complete |
+| Tests passing (non-slow) | 364/377 | 100% | 🟡 13 failing |
+| Ruff | clean | clean | ✅ |
+| Alignment editor in app | no | yes | 🔴 Open |
+| Audio playback in app | no | yes | 🔴 Open |
+
+Earlier percentage figures (LOC, SOLID, DRY, completeness) were estimates, not measurements, and have been removed.
 
 ---
 
@@ -936,4 +945,4 @@ Before moving to Phase 4, verify:
 
 ---
 
-**Last Updated:** 2025-11-05 (Phase 1-3 complete, Phase 4 deferred)
+**Last Updated:** 2026-10-16 (merged `refactoring_code`)

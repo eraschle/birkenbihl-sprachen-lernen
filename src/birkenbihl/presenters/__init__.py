@@ -1,19 +1,16 @@
-"""Presenter layer for formatting domain models for display.
+"""Presenter layer for view-agnostic data preparation.
 
-Follows Presentation Model pattern (Martin Fowler).
-Separates domain logic from presentation logic.
+Presenters convert domain models to presentation models with:
+- Computed fields (formatted dates, display indices)
+- View-ready structure (eliminates logic duplication)
+- Immutable presentation data
 """
 
-from birkenbihl.presenters.display_models import (
-    AlignmentDisplayModel,
-    SentenceDisplayModel,
-    TranslationDisplayModel,
-)
+from birkenbihl.presenters.models import SentencePresentation, TranslationPresentation
 from birkenbihl.presenters.translation_presenter import TranslationPresenter
 
 __all__ = [
+    "SentencePresentation",
+    "TranslationPresentation",
     "TranslationPresenter",
-    "TranslationDisplayModel",
-    "SentenceDisplayModel",
-    "AlignmentDisplayModel",
 ]

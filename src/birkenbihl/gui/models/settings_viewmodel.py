@@ -1,12 +1,25 @@
 """ViewModel for settings management."""
 
+from dataclasses import dataclass, field
+
 from PySide6.QtCore import QObject, Signal
 from PySide6.QtWidgets import QWidget
 
-from birkenbihl.gui.models.ui_state import SettingsViewState
+from birkenbihl.models.languages import Language
 from birkenbihl.models.settings import ProviderConfig
 from birkenbihl.services import language_service as ls
 from birkenbihl.services.settings_service import SettingsService
+
+
+@dataclass
+class SettingsViewState:
+    """State for settings view."""
+
+    providers: list[ProviderConfig] = field(default_factory=list)
+    selected_provider_index: int = -1
+    target_language: Language = ls.get_default_target_language()
+    is_editing: bool = False
+    has_unsaved_changes: bool = False
 
 
 class SettingsViewModel(QObject):

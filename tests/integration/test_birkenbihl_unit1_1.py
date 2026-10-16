@@ -123,6 +123,7 @@ class TestBirkenbihUnit11WordByWord:
         print(f"\nCase {test_index}: {source_text}")
         print(f"Expected:  {expected_word_by_word}")
         print(f"Generated: {generated_word_by_word}")
-        normalized_gen = conftest.normalize_word_by_word(generated_word_by_word)
-        normalized_exp = conftest.normalize_word_by_word(expected_word_by_word)
-        print(f"Match: {normalized_gen == normalized_exp}")
+
+        generated_normalized = conftest.normalize_word_by_word(generated_word_by_word)
+        expected_normalized = conftest.normalize_word_by_word(expected_word_by_word)
+        print(f"Match: {generated_normalized == expected_normalized}")

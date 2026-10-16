@@ -1,9 +1,12 @@
 """Tests for translation validation functions."""
 
+import pytest
+
 from birkenbihl.models.translation import WordAlignment
 from birkenbihl.models.validation import validate_alignment_complete, validate_source_words_mapped
 
 
+@pytest.mark.unit
 class TestValidateAlignmentComplete:
     """Tests for validate_alignment_complete function."""
 

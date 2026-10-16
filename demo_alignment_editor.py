@@ -29,6 +29,7 @@ from PySide6.QtWidgets import (
 
 from birkenbihl.gui.viewmodels.alignment_editor_vm import AlignmentEditorViewModel
 from birkenbihl.gui.views.alignment_editor_view import InterleavedAlignmentEditor
+from birkenbihl.models.requests import AlignmentUpdateRequest
 from birkenbihl.models.translation import Sentence, Translation, WordAlignment
 from birkenbihl.services.language_service import SUPPORTED_LANGUAGES
 from birkenbihl.services.translation_service import TranslationService
@@ -72,14 +73,14 @@ class DemoWindow(QMainWindow):
 
         # Instructions
         instructions = QLabel(
-            (
+            
                 "<p><b>Instructions:</b></p><ul>"
                 "<li>Drag target words (German) between columns to change alignment</li>"
                 "<li>Each column represents one source word (English/Spanish)</li>"
                 "<li>Multiple target words in one column will be joined with hyphens</li>"
                 "<li>All target words must be assigned (no words in unassigned pool)</li>"
                 "<li>Save button enables when alignment is valid</li></ul>"
-            )
+            
         )
         instructions.setWordWrap(True)
         layout.addWidget(instructions)
@@ -221,7 +222,9 @@ class DemoWindow(QMainWindow):
 
         try:
             self.service.update_sentence_alignment(
-                translation_id=self.translation_id, sentence_uuid=self.sentence_uuid, alignments=alignments
+                AlignmentUpdateRequest(
+                    translation_id=self.translation_id, sentence_uuid=self.sentence_uuid, alignments=alignments
+                )
             )
 
             QMessageBox.information(

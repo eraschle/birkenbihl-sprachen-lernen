@@ -1,103 +1,80 @@
-"""Presenter for formatting translations for display."""
+"""TranslationPresenter for converting domain models to presentation models."""
 
-from birkenbihl.models.translation import Sentence, Translation, WordAlignment
-from birkenbihl.presenters.display_models import (
-    AlignmentDisplayModel,
-    SentenceDisplayModel,
-    TranslationDisplayModel,
-)
+from datetime import datetime
+
+from birkenbihl.models.translation import Sentence, Translation
+from birkenbihl.presenters.models import SentencePresentation, TranslationPresentation
 
 
 class TranslationPresenter:
-    """Formats Translation domain models for display.
+    """Prepares Translation data for display (CLI/GUI agnostic).
 
-    Follows Single Responsibility Principle - only concerned with
-    presentation logic, not domain logic or UI rendering.
+    Converts domain models to presentation models with:
+    - Computed fields (title with fallback, formatted dates)
+    - Display indices (1-based for user display)
+    - Structured data ready for rendering
     """
 
-    def format_translation(self, translation: Translation) -> TranslationDisplayModel:
-        """Format Translation for display.
+    def present(self, translation: Translation) -> TranslationPresentation:
+        """Convert Translation to presentation model.
 
         Args:
-            translation: Domain Translation model
+            translation: Domain translation object
 
         Returns:
-            TranslationDisplayModel with formatted data
+            Immutable presentation model with display-ready data
         """
-        return TranslationDisplayModel(
+        return TranslationPresentation(
+            uuid=translation.uuid,
             title=self._format_title(translation),
-            short_id=str(translation.uuid)[:8],
-            source_language=str(translation.source_language),
-            target_language=str(translation.target_language),
-            language_pair=self._format_language_pair(translation),
-            sentences=self._format_sentences(translation.sentences),
+            source_language_name=translation.source_language.name_de,
+            target_language_name=translation.target_language.name_de,
+            sentence_count=len(translation.sentences),
+            created_at=self._format_datetime(translation.created_at),
+            updated_at=self._format_datetime(translation.updated_at),
+            sentences=[self._present_sentence(sentence, idx) for idx, sentence in enumerate(translation.sentences, 1)],
         )
 
     def _format_title(self, translation: Translation) -> str:
-        """Format translation title.
+        """Format title with fallback for empty titles.
 
         Args:
-            translation: Translation with title
+            translation: Translation object
 
         Returns:
-            Formatted title with fallback
+            Title or fallback string with short UUID
         """
-        if translation.title:
-            return translation.title
-        return f"Translation {str(translation.uuid)[:8]}"
+        return translation.title or f"Translation {str(translation.uuid)[:8]}"
 
-    def _format_language_pair(self, translation: Translation) -> str:
-        """Format language pair display.
+    def _format_datetime(self, date_time: datetime) -> str:
+        """Format datetime for display.
 
         Args:
-            translation: Translation with languages
+            date_time: Datetime to format
 
         Returns:
-            Formatted language pair (e.g., "en → de")
+            Formatted string (YYYY-MM-DD HH:MM)
         """
-        return f"{translation.source_language} → {translation.target_language}"
+        return date_time.strftime("%Y-%m-%d %H:%M")
 
-    def _format_sentences(self, sentences: list[Sentence]) -> list[SentenceDisplayModel]:
-        """Format list of sentences.
+    def _present_sentence(self, sentence: Sentence, index: int) -> SentencePresentation:
+        """Convert Sentence to presentation model.
 
         Args:
-            sentences: List of Sentence domain models
+            sentence: Domain sentence object
+            index: Display index (1-based)
 
         Returns:
-            List of formatted SentenceDisplayModel
+            Immutable sentence presentation
         """
-        return [self._format_sentence(idx + 1, sent) for idx, sent in enumerate(sentences)]
+        alignments = [(wa.source_word, wa.target_word) for wa in sentence.word_alignments]
 
-    def _format_sentence(self, index: int, sentence: Sentence) -> SentenceDisplayModel:
-        """Format single sentence.
-
-        Args:
-            index: Sentence number (1-indexed)
-            sentence: Sentence domain model
-
-        Returns:
-            SentenceDisplayModel with formatted data
-        """
-        return SentenceDisplayModel(
+        return SentencePresentation(
+            uuid=sentence.uuid,
             index=index,
             source_text=sentence.source_text,
             natural_translation=sentence.natural_translation,
-            word_by_word=sentence.get_word_by_word(),
-            alignments=self._format_alignments(sentence.word_alignments),
+            alignment_count=len(alignments),
+            has_alignments=bool(alignments),
+            alignments=alignments,
         )
-
-    def _format_alignments(self, alignments: list[WordAlignment]) -> list[AlignmentDisplayModel]:
-        """Format word alignments.
-
-        Args:
-            alignments: List of WordAlignment domain models
-
-        Returns:
-            List of AlignmentDisplayModel
-        """
-        return [
-            AlignmentDisplayModel(
-                source_word=align.source_word, target_word=align.target_word, position=align.position
-            )
-            for align in alignments
-        ]

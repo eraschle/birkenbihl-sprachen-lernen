@@ -8,7 +8,7 @@ import pytest
 QT_AVAILABLE = True
 try:
     from PySide6.QtWidgets import QApplication
-    from pytestqt.qtbot import QtBot
+    from pytestqt.qtbot import QtBot  # noqa: F401  # availability probe
 except ImportError as e:
     QT_AVAILABLE = False
     _QT_IMPORT_ERROR = str(e)
@@ -38,7 +38,7 @@ def qtbot(qapp, request):
     skrip_test_when_is_not_valid(qapp)
 
     # Get qtbot from pytest-qt plugin
-    from pytestqt.qtbot import QtBot
+    from pytestqt.qtbot import QtBot  # noqa: F401  # availability probe
 
     bot = QtBot(request)
     return bot
