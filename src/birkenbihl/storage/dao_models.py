@@ -29,7 +29,6 @@ class ProviderConfigDAO(SQLModel, table=True):
     api_key: str
     base_url: str | None = None
     is_default: bool = False
-    supports_streaming: bool = True
 
     settings: "SettingsDAO" = Relationship(back_populates="providers")
 

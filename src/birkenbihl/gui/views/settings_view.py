@@ -24,7 +24,7 @@ from birkenbihl.gui.styles import theme
 from birkenbihl.gui.viewmodels.settings_vm import SettingsViewModel
 from birkenbihl.gui.widgets.language_combo import LanguageCombo
 from birkenbihl.models.settings import ProviderConfig
-from birkenbihl.providers.registry import ProviderRegistry
+from birkenbihl.providers import catalog
 from birkenbihl.services import language_service as ls
 
 
@@ -68,13 +68,11 @@ class ProviderDialog(QDialog):
         self.base_url_edit = QLineEdit()  # type: ignore[reportUninitializedInstanceVariable]
         self.base_url_label = QLabel("Base URL:")  # type: ignore[reportUninitializedInstanceVariable]
         self.is_default_check = QCheckBox()  # type: ignore[reportUninitializedInstanceVariable]
-        self.supports_streaming_check = QCheckBox()  # type: ignore[reportUninitializedInstanceVariable]
-        self.supports_streaming_check.setChecked(True)
 
     def _populate_provider_types(self) -> None:
-        """Populate provider type combo with available providers from registry."""
-        for provider in ProviderRegistry.get_supported_providers():
-            self.type_combo.addItem(provider.display_name, userData=provider.provider_type)
+        """Populate provider type combo with the supported providers."""
+        for provider in catalog.list_providers():
+            self.type_combo.addItem(provider.display_name, userData=provider.provider_type.value)
 
     def _add_fields_to_layout(self, layout: QFormLayout) -> None:
         layout.addRow("Name:", self.name_edit)
@@ -84,7 +82,6 @@ class ProviderDialog(QDialog):
         self.base_url_row_index = layout.rowCount()  # type: ignore[reportUninitializedInstanceVariable]
         layout.addRow(self.base_url_label, self.base_url_edit)
         layout.addRow("Set as Default:", self.is_default_check)
-        layout.addRow("Supports Streaming:", self.supports_streaming_check)
         self._form_layout = layout  # type: ignore[reportUninitializedInstanceVariable]
 
     def _add_spacer(self, layout: QFormLayout) -> None:
@@ -111,7 +108,6 @@ class ProviderDialog(QDialog):
         self.api_key_edit.setText(self._provider_config.api_key)
         self.base_url_edit.setText(self._provider_config.api_url)
         self.is_default_check.setChecked(self._provider_config.is_default)
-        self.supports_streaming_check.setChecked(self._provider_config.supports_streaming)
         self._update_base_url_visibility()
 
     def _set_provider_type_by_code(self, provider_type: str) -> None:
@@ -123,11 +119,10 @@ class ProviderDialog(QDialog):
 
     def _populate_models_for_provider(self, provider_type: str) -> None:
         """Populate model combo with models for the selected provider type."""
-        provider_metadata = ProviderRegistry.get_provider_metadata(provider_type)
-        if not provider_metadata:
+        if not catalog.is_supported(provider_type):
             return
         self.model_combo.clear()
-        for model_name in provider_metadata.default_models:
+        for model_name in catalog.suggested_models(provider_type):
             self.model_combo.addItem(model_name)
 
     def _on_provider_type_changed(self) -> None:
@@ -153,16 +148,16 @@ class ProviderDialog(QDialog):
 
     def _update_base_url_visibility(self) -> None:
         provider_type = self.type_combo.currentData()
-        provider_meta = ProviderRegistry.get_provider_metadata(provider_type)
-        if not provider_meta:
+        if not provider_type or not catalog.is_supported(provider_type):
             return
+        requires_api_url = catalog.get_provider_info(provider_type).requires_api_url
 
         label_item = self._form_layout.itemAt(self.base_url_row_index, QFormLayout.ItemRole.LabelRole)
         field_item = self._form_layout.itemAt(self.base_url_row_index, QFormLayout.ItemRole.FieldRole)
         if label_widget := label_item.widget():
-            label_widget.setVisible(provider_meta.requires_api_url_input)
+            label_widget.setVisible(requires_api_url)
         if combobox_widget := field_item.widget():
-            combobox_widget.setVisible(provider_meta.requires_api_url_input)
+            combobox_widget.setVisible(requires_api_url)
 
     def get_provider(self) -> ProviderConfig | None:
         if not self._validate_input():
@@ -175,7 +170,6 @@ class ProviderDialog(QDialog):
             api_key=self.api_key_edit.text().strip(),
             api_url=self.base_url_edit.text().strip(),
             is_default=self.is_default_check.isChecked(),
-            supports_streaming=self.supports_streaming_check.isChecked(),
         )
 
     def _validate_input(self) -> bool:

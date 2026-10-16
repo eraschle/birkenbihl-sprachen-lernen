@@ -11,7 +11,6 @@ from birkenbihl.gui.views.main_window import MainWindow
 from birkenbihl.providers.pydantic_ai_translator import (
     PydanticAITranslator,
 )
-from birkenbihl.providers.registry import ProviderRegistry
 from birkenbihl.services import path_service as ps
 from birkenbihl.services.settings_service import SettingsService
 from birkenbihl.services.translation_service import TranslationService
@@ -98,9 +97,6 @@ def main() -> int:
         theme_manager.apply_theme(app)
 
         setup_exception_handler()
-
-        # Initialize provider registry (heavy imports) at startup to avoid UI blocking
-        ProviderRegistry.initialize()
 
         translation_service, settings_service = create_services()
         window = MainWindow(translation_service, settings_service)

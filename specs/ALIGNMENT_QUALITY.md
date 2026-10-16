@@ -1,7 +1,7 @@
 # Qualität der Wort-für-Wort-Übersetzung
 
 **Stand:** 2026-10-16
-**Status:** Datenmodell umgesetzt (Schritt 3); Jev und Selbstkorrektur folgen mit Schritt 4
+**Status:** Datenmodell (Schritt 3) und Selbstkorrektur (Schritt 4) umgesetzt; Prüfdatensatz und Jev offen
 
 Die Wort-für-Wort-Übersetzung („Dekodieren“) ist der Kern der Birkenbihl-Methode und muss stimmen.
 Sprachmodelle sind dafür nicht trainiert und machen Fehler. Deshalb vertraut die App keinem einzelnen
@@ -77,11 +77,13 @@ Wird mit dem Prüfdatensatz gemessen, nicht vorab entschieden. Beide Rollen nutz
 im Code (Zuordnung + Konfidenz pro Paar), damit LLM, Jev oder ein klassischer Aligner (z. B. SimAlign)
 austauschbar sind.
 
-## Selbstkorrektur des LLM
+## Selbstkorrektur des LLM (umgesetzt in Schritt 4)
 
-Verletzt ein LLM-Vorschlag die Regeln, wird die konkrete Fehlermeldung über einen pydantic-ai
-Output-Validator (`ModelRetry`) zurückgegeben („'dich' fehlt“). Begrenzte Anzahl Versuche, danach
-geht der Satz `flagged` an den Nutzer.
+`BaseTranslator._align()`: Ein pydantic-ai Output-Validator gleicht jede Antwort mit `align_word_pairs()` ab und
+prüft sie mit `validate_alignment_complete()`. Bei Verstößen geht die konkrete Meldung als `ModelRetry` zurück
+(„Quellwörter ohne Zielwort: te. Fehlende Wörter: dich …“, oder Zielwörter, die nicht in der Übersetzung
+stehen). Nach `ALIGNMENT_RETRIES` (2) Korrekturen wird der letzte Versuch mit `flagged`-Spalten übernommen
+statt abzubrechen. Das Modell bekommt dieselben bereinigten Tokens, gegen die geprüft wird.
 
 ## Prüfdatensatz
 
@@ -99,5 +101,5 @@ der Nutzer ihn prüft. Gefährlich ist nur der unmarkierte Fehler.
 ## Reihenfolge
 
 1. ~~Schritt 3: Positionen + `status` im Modell, Editor hebt `flagged` hervor.~~ Erledigt.
-2. Schritt 4: Provider-Schicht vereinfachen, pydantic-ai ≥ 2.45 (Voraussetzung für Jev), Selbstkorrektur.
+2. ~~Schritt 4: Provider-Schicht vereinfachen, pydantic-ai ≥ 2.45 (Voraussetzung für Jev), Selbstkorrektur.~~ Erledigt.
 3. Prüfdatensatz-Benchmark, dann Jev Rolle A und B messen.

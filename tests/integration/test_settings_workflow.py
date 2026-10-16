@@ -44,7 +44,6 @@ class TestSettingsWorkflowIntegration:
                     "model": "gpt-4o",
                     "api_key": "sk-test-key",
                     "is_default": True,
-                    "supports_streaming": True,
                 },
                 {
                     "name": "Claude Sonnet",
@@ -52,7 +51,6 @@ class TestSettingsWorkflowIntegration:
                     "model": "claude-3-5-sonnet-20241022",
                     "api_key": "sk-ant-test-key",
                     "is_default": False,
-                    "supports_streaming": True,
                 },
             ],
         }
@@ -87,7 +85,7 @@ class TestSettingsWorkflowIntegration:
         service1.add_provider(
             ProviderConfig(
                 name="Gemini Flash",
-                provider_type="google-gla",
+                provider_type="google",
                 model="gemini-2.0-flash-exp",
                 api_key="gemini-key",
                 is_default=True,
@@ -230,7 +228,7 @@ class TestSettingsWorkflowIntegration:
         service1.add_provider(
             ProviderConfig(
                 name="Provider 3",
-                provider_type="google-gla",
+                provider_type="google",
                 model="gemini-2.0-flash-exp",
                 api_key="key3",
             )
@@ -308,7 +306,6 @@ class TestSettingsWorkflowIntegration:
             model=loaded.providers[0].model,
             api_key="new-key",
             is_default=loaded.providers[0].is_default,
-            supports_streaming=loaded.providers[0].supports_streaming,
         )
 
         service2.update_provider(0, updated_provider)

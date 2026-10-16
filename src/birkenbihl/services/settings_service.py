@@ -75,26 +75,20 @@ class SettingsService:
     def validate_provider_config(provider: ProviderConfig) -> str | None:
         """Validate provider configuration.
 
-        Checks if provider settings are valid, especially streaming support.
-
         Args:
             provider: Provider configuration to validate
 
         Returns:
             Error message if validation fails, None if valid
         """
-        from birkenbihl.providers.registry import ProviderRegistry
+        from birkenbihl.providers import catalog
 
-        # Check if provider type is supported
-        if not ProviderRegistry.is_supported(provider.provider_type):
-            return f"Provider '{provider.provider_type}' wird nicht unterstützt"
+        if not catalog.is_supported(provider.provider_type):
+            supported = ", ".join(info.provider_type.value for info in catalog.list_providers())
+            return f"Provider '{provider.provider_type}' wird nicht unterstützt (unterstützt: {supported})"
 
-        # Check if streaming is enabled but not supported
-        if provider.supports_streaming and not ProviderRegistry.supports_streaming(provider):
-            return (
-                f"Provider '{provider.provider_type}' mit Modell '{provider.model}' unterstützt kein Streaming. "
-                f"Bitte deaktivieren Sie die Streaming-Option für diese Kombination."
-            )
+        if catalog.get_provider_info(provider.provider_type).requires_api_url and not provider.api_url:
+            return f"Provider '{provider.name}' braucht eine API-URL"
 
         return None
 

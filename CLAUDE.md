@@ -83,11 +83,16 @@ The codebase uses Protocol-based abstractions for dependency injection and testa
   - `translate()`: Returns both natural and word-by-word translations (Birkenbihl method)
   - `detect_language()`: Auto-detects source language (en, es, de)
 
-**Providers** (`src/birkenbihl/providers/`):
-- `PydanticAITranslationProvider`: Implements `TranslationProvider` using Pydantic AI
-  - Supports multiple AI models (OpenAI GPT-4, Anthropic Claude, etc.)
-  - Uses structured outputs (`BirkenbihTranslation` model)
-  - Handles async execution with threading to avoid event loop conflicts
+**Providers** (`src/birkenbihl/providers/`), pydantic-ai 2.x (`pydantic-ai-slim` with only the extras in use):
+- `catalog.py`: the fixed list of supported provider types (`openai`, `anthropic`, `google`,
+  `openai-compatible` with `api_url`) and `create_model()`. Provider types are stored in user settings, so
+  never derive them from pydantic-ai's model lists (that broke once when pydantic-ai renamed providers).
+- `BaseTranslator`: two steps - natural translation, then word alignment per sentence. The alignment step
+  self-corrects: an output validator checks the Birkenbihl rules and sends concrete problems back to the
+  model (`ModelRetry`, `ALIGNMENT_RETRIES`); still broken afterwards → returned FLAGGED for the user.
+- `PydanticAITranslator`: `BaseTranslator` built from a `ProviderConfig`
+- Tests use pydantic-ai's `FunctionModel` (see `tests/providers/test_base_translator.py`), not mocked agents,
+  so validators and retries really run
 
 ### Birkenbihl Method Implementation
 

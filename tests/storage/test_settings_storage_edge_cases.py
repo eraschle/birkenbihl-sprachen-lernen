@@ -233,24 +233,16 @@ class TestSettingsStorageEdgeCases:
         assert loaded.providers[0].provider_type == "anthropic"
 
     def test_all_provider_boolean_combinations(self, storage: SettingsStorageProvider) -> None:
-        """Test all combinations of boolean flags."""
-        test_cases = [
-            (True, True),
-            (True, False),
-            (False, True),
-            (False, False),
-        ]
-
-        for is_default, supports_streaming in test_cases:
+        """Test both values of the is_default flag."""
+        for is_default in (True, False):
             settings = Settings(
                 providers=[
                     ProviderConfig(
-                        name=f"Test_{is_default}_{supports_streaming}",
+                        name=f"Test_{is_default}",
                         provider_type="openai",
                         model="gpt-4o",
                         api_key="test-key",
                         is_default=is_default,
-                        supports_streaming=supports_streaming,
                     )
                 ]
             )
@@ -259,7 +251,6 @@ class TestSettingsStorageEdgeCases:
             loaded = storage.load()
 
             assert loaded.providers[0].is_default == is_default
-            assert loaded.providers[0].supports_streaming == supports_streaming
 
             storage.delete_all()
 

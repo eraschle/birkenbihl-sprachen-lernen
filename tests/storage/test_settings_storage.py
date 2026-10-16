@@ -164,25 +164,6 @@ class TestSettingsStorageProvider:
 
         assert loaded.providers[0].api_url == "https://api.publicai.co/v1"
 
-    def test_provider_streaming_flag(self, storage: SettingsStorageProvider) -> None:
-        """Test saving and loading provider with supports_streaming flag."""
-        settings = Settings(
-            providers=[
-                ProviderConfig(
-                    name="Bedrock Claude",
-                    provider_type="bedrock",
-                    model="anthropic.claude-3-5-sonnet-20241022-v2:0",
-                    api_key="aws-credentials",
-                    supports_streaming=False,
-                )
-            ]
-        )
-
-        storage.save(settings)
-        loaded = storage.load()
-
-        assert loaded.providers[0].supports_streaming is False
-
     def test_context_manager(self, temp_db: Path, sample_settings: Settings) -> None:
         """Test storage provider as context manager."""
         with SettingsStorageProvider(temp_db) as storage:

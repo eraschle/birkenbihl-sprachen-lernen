@@ -129,7 +129,7 @@ class TestSettingsServiceDatabaseIntegration:
         service2.add_provider(
             ProviderConfig(
                 name="Gemini Flash",
-                provider_type="google-gla",
+                provider_type="google",
                 model="gemini-2.0-flash-exp",
                 api_key="gemini-key",
                 is_default=True,

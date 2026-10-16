@@ -62,7 +62,6 @@ class TestSettingsStorageStress:
                 api_key=f"key-{i}" * 10,  # Longer keys
                 api_url=f"https://api{i}.example.com" if i % 5 == 0 else None,
                 is_default=(i == 0),
-                supports_streaming=(i % 2 == 0),
             )
             for i in range(100)
         ]

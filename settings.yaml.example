@@ -1,125 +1,74 @@
 # ============================================================================
-# Birkenbihl Multi-Provider Configuration
+# Birkenbihl Provider Configuration
 # ============================================================================
 #
-# This file configures AI providers for the Birkenbihl language learning app.
-# Copy this file to settings.yaml and add your API keys directly here.
+# Copy this file to settings.yaml and add your API keys.
+# settings.yaml is in .gitignore - keep your keys private.
 #
-# IMPORTANT: Add settings.yaml to .gitignore to keep API keys private!
-#
-# ============================================================================
-
-# Provider Configurations
 # Each provider needs:
 #   - name: Display name (used in UI and CLI)
-#   - provider_type: See supported providers below
-#   - model: Model identifier (without provider prefix)
-#   - api_key: Your actual API key (keep this file private!)
-#   - is_default: Set one provider as default (true/false)
-#   - supports_streaming: Enable streaming progress bar (true/false, default: true)
+#   - provider_type: one of
+#       openai             OpenAI
+#       anthropic          Anthropic Claude
+#       google             Google Gemini
+#       openai-compatible  any service with an OpenAI-style API (needs api_url):
+#                          Ollama, LM Studio, OpenRouter, DeepSeek, Groq, Mistral, ...
+#   - model: Model name as the provider spells it
+#   - api_key: Your API key (any non-empty value for local servers like Ollama)
+#   - api_url: Only for openai-compatible
+#   - is_default: Mark one provider as default
 #
-# Supported provider_type values:
-#   OpenAI-based: openai, azure, deepseek, cerebras, fireworks, github, grok,
-#                 heroku, ollama, openrouter, publicai, together, vercel, litellm
-#   Other: anthropic, gemini, groq, cohere, mistral, bedrock
-#
-# Note: bedrock provider does not support streaming (known issue)
+# ============================================================================
 
 providers:
-  # Example: OpenAI GPT-4
-  - name: OpenAI GPT-4
-    provider_type: openai
-    model: gpt-4o
-    api_key: sk-your-openai-api-key-here
+  - name: Claude Sonnet
+    provider_type: anthropic
+    model: claude-sonnet-4-5
+    api_key: sk-ant-your-anthropic-api-key-here
     is_default: true
 
-  # Example: Anthropic Claude
-  # - name: Claude Sonnet
-  #   provider_type: anthropic
-  #   model: claude-3-5-sonnet-20241022
-  #   api_key: sk-ant-your-anthropic-api-key-here
-  #   is_default: false
-
-  # Example: Google Gemini
-  # - name: Gemini Flash
-  #   provider_type: gemini
-  #   model: gemini-2.0-flash
-  #   api_key: your-google-api-key-here
-  #   is_default: false
-
-  # Example: Groq (Fast inference)
-  # - name: Groq Llama
-  #   provider_type: groq
-  #   model: llama-3.3-70b-versatile
-  #   api_key: gsk-your-groq-api-key-here
-  #   is_default: false
-
-  # Example: DeepSeek (Cost-effective)
-  # - name: DeepSeek Chat
-  #   provider_type: deepseek
-  #   model: deepseek-chat
-  #   api_key: sk-your-deepseek-api-key-here
-  #   is_default: false
-
-  # Example: Ollama (Local, no API key needed)
-  # - name: Ollama Llama
-  #   provider_type: ollama
-  #   model: llama3.1
-  #   api_key: ollama  # Dummy value, not used for local Ollama
-  #   is_default: false
-
-  # Example: PublicAI (Swiss AI model)
-  # - name: PublicAI Apertus
-  #   provider_type: publicai
-  #   model: swiss-ai/apertus-8b-instruct
-  #   api_key: your-publicai-api-key-here
-  #   base_url: https://api.publicai.co/v1
-  #   is_default: false
-
-  # Example: AWS Bedrock (Streaming not supported)
-  # - name: Bedrock Claude
-  #   provider_type: bedrock
-  #   model: anthropic.claude-3-5-sonnet-20241022-v2:0
-  #   api_key: your-aws-credentials-here
-  #   is_default: false
-  #   supports_streaming: false  # Required: bedrock does not support streaming
-
-  # Example: OpenAI GPT-4o Mini (cheaper/faster)
-  # - name: OpenAI GPT-4o Mini
+  # - name: OpenAI
   #   provider_type: openai
-  #   model: gpt-4o-mini
+  #   model: gpt-4o
   #   api_key: sk-your-openai-api-key-here
   #   is_default: false
 
-# General Settings
+  # - name: Gemini Flash
+  #   provider_type: google
+  #   model: gemini-2.5-flash
+  #   api_key: your-google-api-key-here
+  #   is_default: false
+
+  # - name: Ollama (local)
+  #   provider_type: openai-compatible
+  #   model: llama3.1
+  #   api_key: ollama
+  #   api_url: http://localhost:11434/v1
+  #   is_default: false
+
+  # - name: OpenRouter
+  #   provider_type: openai-compatible
+  #   model: meta-llama/llama-3.3-70b-instruct
+  #   api_key: sk-or-your-openrouter-key-here
+  #   api_url: https://openrouter.ai/api/v1
+  #   is_default: false
+
+  # - name: DeepSeek
+  #   provider_type: openai-compatible
+  #   model: deepseek-chat
+  #   api_key: sk-your-deepseek-api-key-here
+  #   api_url: https://api.deepseek.com/v1
+  #   is_default: false
+
 target_language: de
 
 # ============================================================================
-# Setup Instructions
-# ============================================================================
+# API keys
+#   - Anthropic: https://console.anthropic.com/settings/keys
+#   - OpenAI: https://platform.openai.com/api-keys
+#   - Google Gemini: https://aistudio.google.com/app/apikey
+#   - Ollama: local installation, no key needed (https://ollama.com)
 #
-# 1. Copy this file to settings.yaml:
-#    cp settings.yaml.example settings.yaml
-#
-# 2. Replace placeholder API keys with your actual keys:
-#    - OpenAI: https://platform.openai.com/api-keys
-#    - Anthropic: https://console.anthropic.com/settings/keys
-#    - Google Gemini: https://aistudio.google.com/app/apikey
-#    - Groq: https://console.groq.com/keys
-#    - DeepSeek: https://platform.deepseek.com/api_keys
-#    - PublicAI: https://platform.publicai.co
-#    - Cohere: https://dashboard.cohere.com/api-keys
-#    - Ollama: Local installation, no API key needed (https://ollama.com)
-#
-# 3. Ensure settings.yaml is in .gitignore (already configured)
-#
-# 4. Uncomment and configure additional providers as needed
-#
-# 5. Set one provider as is_default: true
-#
-# Alternative: Environment Variables (.env file)
-# If you prefer, you can keep API keys in .env and reference them here:
-#   api_key: ${OPENAI_API_KEY}
-# But this requires the keys to be set as environment variables.
-#
+# Keys can also come from environment variables (.env):
+#   api_key: ${ANTHROPIC_API_KEY}
 # ============================================================================

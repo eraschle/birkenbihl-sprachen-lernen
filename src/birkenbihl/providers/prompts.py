@@ -4,8 +4,6 @@ These prompts are used by all translation providers to ensure consistent
 behavior across OpenAI, Anthropic, and other models.
 """
 
-import re
-
 from birkenbihl.models.languages import Language
 
 # NEW: Step 1 - Natural Translation Only
@@ -311,72 +309,3 @@ Provide {count} different translations in {target_name} that:
 3. Are all fluent and natural-sounding
 
 Return only the alternative translations."""
-
-
-def create_regenerate_alignment_prompt(
-    source_text: str, natural_translation: str, source_lang: Language, target_lang: Language
-) -> str:
-    """Create prompt for regenerating word-by-word alignment.
-
-    Args:
-        source_text: Original source sentence
-        natural_translation: Natural translation chosen by user
-        source_lang: Source language
-        target_lang: Target language
-
-    Returns:
-        Formatted prompt for alignment generation
-    """
-    source_name = source_lang.name_en
-    target_name = target_lang.name_en
-
-    # Extract words from natural translation to show them explicitly
-    # Remove punctuation but preserve case (used only in prompt, so inline is fine)
-    text_no_punct = re.sub(r"[^\w\s'\-]", "", natural_translation)
-    target_words = text_no_punct.split()
-    target_words_list = ", ".join(f'"{word}"' for word in target_words)
-
-    return f"""Create a word-by-word alignment for the Birkenbihl method.
-
-**Source sentence ({source_name}):**
-{source_text}
-
-**Natural translation ({target_name}):**
-{natural_translation}
-
-**Target words available (from natural translation):**
-{target_words_list}
-
-**Critical rules:**
-1. **EVERY target word MUST be used EXACTLY ONCE** in the alignments
-2. **Use target words AS THEY APPEAR** in the natural translation
-   (if "werde" and "vermissen" are separate words, keep them separate!)
-3. Map each source word to one or more target words
-4. Use hyphens to connect target words ONLY when mapping multiple target
-   words to ONE source word (e.g., "I've" → "Ich-habe")
-5. **DO NOT create compound words** if the target words appear separately in the natural translation
-6. Follow source word order with sequential position numbers (0-indexed)
-
-**Example 1 (Correct - separate words):**
-Source: "Yo te extrañaré"
-Natural: "Ich werde dich vermissen"
-Target words: "Ich", "werde", "dich", "vermissen"
-
-✓ CORRECT Alignments:
-- Position 0: "Yo" → "Ich"
-- Position 1: "te" → "dich"
-- Position 2: "extrañaré" → "werde-vermissen"  (combines "werde" + "vermissen" for one source word)
-
-✗ WRONG: Do not create "werde vermissen" or omit words!
-
-**Example 2 (Simple 1:1):**
-Source: "Ich mag Hunde"
-Natural: "I like dogs"
-Target words: "I", "like", "dogs"
-
-Alignments:
-- Position 0: "Ich" → "I"
-- Position 1: "mag" → "like"
-- Position 2: "Hunde" → "dogs"
-
-Generate the word-by-word alignment following these rules. Ensure ALL target words are used exactly once."""

@@ -851,6 +851,8 @@ Before moving to Phase 4, verify:
   (`InterleavedGridEditable` + `GridState`). The duplicate `InterleavedAlignmentEditor` was removed.
   Alignments are stored as token positions with a status (suggested/flagged/confirmed) since step 3;
   repeated words are handled correctly, AI mismatches are flagged and shown in the editor.
+- Step 4: four fixed provider types (`providers/catalog.py`) on pydantic-ai-slim 2.x; the alignment step
+  self-corrects (validator + ModelRetry) before flagging. Removed: provider registry, unused streaming.
 **Phase 3**: AudioService done, but NOT yet wired into the GUI
 **Phase 4**: Deferred (optional feature)
 
@@ -864,11 +866,12 @@ Test status (`QT_QPA_PLATFORM=offscreen uv run pytest`): 373 passed, 36 skipped,
 
 See `specs/ALIGNMENT_QUALITY.md` for the alignment quality design (rules, self-correction, Jev).
 
-1. Step 4: simplify provider layer, migrate to pydantic-ai >= 2.45 (required for Jev), LLM self-correction
-2. Benchmark on `tests/fixtures/birkenbihl_unit1_1.json`; evaluate Jev as aligner and as checker
-3. Editor: "confirm" action for flagged columns that are already correct
+1. Benchmark on `tests/fixtures/birkenbihl_unit1_1.json` (needs API keys); evaluate Jev as aligner and checker
+   (add `typesafe` to the pydantic-ai-slim extras and a catalog entry when used)
+2. Editor: "confirm" action for flagged columns that are already correct
+3. Move AI calls out of the GUI panels (edit/create mode call PydanticAITranslator directly)
 4. Wire audio playback into the translation tab
-5. Add GUI tests (coverage 56%, target 80%)
+5. Add GUI tests (target 80%)
 
 ---
 
