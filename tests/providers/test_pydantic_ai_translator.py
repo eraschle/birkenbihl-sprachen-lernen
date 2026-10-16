@@ -6,6 +6,7 @@ Integration tests require appropriate API keys for each provider.
 
 import pytest
 
+from birkenbihl.exceptions import ProviderError
 from birkenbihl.models.settings import ProviderConfig
 from birkenbihl.models.translation import Translation
 from birkenbihl.providers.pydantic_ai_translator import PydanticAITranslator
@@ -16,8 +17,8 @@ from birkenbihl.services.language_service import get_language_by
 class TestPydanticAITranslatorUnit:
     """Unit tests for PydanticAITranslator factory logic."""
 
-    def test_unsupported_provider_raises_value_error(self) -> None:
-        """Test that unsupported provider_type raises ValueError."""
+    def test_unsupported_provider_raises_provider_error(self) -> None:
+        """Test that unsupported provider_type raises ProviderError."""
         # Arrange
         config = ProviderConfig(
             name="Unknown Provider",
@@ -27,7 +28,7 @@ class TestPydanticAITranslatorUnit:
         )
 
         # Act & Assert
-        with pytest.raises(ValueError, match="Unsupported provider: unsupported_provider") as exc_info:
+        with pytest.raises(ProviderError, match="Unsupported provider: unsupported_provider") as exc_info:
             PydanticAITranslator(config)
 
         assert "Supported providers:" in str(exc_info.value)

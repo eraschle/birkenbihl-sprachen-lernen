@@ -851,16 +851,18 @@ Before moving to Phase 4, verify:
 **Phase 3**: AudioService done, but NOT yet wired into the GUI
 **Phase 4**: Deferred (optional feature)
 
-Test status after merge (`QT_QPA_PLATFORM=offscreen pytest -m "not slow"`): 364 passed, 13 failed
-- 3 tests still expect `ValueError` where the code now raises `TranslationError`/`ProviderError`
-- 2 alignment editor integration tests have wrong expectations (never passed)
-- 8 registry/settings tests fail (provider registry / `google-gla` support)
+Test status (`QT_QPA_PLATFORM=offscreen uv run pytest`): 396 passed, 36 skipped, 0 failed
+- Skipped: tests needing AI API keys or network access to Google TTS
+- Coverage gate fails: 36% total vs. `--cov-fail-under=80` (many GUI modules have no tests)
+- `pydantic-ai` pinned to `>=1.0,<2`; the provider registry maps renamed pydantic-ai
+  prefixes (`google` → `google-gla`, `google-cloud` → `google-vertex`) to stable IDs
 
 ### Next Steps
 
-1. Fix the 13 failing tests
-2. Integrate alignment editor and audio playback into the translation tab
+1. Integrate alignment editor and audio playback into the translation tab
+2. Add GUI tests (or adjust the coverage gate) so `uv run pytest` passes
 3. Merge this branch into `master`
+4. Evaluate migrating to pydantic-ai 2.x (provider list changed, groq/bedrock no longer bundled)
 
 ---
 
@@ -868,7 +870,8 @@ Test status after merge (`QT_QPA_PLATFORM=offscreen pytest -m "not slow"`): 364 
 
 | Metric | Current | Target | Status |
 |--------|---------|--------|--------|
-| Tests passing (non-slow) | 364/377 | 100% | 🟡 13 failing |
+| Tests failing | 0 | 0 | ✅ |
+| Coverage | 36% | 80% | 🔴 Below gate |
 | Ruff | clean | clean | ✅ |
 | Alignment editor in app | no | yes | 🔴 Open |
 | Audio playback in app | no | yes | 🔴 Open |

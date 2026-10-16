@@ -1,14 +1,25 @@
 """Integration tests for AudioService with gTTS provider."""
 
 import tempfile
+import urllib.request
 from pathlib import Path
 from uuid import uuid4
 
 import pytest
 
+from birkenbihl.exceptions import AudioError
 from birkenbihl.models.translation import Sentence
 from birkenbihl.providers.gtts_audio_provider import GTTSAudioProvider
 from birkenbihl.services.audio_service import AudioService
+
+
+@pytest.fixture(scope="session")
+def gtts_online() -> None:
+    """Skip tests that need Google TTS when it cannot be reached (offline, blocked by proxy)."""
+    try:
+        urllib.request.urlopen("https://translate.google.com", timeout=5)  # noqa: S310
+    except OSError as exc:
+        pytest.skip(f"Google TTS not reachable: {exc}")
 
 
 @pytest.fixture
@@ -46,6 +57,7 @@ def sample_sentence():
 class TestAudioServiceIntegration:
     """Test AudioService with real gTTS provider."""
 
+    @pytest.mark.usefixtures("gtts_online")
     def test_generate_sentence_audio(self, audio_service, sample_sentence, temp_audio_dir):
         """Test generating audio for single sentence."""
         audio_path = audio_service.generate_sentence_audio(sample_sentence, "en", temp_audio_dir)
@@ -57,6 +69,7 @@ class TestAudioServiceIntegration:
         # Check file has content
         assert audio_path.stat().st_size > 0
 
+    @pytest.mark.usefixtures("gtts_online")
     def test_batch_generate_audio(self, audio_service, temp_audio_dir):
         """Test generating audio for multiple sentences."""
         sentences = [
@@ -73,6 +86,7 @@ class TestAudioServiceIntegration:
             assert path.suffix == ".mp3"
             assert path.stat().st_size > 0
 
+    @pytest.mark.usefixtures("gtts_online")
     def test_audio_exists(self, audio_service, sample_sentence, temp_audio_dir):
         """Test audio existence checking."""
         # Before generation
@@ -90,8 +104,8 @@ class TestAudioServiceIntegration:
         assert actual_path == expected_path
 
     def test_unsupported_language_raises(self, audio_service, sample_sentence, temp_audio_dir):
-        """Test that unsupported language raises ValueError."""
-        with pytest.raises(ValueError, match="not supported"):
+        """Test that unsupported language raises AudioError."""
+        with pytest.raises(AudioError, match="not supported"):
             audio_service.generate_sentence_audio(sample_sentence, "invalid_lang", temp_audio_dir)
 
     def test_supported_languages(self, audio_service):
@@ -110,6 +124,7 @@ class TestAudioServiceIntegration:
 class TestGTTSAudioProvider:
     """Test gTTS provider directly."""
 
+    @pytest.mark.usefixtures("gtts_online")
     def test_generate_audio_bytes(self, audio_provider):
         """Test generating audio as bytes."""
         audio_data = audio_provider.generate_audio("Hello world", "en")
@@ -117,6 +132,7 @@ class TestGTTSAudioProvider:
         assert isinstance(audio_data, bytes)
         assert len(audio_data) > 0
 
+    @pytest.mark.usefixtures("gtts_online")
     def test_save_audio_file(self, audio_provider, temp_audio_dir):
         """Test saving audio to file."""
         output_path = temp_audio_dir / "test.mp3"
@@ -127,6 +143,7 @@ class TestGTTSAudioProvider:
         assert output_path.exists()
         assert output_path.stat().st_size > 0
 
+    @pytest.mark.usefixtures("gtts_online")
     def test_creates_parent_directory(self, audio_provider, temp_audio_dir):
         """Test that parent directories are created."""
         output_path = temp_audio_dir / "nested" / "dir" / "test.mp3"
@@ -135,6 +152,7 @@ class TestGTTSAudioProvider:
 
         assert output_path.exists()
 
+    @pytest.mark.usefixtures("gtts_online")
     def test_spanish_audio(self, audio_provider, temp_audio_dir):
         """Test generating Spanish audio."""
         output_path = temp_audio_dir / "spanish.mp3"
@@ -144,6 +162,7 @@ class TestGTTSAudioProvider:
         assert output_path.exists()
         assert output_path.stat().st_size > 0
 
+    @pytest.mark.usefixtures("gtts_online")
     def test_german_audio(self, audio_provider, temp_audio_dir):
         """Test generating German audio."""
         output_path = temp_audio_dir / "german.mp3"
@@ -153,6 +172,7 @@ class TestGTTSAudioProvider:
         assert output_path.exists()
         assert output_path.stat().st_size > 0
 
+    @pytest.mark.usefixtures("gtts_online")
     def test_slow_mode(self, temp_audio_dir):
         """Test slow speech mode."""
         slow_provider = GTTSAudioProvider(slow=True)
@@ -171,7 +191,7 @@ class TestGTTSAudioProvider:
 
     def test_unsupported_language(self, audio_provider):
         """Test error handling for unsupported language."""
-        with pytest.raises(ValueError, match="not supported"):
+        with pytest.raises(AudioError, match="not supported"):
             audio_provider.generate_audio("Test", "xyz")
 
     def test_get_supported_languages(self, audio_provider):
@@ -191,6 +211,7 @@ class TestGTTSAudioProvider:
 class TestAudioWorkflow:
     """Test complete audio generation workflow."""
 
+    @pytest.mark.usefixtures("gtts_online")
     def test_translation_audio_generation(self, audio_service, temp_audio_dir):
         """Test generating audio for complete translation."""
         # Simulate translation with multiple sentences
@@ -210,6 +231,7 @@ class TestAudioWorkflow:
             expected_path = audio_service.get_audio_path(sentence.uuid, temp_audio_dir)
             assert audio_path == expected_path
 
+    @pytest.mark.usefixtures("gtts_online")
     def test_regenerate_existing_audio(self, audio_service, sample_sentence, temp_audio_dir):
         """Test that regenerating overwrites existing file."""
         # Generate initial audio

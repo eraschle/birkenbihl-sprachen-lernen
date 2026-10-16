@@ -2,6 +2,7 @@
 
 import pytest
 
+from birkenbihl.exceptions import TranslationError
 from birkenbihl.providers import text_utils
 from birkenbihl.providers.models import SentenceResponse, WordAlignmentResponse
 
@@ -199,7 +200,7 @@ class TestRedistributeMergedTranslation:
         assert len(result[1].word_alignments) == 3
 
     def test_mismatch_sentence_count_raises_error(self) -> None:
-        """Test that mismatched sentence counts raise ValueError."""
+        """Test that mismatched sentence counts raise TranslationError."""
         merged = SentenceResponse(
             source_text="Hello world",
             natural_translation="Hallo Welt",
@@ -212,11 +213,11 @@ class TestRedistributeMergedTranslation:
         # Expect 2 sentences but natural only has 1
         source_sentences = ["Hello", "world"]
 
-        with pytest.raises(ValueError, match="Natural translation split into 1 sentences but expected 2"):
+        with pytest.raises(TranslationError, match="Natural translation split into 1 sentences but expected 2"):
             text_utils.redistribute_merged_translation(merged, source_sentences)
 
     def test_unknown_source_word_raises_error(self) -> None:
-        """Test that unknown source_word raises ValueError."""
+        """Test that unknown source_word raises TranslationError."""
         merged = SentenceResponse(
             source_text="Hello world",
             natural_translation="Hallo Welt",
@@ -228,5 +229,5 @@ class TestRedistributeMergedTranslation:
 
         source_sentences = ["Hello world"]
 
-        with pytest.raises(ValueError, match="Could not match source_word 'UNKNOWN'"):
+        with pytest.raises(TranslationError, match="Could not match source_word 'UNKNOWN'"):
             text_utils.redistribute_merged_translation(merged, source_sentences)

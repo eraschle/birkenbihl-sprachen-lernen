@@ -60,24 +60,36 @@ def _model_sort_key(model_name: str) -> tuple[int, str]:
     return (version, model_name)
 
 
+# pydantic_ai renames model prefixes between releases (e.g. "google-gla" became "google").
+# Provider types are stored in user settings, so map new prefixes back to our stable identifiers.
+PROVIDER_PREFIX_ALIASES = {
+    "google": "google-gla",
+    "google-cloud": "google-vertex",
+    "openai-chat": "openai",
+}
+
+# Pydantic AI Gateway routes ("gateway/openai:...") are not configurable providers in this app
+IGNORED_PREFIX_START = "gateway/"
+
+
 def _parse_known_model_names() -> dict[str, list[str]]:
     """Parse KnownModelName to extract provider:model mappings.
 
     Returns:
-        Dict mapping provider_type to list of model names
+        Dict mapping provider_type to list of unique model names
     """
     provider_models: dict[str, list[str]] = {}
 
     # KnownModelName is a TypeAliasType, need __value__ to get the Literal
-    actual_type = KnownModelName.__value__
-    model_names = get_args(actual_type)
-
-    for model_name in model_names:
-        if isinstance(model_name, str) and ":" in model_name:
-            provider, model = model_name.split(":", 1)
-            if provider not in provider_models:
-                provider_models[provider] = []
-            provider_models[provider].append(model)
+    for model_name in get_args(KnownModelName.__value__):
+        if not isinstance(model_name, str) or ":" not in model_name:
+            continue
+        prefix, model = model_name.split(":", 1)
+        if prefix.startswith(IGNORED_PREFIX_START):
+            continue
+        models = provider_models.setdefault(PROVIDER_PREFIX_ALIASES.get(prefix, prefix), [])
+        if model not in models:
+            models.append(model)
 
     return provider_models
 

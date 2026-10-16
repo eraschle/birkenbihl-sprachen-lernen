@@ -82,17 +82,19 @@ class TestAlignmentEditorIntegration:
         assert state.assigned_words == {0: ["Die"], 1: ["Katze", "saß"]}
         assert 2 not in state.assigned_words
         assert state.is_valid is False  # Column 2 is now empty
+        assert viewmodel.to_word_alignments()[1].target_word == "Katze-saß"  # Hyphenated
 
-        # Step 4: Fix by assigning another word
-        viewmodel.assign_word("unten", 2)  # Add new word to column 2
+        # Step 4: Fix by moving "Katze" into the empty column (only existing words can be dragged)
+        viewmodel.unassign_word("Katze", 1)
+        viewmodel.assign_word("Katze", 2)
         state = viewmodel.get_state()
         assert state.is_valid is True
 
         # Step 5: Convert to alignments and save through service
         new_alignments = viewmodel.to_word_alignments()
         assert len(new_alignments) == 3
-        assert new_alignments[1].target_word == "Katze-saß"  # Hyphenated
-        assert new_alignments[2].target_word == "unten"
+        assert new_alignments[1].target_word == "saß"
+        assert new_alignments[2].target_word == "Katze"
 
         translation_service.update_sentence_alignment(
             AlignmentUpdateRequest(translation_id=saved.uuid, sentence_uuid=sentence.uuid, alignments=new_alignments)
@@ -105,8 +107,8 @@ class TestAlignmentEditorIntegration:
 
         assert len(reloaded_sentence.word_alignments) == 3
         assert reloaded_sentence.word_alignments[0].target_word == "Die"
-        assert reloaded_sentence.word_alignments[1].target_word == "Katze-saß"
-        assert reloaded_sentence.word_alignments[2].target_word == "unten"
+        assert reloaded_sentence.word_alignments[1].target_word == "saß"
+        assert reloaded_sentence.word_alignments[2].target_word == "Katze"
 
     def test_edit_with_unassigned_words(self, translation_service):
         """Test editing sentence where not all words are initially assigned."""
@@ -351,19 +353,17 @@ class TestMultipleSentenceEditing:
         viewmodel.load_sentence(sentence1)
         viewmodel.unassign_word("saß", 2)
         viewmodel.assign_word("saß", 1)
-        alignments1 = viewmodel.to_word_alignments()
 
-        # Can't save invalid alignment (column 2 empty)
-        with pytest.raises(ValueError, match="Invalid alignment"):
-            translation_service.update_sentence_alignment(
-                AlignmentUpdateRequest(translation_id=saved.uuid, sentence_uuid=sentence1.uuid, alignments=alignments1)
-            )
+        # Editor blocks saving while a column is empty, so sentence 1 is not saved
+        assert viewmodel.get_state().is_valid is False
 
-        # Edit second sentence
+        # Edit second sentence: swap "Hund" and "rannte"
         viewmodel.load_sentence(sentence2)
         viewmodel.unassign_word("rannte", 2)
+        viewmodel.unassign_word("Hund", 1)
         viewmodel.assign_word("rannte", 1)
-        viewmodel.assign_word("schnell", 2)  # Add new word
+        viewmodel.assign_word("Hund", 2)
+        assert viewmodel.get_state().is_valid is True
         alignments2 = viewmodel.to_word_alignments()
 
         translation_service.update_sentence_alignment(
