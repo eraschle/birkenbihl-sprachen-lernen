@@ -252,7 +252,7 @@ class ThemeManager:
         stylesheet_path = styles_dir / f"{theme_name}.qss"
 
         if stylesheet_path.exists():
-            return stylesheet_path.read_text()
+            return stylesheet_path.read_text(encoding="utf-8")
 
         return self._get_default_stylesheet()
 

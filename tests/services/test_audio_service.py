@@ -90,7 +90,7 @@ class TestAudioFiles:
         path = _service(tmp_path, piper, cloud, AudioSettings()).sentence_audio(translation.sentences[0], translation)
 
         assert path.suffix == ".wav"
-        assert path.read_text() == "Piper:Yo te extrañaré."
+        assert path.read_text(encoding="utf-8") == "Piper:Yo te extrañaré."
         assert piper.calls == [("Yo te extrañaré.", "es")]
 
     def test_repeated_listening_uses_the_cache(self, tmp_path: Path, piper: FakeProvider, cloud: FakeProvider) -> None:
@@ -118,7 +118,7 @@ class TestAudioFiles:
 
         path = _service(tmp_path, piper, cloud, AudioSettings()).text_audio(translation)
 
-        assert path.read_text() == "Piper:Hola. ¿Cómo estás?"
+        assert path.read_text(encoding="utf-8") == "Piper:Hola. ¿Cómo estás?"
 
     def test_save_as_uses_the_real_file_type(self, tmp_path: Path, piper: FakeProvider, cloud: FakeProvider) -> None:
         service = _service(tmp_path, piper, cloud, AudioSettings(provider="elevenlabs", elevenlabs_api_key="k"))

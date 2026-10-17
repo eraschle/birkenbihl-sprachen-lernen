@@ -238,7 +238,7 @@ class SettingsService:
         if not self._file_path.exists():
             return Settings()
 
-        with self._file_path.open("r") as file:
+        with self._file_path.open("r", encoding="utf-8") as file:
             data = yaml.safe_load(file) or {}
 
         return Settings.model_validate(data)
@@ -263,5 +263,5 @@ class SettingsService:
             self._file_path.parent.mkdir(parents=True, exist_ok=True)
 
         data = self._settings.model_dump()
-        with self._file_path.open("w") as file:
-            yaml.safe_dump(data, file, default_flow_style=False, sort_keys=False)
+        with self._file_path.open("w", encoding="utf-8") as file:
+            yaml.safe_dump(data, file, default_flow_style=False, sort_keys=False, allow_unicode=True)
