@@ -87,12 +87,18 @@ The codebase uses Protocol-based abstractions for dependency injection and testa
 - `catalog.py`: the fixed list of supported provider types (`openai`, `anthropic`, `google`,
   `openai-compatible` with `api_url`) and `create_model()`. Provider types are stored in user settings, so
   never derive them from pydantic-ai's model lists (that broke once when pydantic-ai renamed providers).
-- `BaseTranslator`: two steps - natural translation, then word alignment per sentence. The alignment step
-  self-corrects: an output validator checks the Birkenbihl rules and sends concrete problems back to the
-  model (`ModelRetry`, `ALIGNMENT_RETRIES`); still broken afterwards → returned FLAGGED for the user.
-- `PydanticAITranslator`: `BaseTranslator` built from a `ProviderConfig`
+- `BaseTranslator`: two steps - natural translation by the provider's model, then word alignment per sentence
+  by an `IWordAligner` (`protocols/alignment.py`), chosen with `word_aligner` in the settings:
+  - `LLMAligner` (`llm`, default): the same model; self-corrects via an output validator that checks the
+    Birkenbihl rules and sends concrete problems back (`ModelRetry`, `ALIGNMENT_RETRIES`); still broken → FLAGGED
+  - `JevAligner` (`jev`): Jev (TypeSafe, a pydantic-ai decision model, writes no text) gives a probability per
+    source/target word pair in one request; `models/alignment.align_by_probability()` distributes the words,
+    uncertain columns FLAGGED. Key: `jev_api_key` in settings or `TYPESAFE_API_KEY`
+- `PydanticAITranslator`: `BaseTranslator` built from a `ProviderConfig`; `translator_factory(settings)` builds
+  them with the configured word aligner (used by the composition roots)
 - Tests use pydantic-ai's `FunctionModel` (see `tests/providers/test_base_translator.py`), not mocked agents,
-  so validators and retries really run
+  so validators and retries really run; Jev is scripted with a `DecisionModel` subclass
+  (`tests/providers/test_jev_aligner.py`)
 
 ### Birkenbihl Method Implementation
 
@@ -275,4 +281,7 @@ specs/                   # Requirements documentation
 
 - Use pytest markers: `@pytest.mark.unit`, `@pytest.mark.integration`, `@pytest.mark.slow`, `@pytest.mark.ui`
 - Coverage configured to fail under 80%
+- Aligner quality (needs API keys, not part of pytest):
+  `uv run python scripts/benchmark_alignment.py --llm claude-haiku-5-5 --jev` on
+  `tests/fixtures/alignment_hard_cases.json` (gold data checked by `tests/models/test_alignment_hard_cases.py`)
 - Async tests automatically handled with `asyncio_mode = auto`

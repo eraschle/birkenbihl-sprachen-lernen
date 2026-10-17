@@ -10,9 +10,7 @@ from birkenbihl.gui.models.app_services import AppServices
 from birkenbihl.gui.styles.theme import ThemeManager
 from birkenbihl.gui.views.main_window import MainWindow
 from birkenbihl.providers.piper_audio_provider import PiperAudioProvider
-from birkenbihl.providers.pydantic_ai_translator import (
-    PydanticAITranslator,
-)
+from birkenbihl.providers.pydantic_ai_translator import translator_factory
 from birkenbihl.services import path_service as ps
 from birkenbihl.services.audio_service import AudioService
 from birkenbihl.services.settings_service import SettingsService
@@ -58,11 +56,12 @@ def create_translation_service(service: SettingsService) -> TranslationService:
     if not settings:
         raise RuntimeError(f"Failed to load settings from {service._file_path}")
 
+    factory = translator_factory(settings)
     provider = None
     if provider_config := settings.get_default_provider():
-        provider = PydanticAITranslator(provider_config)
+        provider = factory(provider_config)
 
-    return TranslationService(provider, storage)
+    return TranslationService(provider, storage, factory)
 
 
 def setup_exception_handler() -> None:

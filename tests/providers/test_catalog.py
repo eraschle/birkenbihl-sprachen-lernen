@@ -1,13 +1,18 @@
 """Tests for the supported AI provider catalog."""
 
+from pathlib import Path
+
 import pytest
 from pydantic_ai.models.anthropic import AnthropicModel
 from pydantic_ai.models.google import GoogleModel
 from pydantic_ai.models.openai import OpenAIChatModel
+from pydantic_ai.models.typesafe import TypeSafeModel
 
 from birkenbihl.exceptions import ProviderError
-from birkenbihl.models.settings import ProviderConfig
-from birkenbihl.providers import catalog
+from birkenbihl.models.settings import ProviderConfig, Settings
+from birkenbihl.providers import catalog, translator_factory
+from birkenbihl.providers.jev_aligner import JevAligner
+from birkenbihl.providers.llm_aligner import LLMAligner
 from birkenbihl.services.settings_service import SettingsService
 
 
@@ -77,3 +82,37 @@ class TestSettingsValidation:
         error = SettingsService.validate_provider_config(_config("openai-compatible"))
 
         assert error == "Provider 'Test' braucht eine API-URL"
+
+
+class TestJev:
+    def test_create_jev_model_with_key(self) -> None:
+        assert isinstance(catalog.create_jev_model("key"), TypeSafeModel)
+
+    def test_create_jev_model_falls_back_to_environment(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("TYPESAFE_API_KEY", "key-from-env")
+
+        assert isinstance(catalog.create_jev_model(None), TypeSafeModel)
+
+    def test_create_jev_model_without_any_key_is_rejected(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.delenv("TYPESAFE_API_KEY", raising=False)
+
+        with pytest.raises(ProviderError, match="jev_api_key"):
+            catalog.create_jev_model(None)
+
+    def test_translator_factory_uses_jev_when_chosen(self) -> None:
+        factory = translator_factory(Settings(word_aligner="jev", jev_api_key="key"))
+
+        assert isinstance(factory(_config("anthropic"))._aligner, JevAligner)
+
+    def test_translator_factory_defaults_to_the_language_model(self) -> None:
+        factory = translator_factory(Settings())
+
+        assert isinstance(factory(_config("anthropic"))._aligner, LLMAligner)
+
+    def test_word_aligner_is_read_from_settings_file(self, tmp_path: Path) -> None:
+        settings_file = tmp_path / "settings.yaml"
+        settings_file.write_text("providers: []\nword_aligner: jev\njev_api_key: key\n", encoding="utf-8")
+
+        settings = SettingsService(settings_file).load_settings()
+
+        assert (settings.word_aligner, settings.jev_api_key) == ("jev", "key")

@@ -5,7 +5,7 @@ from threading import Lock
 
 import yaml
 
-from birkenbihl.models.settings import AudioSettings, ProviderConfig, Settings
+from birkenbihl.models.settings import ProviderConfig, Settings
 from birkenbihl.services import path_service as ps
 from birkenbihl.storage.settings_storage import SettingsStorageProvider
 
@@ -238,15 +238,10 @@ class SettingsService:
         if not self._file_path.exists():
             return Settings()
 
-        with self._file_path.open("r") as file:
+        with self._file_path.open("r", encoding="utf-8") as file:
             data = yaml.safe_load(file) or {}
 
-        providers_data = data.get("providers", [])
-        providers = [ProviderConfig(**provider) for provider in providers_data]
-        target_language = data.get("target_language", "de")
-        audio = AudioSettings(**data.get("audio", {}))
-
-        return Settings(providers=providers, target_language=target_language, audio=audio)
+        return Settings.model_validate(data)
 
     def _save_settings_to_file(self) -> None:
         """Save settings to specified YAML file.
@@ -268,5 +263,5 @@ class SettingsService:
             self._file_path.parent.mkdir(parents=True, exist_ok=True)
 
         data = self._settings.model_dump()
-        with self._file_path.open("w") as file:
-            yaml.safe_dump(data, file, default_flow_style=False, sort_keys=False)
+        with self._file_path.open("w", encoding="utf-8") as file:
+            yaml.safe_dump(data, file, default_flow_style=False, sort_keys=False, allow_unicode=True)

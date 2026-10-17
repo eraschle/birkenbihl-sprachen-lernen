@@ -298,6 +298,20 @@ class TestSettingsServiceSaveSettings:
         assert loaded_settings.providers[1].name == "Claude Sonnet"
         assert loaded_settings.providers[1].is_default is True
 
+    def test_settings_file_is_utf8_on_every_platform(self, tmp_path: Path) -> None:
+        """Windows defaults to cp1252; umlauts written by an editor must survive load and save."""
+        settings_file = tmp_path / "settings.yaml"
+        settings_file.write_text(
+            "# Wort-für-Wort\nproviders:\n  - name: Übersetzer ñ\n    provider_type: anthropic\n"
+            "    model: claude-haiku-5-5\n    api_key: key\n",
+            encoding="utf-8",
+        )
+        service = SettingsService(settings_file)
+
+        assert service.load_settings().providers[0].name == "Übersetzer ñ"
+        service.save_settings()
+        assert "name: Übersetzer ñ" in settings_file.read_text(encoding="utf-8")
+
 
 @pytest.mark.unit
 class TestSettingsServiceGetDefaultProvider:

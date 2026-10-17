@@ -873,8 +873,8 @@ Test status (`QT_QPA_PLATFORM=offscreen uv run pytest`): 373 passed, 36 skipped,
 
 See `specs/ALIGNMENT_QUALITY.md` for the alignment quality design (rules, self-correction, Jev).
 
-1. Benchmark on `tests/fixtures/birkenbihl_unit1_1.json` (needs API keys); evaluate Jev as aligner and checker
-   (add `typesafe` to the pydantic-ai-slim extras and a catalog entry when used)
+1. Jev as word aligner is in (`word_aligner: jev`, not the default: weaker than Haiku on hard sentences, see
+   `specs/ALIGNMENT_QUALITY.md`); next: Jev as checker of an LLM alignment (role B)
 2. Edit mode: save through TranslationService validation (today it calls save_translation directly; the grid
    already enforces the same rules)
 3. Add GUI tests (target 80%)

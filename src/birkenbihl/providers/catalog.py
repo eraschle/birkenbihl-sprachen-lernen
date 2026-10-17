@@ -10,13 +10,16 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import get_args
 
+from pydantic_ai.exceptions import UserError
 from pydantic_ai.models import KnownModelName, Model
 from pydantic_ai.models.anthropic import AnthropicModel
 from pydantic_ai.models.google import GoogleModel
 from pydantic_ai.models.openai import OpenAIChatModel
+from pydantic_ai.models.typesafe import TypeSafeModel
 from pydantic_ai.providers.anthropic import AnthropicProvider
 from pydantic_ai.providers.google import GoogleProvider
 from pydantic_ai.providers.openai import OpenAIProvider
+from pydantic_ai.providers.typesafe import TypeSafeProvider
 
 from birkenbihl.exceptions import ProviderError
 from birkenbihl.models.settings import ProviderConfig
@@ -92,6 +95,21 @@ def suggested_models(provider_type: str) -> list[str]:
 def create_model(config: ProviderConfig) -> Model:
     """Build the pydantic-ai model for a configured provider, with the API key from the settings."""
     return _PROVIDERS[_parse(config.provider_type)][1](config)
+
+
+# Jev is not a translation provider (it writes no text), only a word aligner, so it is not in _PROVIDERS.
+# Pin a version (e.g. "jev-1.13.0") once the alignment thresholds are tuned against one.
+JEV_MODEL = "jev-latest"
+
+
+def create_jev_model(api_key: str | None) -> Model:
+    """Jev (TypeSafe) model; without api_key, pydantic-ai reads TYPESAFE_API_KEY from the environment."""
+    try:
+        return TypeSafeModel(JEV_MODEL, provider=TypeSafeProvider(api_key=api_key))
+    except UserError as error:
+        raise ProviderError(
+            f"Jev needs an API key: set jev_api_key in settings.yaml or TYPESAFE_API_KEY ({error})"
+        ) from error
 
 
 def _parse(provider_type: str) -> ProviderType:

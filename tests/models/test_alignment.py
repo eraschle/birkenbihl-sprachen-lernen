@@ -1,6 +1,8 @@
 """Tests for matching AI word pairs to token positions."""
 
-from birkenbihl.models.alignment import align_word_pairs
+import pytest
+
+from birkenbihl.models.alignment import align_by_probability, align_word_pairs
 from birkenbihl.models.translation import AlignmentStatus
 
 
@@ -103,3 +105,65 @@ class TestAlignWordPairs:
 
         assert [a.source_index for a in sentence.word_alignments] == [0, 1, 2]
         assert sentence.needs_review()
+
+
+class TestAlignByProbability:
+    YO_TE = ("Yo te extrañaré", "Ich werde dich vermissen")
+
+    def test_every_target_word_goes_to_its_likeliest_source_word(self) -> None:
+        probabilities = [
+            [0.96, 0.05, 0.11, 0.02],
+            [0.03, 0.04, 0.95, 0.01],
+            [0.02, 0.80, 0.05, 0.90],
+        ]
+
+        sentence = align_by_probability(*self.YO_TE, probabilities)
+
+        assert _columns(sentence) == [("Yo", "Ich"), ("te", "dich"), ("extrañaré", "werde-vermissen")]
+        assert set(_statuses(sentence)) == {AlignmentStatus.SUGGESTED}
+
+    def test_unlikely_word_flags_its_column(self) -> None:
+        probabilities = [
+            [0.96, 0.05, 0.11, 0.02],
+            [0.03, 0.04, 0.95, 0.01],
+            [0.02, 0.17, 0.05, 0.90],
+        ]
+
+        sentence = align_by_probability(*self.YO_TE, probabilities)
+
+        assert _columns(sentence)[2] == ("extrañaré", "werde-vermissen")
+        assert _statuses(sentence) == [AlignmentStatus.SUGGESTED, AlignmentStatus.SUGGESTED, AlignmentStatus.FLAGGED]
+
+    def test_close_runner_up_flags_the_column(self) -> None:
+        sentence = align_by_probability("Me gusta", "Mir gefällt", [[0.84, 0.10], [0.75, 0.94]])
+
+        assert _columns(sentence) == [("Me", "Mir"), ("gusta", "gefällt")]
+        assert _statuses(sentence) == [AlignmentStatus.FLAGGED, AlignmentStatus.SUGGESTED]
+
+    def test_repeated_words_are_distinguished_by_position(self) -> None:
+        probabilities = [
+            [0.95, 0.05, 0.02, 0.10, 0.02],
+            [0.05, 0.90, 0.02, 0.02, 0.01],
+            [0.01, 0.02, 0.97, 0.02, 0.01],
+            [0.08, 0.01, 0.02, 0.92, 0.03],
+            [0.01, 0.02, 0.01, 0.04, 0.96],
+        ]
+
+        sentence = align_by_probability("the dog sees the man", "der Hund sieht der Mann", probabilities)
+
+        assert [a.target_indices for a in sentence.sorted_alignments()] == [[0], [1], [2], [3], [4]]
+
+    def test_source_word_without_target_stays_empty_and_flagged(self) -> None:
+        sentence = align_by_probability("to buy", "kaufen", [[0.20], [0.95]])
+
+        assert _columns(sentence) == [("to", ""), ("buy", "kaufen")]
+        assert _statuses(sentence) == [AlignmentStatus.FLAGGED, AlignmentStatus.SUGGESTED]
+
+    def test_every_target_word_is_used_exactly_once(self) -> None:
+        sentence = align_by_probability("a b", "x y z", [[0.6, 0.6, 0.6], [0.6, 0.6, 0.6]])
+
+        assert sorted(i for a in sentence.word_alignments for i in a.target_indices) == [0, 1, 2]
+
+    def test_rejects_matrix_that_does_not_fit_the_sentence(self) -> None:
+        with pytest.raises(ValueError, match="2x4"):
+            align_by_probability("Hola mundo", "Hallo du schöne Welt", [[0.9, 0.1]])

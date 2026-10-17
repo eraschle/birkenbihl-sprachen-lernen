@@ -8,30 +8,21 @@ import logging
 import os
 import time
 
-from pydantic_ai import Agent, ModelRetry
-from pydantic_ai.exceptions import UnexpectedModelBehavior
+from pydantic_ai import Agent
 from pydantic_ai.models import Model
 
-from birkenbihl.models.alignment import align_word_pairs
 from birkenbihl.models.languages import Language
-from birkenbihl.models.translation import AlignmentStatus, Sentence, Translation, WordAlignment
-from birkenbihl.models.validation import validate_alignment_complete
-from birkenbihl.providers.models import AlignmentResponse, NaturalTranslationResponse
-from birkenbihl.providers.prompts import (
-    BIRKENBIHL_SYSTEM_PROMPT,
-    NATURAL_TRANSLATION_SYSTEM_PROMPT,
-    create_natural_translation_prompt,
-    create_word_by_word_prompt,
-)
+from birkenbihl.models.translation import Sentence, Translation, WordAlignment
+from birkenbihl.protocols import IWordAligner
+from birkenbihl.providers.llm_aligner import LLMAligner
+from birkenbihl.providers.models import NaturalTranslationResponse
+from birkenbihl.providers.prompts import NATURAL_TRANSLATION_SYSTEM_PROMPT, create_natural_translation_prompt
 from birkenbihl.utils.text_extractor import split_into_sentences
 
 logger = logging.getLogger(__name__)
 
 # pydantic-ai prints an advertising banner on the first run; it would land in the middle of CLI output
 os.environ.setdefault("PYDANTIC_AI_NO_BANNER", "1")
-
-# Extra attempts the model gets to fix an alignment that breaks the Birkenbihl rules
-ALIGNMENT_RETRIES = 2
 
 
 class BaseTranslator:
@@ -45,13 +36,15 @@ class BaseTranslator:
     not concrete provider implementations.
     """
 
-    def __init__(self, model: Model):
+    def __init__(self, model: Model, aligner: IWordAligner | None = None):
         """Initialize translator with PydanticAI model.
 
         Args:
-            model: PydanticAI Model instance (OpenAIModel, AnthropicModel, etc.)
+            model: PydanticAI Model instance (OpenAIModel, AnthropicModel, etc.) for the natural translation
+            aligner: Word-by-word step; defaults to the same language model (LLMAligner)
         """
         self._model = model
+        self._aligner = aligner or LLMAligner(model)
 
     def _generate_natural_translations(
         self, sentences: list[str], source_lang: Language, target_lang: Language
@@ -78,46 +71,6 @@ class BaseTranslator:
         logger.info("Step 1 complete: %d natural translations generated", len(result.output.sentences))
         return result.output
 
-    def _align(
-        self, source_text: str, natural_translation: str, source_lang: Language, target_lang: Language
-    ) -> Sentence:
-        """Generate the word-by-word alignment for one sentence, letting the model correct its mistakes.
-
-        Every answer is matched to the sentence's tokens and checked against the Birkenbihl rules. A broken
-        answer goes back to the model with the concrete problems (ModelRetry). If it is still broken after
-        ALIGNMENT_RETRIES corrections, the last attempt is returned with its problems FLAGGED for the user.
-
-        Returns:
-            Sentence whose alignments reference token positions
-        """
-        attempts: list[Sentence] = []
-        agent = Agent(
-            model=self._model,
-            output_type=AlignmentResponse,
-            system_prompt=BIRKENBIHL_SYSTEM_PROMPT,
-            retries=ALIGNMENT_RETRIES,
-        )
-
-        @agent.output_validator
-        def check_birkenbihl_rules(output: AlignmentResponse) -> AlignmentResponse:
-            sentence = align_word_pairs(source_text, natural_translation, self._word_pairs(output))
-            attempts.append(sentence)
-            problems = _alignment_problems(sentence)
-            if problems:
-                logger.info("Alignment attempt %d rejected: %s", len(attempts), problems)
-                raise ModelRetry(problems)
-            return output
-
-        sentence = Sentence(source_text=source_text, natural_translation=natural_translation, word_alignments=[])
-        prompt = create_word_by_word_prompt(sentence.source_tokens, sentence.target_tokens, source_lang, target_lang)
-        try:
-            agent.run_sync(prompt)
-        except UnexpectedModelBehavior:
-            if not attempts:
-                raise
-            logger.warning("Alignment still broken after %d attempts, flagged for review", len(attempts))
-        return attempts[-1]
-
     def _generate_all_alignments(
         self, natural_response: NaturalTranslationResponse, source_lang: Language, target_lang: Language
     ) -> list[Sentence]:
@@ -137,9 +90,9 @@ class BaseTranslator:
         for idx, nat_sent in enumerate(natural_response.sentences, 1):
             logger.debug("Generating alignments for sentence %d/%d", idx, len(natural_response.sentences))
 
-            sentence = self._align(nat_sent.source_text, nat_sent.natural_translation, source_lang, target_lang)
+            sentence = self._aligner.align(nat_sent.source_text, nat_sent.natural_translation, source_lang, target_lang)
             if sentence.needs_review():
-                logger.warning("Sentence %d needs review: AI alignment did not match the sentence", idx)
+                logger.warning("Sentence %d needs review: uncertain or incomplete word alignment", idx)
             sentences.append(sentence)
 
         logger.info("Step 2 complete: %d sentences with alignments", len(sentences))
@@ -202,11 +155,6 @@ class BaseTranslator:
 
         return translation
 
-    @staticmethod
-    def _word_pairs(response: AlignmentResponse) -> list[tuple[str, str]]:
-        ordered = sorted(response.word_alignments, key=lambda alignment: alignment.position)
-        return [(alignment.source_word, alignment.target_word) for alignment in ordered]
-
     def regenerate_alignment(
         self,
         source_text: str,
@@ -229,16 +177,4 @@ class BaseTranslator:
         Raises:
             Exception: If alignment generation fails
         """
-        return self._align(source_text, natural_translation, source_lang, target_lang).word_alignments
-
-
-def _alignment_problems(sentence: Sentence) -> str | None:
-    """Feedback for the model if its alignment breaks the rules, None if it is acceptable."""
-    is_valid, error = validate_alignment_complete(sentence)
-    if not is_valid:
-        return f"The word-by-word alignment breaks the Birkenbihl rules: {error}"
-    flagged = [sentence.source_word(a) for a in sentence.word_alignments if a.status == AlignmentStatus.FLAGGED]
-    if flagged:
-        words = ", ".join(flagged)
-        return f"The targets for {words} contain words that are not in the natural translation. Use only its words."
-    return None
+        return self._aligner.align(source_text, natural_translation, source_lang, target_lang).word_alignments

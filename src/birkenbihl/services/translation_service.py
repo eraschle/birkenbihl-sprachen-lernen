@@ -51,7 +51,7 @@ class TranslationService:
 
         Returns:
             Translation object with natural and word-by-word translations (unsaved);
-            sentences whose AI alignment did not match are flagged (Sentence.needs_review())
+            sentences with uncertain or incomplete alignments are flagged (Sentence.needs_review())
 
         Raises:
             ValueError: If no provider is given and no default translator is configured
