@@ -880,6 +880,12 @@ See `specs/ALIGNMENT_QUALITY.md` for the alignment quality design (rules, self-c
 3. Add GUI tests (target 80%)
 4. Settings database storage (`SettingsStorageProvider`) is only used by tests; the app always uses YAML.
    Delete it or use it; it does not store audio settings
+5. Decide (found in UI smoke test 2026-10-23): sentences with more source words than the natural translation can
+   cover cannot satisfy the rules ("¿Dónde está la estación de tren?" → "Wo ist der Bahnhof?": de, tren get no
+   word; "I've been waiting for you." → "Ich habe auf dich gewartet.": been). They stay invalid and cannot be
+   saved. Options: allow a source word without target word, or ask the AI for a more literal natural translation
+6. Create mode runs the AI translation in the UI thread: the window freezes until the model answers
+   (regenerating in the editor already runs in the background)
 
 ---
 

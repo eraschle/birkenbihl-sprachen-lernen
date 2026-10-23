@@ -173,6 +173,7 @@ class EditModePanel(QWidget):
         self._save_button.setEnabled(False)
 
         if translation and translation.sentences:
+            self._natural_editor.set_edit_enabled(True)  # _show_empty_state disabled it for "no translation"
             self._sentence_list.load_sentences(translation.sentences)
             self._load_sentence(0)
         else:

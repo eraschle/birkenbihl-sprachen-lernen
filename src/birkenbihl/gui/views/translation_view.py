@@ -111,6 +111,19 @@ class TranslationView(QWidget):
         if translations:
             self._state.select_translation(translations[0])
 
+    def _refresh_translation_list(self) -> None:
+        """Show all stored translations, keeping the selected one (new translations appear after creating)."""
+        selected = self._state.selected_translation
+        translations = self._service.list_all_translations()
+        self._translation_combo.blockSignals(True)  # repopulating must not select or switch modes
+        self._translation_combo.clear()
+        for translation in translations:
+            self._translation_combo.addItem(translation.title, userData=translation)
+        uuids = [translation.uuid for translation in translations]
+        current = uuids.index(selected.uuid) if selected and selected.uuid in uuids else -1
+        self._translation_combo.setCurrentIndex(current)
+        self._translation_combo.blockSignals(False)
+
     def _on_translation_selected(self, index: int) -> None:
         """Handle translation selection from combobox."""
         if index >= 0:
@@ -147,6 +160,7 @@ class TranslationView(QWidget):
             AppMode.EDIT: 2,
         }
         self._content_stack.setCurrentIndex(mode_to_index[mode])
+        self._refresh_translation_list()
         self._update_button_states()
 
     def _update_button_states(self) -> None:
