@@ -1,21 +1,22 @@
 """Grid state model for the editable interleaved grid (word alignment editor).
 
-Words are identified by their position in the natural translation, so repeated words
-("der Hund und der Mann") can be moved independently.
+Words are identified by their position in the sentence, so repeated words ("der Hund und der Mann") can be
+moved independently. A column holds one or more neighbouring source words; the user can join a column with
+its neighbour when several source words share one target word ("estación de tren" → "Bahnhof").
 """
 
 from dataclasses import dataclass, field
 
-from birkenbihl.models.translation import AlignmentStatus, Sentence, WordAlignment
+from birkenbihl.models.translation import SOURCE_JOINER, AlignmentStatus, Sentence, WordAlignment
 from birkenbihl.models.validation import validate_alignment_complete
 
 
 @dataclass
 class ColumnState:
-    """One source word and the target words assigned to it."""
+    """Source words of one column and the target words assigned to them."""
 
-    source_index: int
-    source_word: str
+    source_indices: list[int]
+    source_word: str  # shown in the header, e.g. "estación-de-tren"
     target_indices: list[int] = field(default_factory=list)
     status: AlignmentStatus = AlignmentStatus.SUGGESTED
 
@@ -24,6 +25,9 @@ class ColumnState:
 
     def is_flagged(self) -> bool:
         return self.status == AlignmentStatus.FLAGGED
+
+    def is_joined(self) -> bool:
+        return len(self.source_indices) > 1
 
 
 @dataclass
@@ -59,6 +63,28 @@ class GridState:
         if not column.is_empty():
             column.status = AlignmentStatus.CONFIRMED
 
+    def join(self, column_index: int, neighbour_index: int) -> None:
+        """Join two neighbouring columns: their source words share their target words."""
+        if abs(column_index - neighbour_index) != 1 or not 0 <= neighbour_index < len(self.columns):
+            raise ValueError(f"Columns {column_index} and {neighbour_index} are not neighbours")
+        left, right = sorted((column_index, neighbour_index))
+        first, second = self.columns[left], self.columns[right]
+        joined = self._new_column(first.source_indices + second.source_indices)
+        joined.target_indices = first.target_indices + second.target_indices
+        self.columns[left : right + 1] = [joined]
+
+    def split(self, column_index: int) -> None:
+        """Give every source word of a joined column its own column; the first keeps the target words."""
+        column = self.columns[column_index]
+        parts = [self._new_column([source]) for source in column.source_indices]
+        parts[0].target_indices = column.target_indices
+        self.columns[column_index : column_index + 1] = parts
+
+    def _new_column(self, source_indices: list[int]) -> ColumnState:
+        tokens = self.sentence.source_tokens
+        word = SOURCE_JOINER.join(tokens[index] for index in source_indices)
+        return ColumnState(source_indices, word, status=AlignmentStatus.CONFIRMED)
+
     def _take(self, target_index: int) -> None:
         if target_index in self.unassigned:
             self.unassigned.remove(target_index)
@@ -71,7 +97,7 @@ class GridState:
 
     def to_word_alignments(self) -> list[WordAlignment]:
         return [
-            WordAlignment(source_index=c.source_index, target_indices=list(c.target_indices), status=c.status)
+            WordAlignment(source_indices=list(c.source_indices), target_indices=list(c.target_indices), status=c.status)
             for c in self.columns
         ]
 
@@ -82,13 +108,23 @@ class GridState:
 
 
 def build_grid_state(sentence: Sentence) -> GridState:
-    """Build grid state from sentence (Domain → UI conversion), one column per source word."""
-    by_source = {alignment.source_index: alignment for alignment in sentence.word_alignments}
-    columns = [_column(index, word, by_source.get(index)) for index, word in enumerate(sentence.source_tokens)]
+    """Build grid state from sentence (Domain → UI conversion), columns in source word order.
+
+    Source words that belong to no alignment get their own empty, FLAGGED column.
+    """
+    columns = [_column(sentence, alignment) for alignment in sentence.sorted_alignments()]
+    columns += [
+        ColumnState([index], sentence.source_tokens[index], status=AlignmentStatus.FLAGGED)
+        for index in sentence.unassigned_source_indices()
+    ]
+    columns.sort(key=lambda column: min(column.source_indices, default=-1))
     return GridState(sentence=sentence, columns=columns, unassigned=sentence.unassigned_target_indices())
 
 
-def _column(source_index: int, source_word: str, alignment: WordAlignment | None) -> ColumnState:
-    if alignment is None:
-        return ColumnState(source_index, source_word, status=AlignmentStatus.FLAGGED)
-    return ColumnState(source_index, source_word, list(alignment.target_indices), alignment.status)
+def _column(sentence: Sentence, alignment: WordAlignment) -> ColumnState:
+    return ColumnState(
+        list(alignment.source_indices),
+        sentence.source_word(alignment),
+        list(alignment.target_indices),
+        alignment.status,
+    )

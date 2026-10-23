@@ -1,7 +1,8 @@
 """Validation of word-by-word alignments against the Birkenbihl rules.
 
 Rules (checked on token positions, so repeated words count individually):
-1. Every source word has exactly one alignment with at least one target word.
+1. Every source word belongs to exactly one column, and every column has at least one target word.
+   Several source words may share a column ("estación de tren" → "Bahnhof").
 2. Every word of the natural translation is used exactly once.
 """
 
@@ -26,23 +27,29 @@ def validate_alignment_complete(sentence: Sentence) -> tuple[bool, str | None]:
     return True, None
 
 
+JOIN_HINT = "Teilen sich mehrere Wörter ein Wort der Übersetzung, verbinde sie (z. B. estación de tren → Bahnhof)."
+
+
 def _source_errors(sentence: Sentence) -> list[str]:
     tokens = sentence.source_tokens
-    counts = Counter(alignment.source_index for alignment in sentence.word_alignments)
+    counts = Counter(index for alignment in sentence.word_alignments for index in alignment.source_indices)
     errors = []
 
     invalid = sorted(index for index in counts if not 0 <= index < len(tokens))
     if invalid:
         errors.append(f"Ungültige Quellwort-Positionen: {_join(invalid)}.")
 
+    if any(not alignment.source_indices for alignment in sentence.word_alignments):
+        errors.append("Spalten ohne Quellwort.")
+
     duplicated = [tokens[i] for i in sorted(counts) if 0 <= i < len(tokens) and counts[i] > 1]
     if duplicated:
         errors.append(f"Quellwörter mehrfach zugeordnet: {_join(duplicated)}.")
 
-    mapped = {a.source_index for a in sentence.word_alignments if a.target_indices}
+    mapped = {i for a in sentence.word_alignments if a.target_indices for i in a.source_indices}
     unmapped = [token for index, token in enumerate(tokens) if index not in mapped]
     if unmapped:
-        errors.append(f"Quellwörter ohne Zielwort: {_join(unmapped)}.")
+        errors.append(f"Quellwörter ohne Zielwort: {_join(unmapped)}. {JOIN_HINT}")
     return errors
 
 

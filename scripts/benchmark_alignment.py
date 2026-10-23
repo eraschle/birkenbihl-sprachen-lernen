@@ -23,7 +23,7 @@ from pydantic_ai import Agent  # noqa: E402
 from pydantic_ai.agent import AgentRunResult  # noqa: E402
 
 from birkenbihl.models.alignment import align_word_pairs  # noqa: E402
-from birkenbihl.models.translation import AlignmentStatus, Sentence  # noqa: E402
+from birkenbihl.models.translation import AlignmentStatus, Sentence, WordAlignment  # noqa: E402
 from birkenbihl.protocols import IWordAligner  # noqa: E402
 from birkenbihl.providers.catalog import create_jev_model, create_model  # noqa: E402
 from birkenbihl.providers.jev_aligner import JevAligner  # noqa: E402
@@ -62,10 +62,11 @@ class Score:
     mistakes: list[str] = field(default_factory=list[str])
 
     def add(self, result: Sentence, gold: Sentence) -> None:
-        expected = {a.source_index: sorted(a.target_indices) for a in gold.word_alignments}
+        """A column is right when the gold data has a column with the same source words and the same target words."""
+        expected = {tuple(sorted(a.source_indices)): sorted(a.target_indices) for a in gold.word_alignments}
         all_right = True
         for alignment in result.sorted_alignments():
-            right = sorted(alignment.target_indices) == expected[alignment.source_index]
+            right = expected.get(tuple(sorted(alignment.source_indices))) == sorted(alignment.target_indices)
             flagged = alignment.status == AlignmentStatus.FLAGGED
             self.columns += 1
             self.correct += right
@@ -75,8 +76,9 @@ class Score:
             all_right &= right
             if not right and not flagged:
                 got = result.target_text(alignment) or "(leer)"
-                right_text = gold.target_text(gold.word_alignments[alignment.source_index])
-                self.mistakes.append(f"{result.source_word(alignment)} -> {got}  (richtig: {right_text})")
+                self.mistakes.append(
+                    f"{result.source_word(alignment)} -> {got}  (richtig: {_gold_text(gold, alignment)})"
+                )
         self.sentences += 1
         self.exact += all_right
 
@@ -134,6 +136,13 @@ def _aligners(llm_models: list[str], with_jev: bool) -> dict[str, IWordAligner]:
     if with_jev:
         aligners["Jev"] = JevAligner(create_jev_model(settings.jev_api_key))
     return aligners
+
+
+def _gold_text(gold: Sentence, alignment: WordAlignment) -> str:
+    """Gold column(s) covering the source words of a predicted column."""
+    sources = set(alignment.source_indices)
+    columns = [a for a in gold.sorted_alignments() if sources & set(a.source_indices)]
+    return " | ".join(f"{gold.source_word(a)} -> {gold.target_text(a)}" for a in columns)
 
 
 def main() -> None:

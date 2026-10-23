@@ -4,6 +4,7 @@ import pytest
 
 from birkenbihl.models.alignment import align_by_probability, align_word_pairs
 from birkenbihl.models.translation import AlignmentStatus
+from birkenbihl.models.validation import validate_alignment_complete
 
 
 def _columns(sentence) -> list[tuple[str, str]]:
@@ -103,7 +104,7 @@ class TestAlignWordPairs:
     def test_one_alignment_per_source_token(self) -> None:
         sentence = align_word_pairs("Yo te extrañaré", "Ich werde dich vermissen", [])
 
-        assert [a.source_index for a in sentence.word_alignments] == [0, 1, 2]
+        assert [a.source_indices for a in sentence.word_alignments] == [[0], [1], [2]]
         assert sentence.needs_review()
 
 
@@ -153,11 +154,33 @@ class TestAlignByProbability:
 
         assert [a.target_indices for a in sentence.sorted_alignments()] == [[0], [1], [2], [3], [4]]
 
-    def test_source_word_without_target_stays_empty_and_flagged(self) -> None:
+    def test_source_word_without_target_joins_the_next_column_flagged(self) -> None:
         sentence = align_by_probability("to buy", "kaufen", [[0.20], [0.95]])
 
-        assert _columns(sentence) == [("to", ""), ("buy", "kaufen")]
-        assert _statuses(sentence) == [AlignmentStatus.FLAGGED, AlignmentStatus.SUGGESTED]
+        assert _columns(sentence) == [("to-buy", "kaufen")]
+        assert _statuses(sentence) == [AlignmentStatus.FLAGGED]
+        assert validate_alignment_complete(sentence) == (True, None)
+
+    def test_source_words_without_target_join_the_previous_column_flagged(self) -> None:
+        probabilities = [
+            [0.9, 0.0, 0.0, 0.0],  # Dónde → Wo
+            [0.0, 0.9, 0.0, 0.0],  # está → ist
+            [0.0, 0.0, 0.9, 0.0],  # la → der
+            [0.0, 0.0, 0.0, 0.8],  # estación → Bahnhof
+            [0.0, 0.0, 0.0, 0.1],  # de
+            [0.0, 0.0, 0.0, 0.3],  # tren
+        ]
+
+        sentence = align_by_probability("¿Dónde está la estación de tren?", "Wo ist der Bahnhof?", probabilities)
+
+        assert _columns(sentence)[-1] == ("estación-de-tren", "Bahnhof")
+        assert _statuses(sentence) == [AlignmentStatus.SUGGESTED] * 3 + [AlignmentStatus.FLAGGED]
+        assert validate_alignment_complete(sentence) == (True, None)
+
+    def test_without_any_target_word_every_source_word_stays_alone(self) -> None:
+        sentence = align_by_probability("Hola mundo", "", [[], []])
+
+        assert [a.source_indices for a in sentence.word_alignments] == [[0], [1]]
 
     def test_every_target_word_is_used_exactly_once(self) -> None:
         sentence = align_by_probability("a b", "x y z", [[0.6, 0.6, 0.6], [0.6, 0.6, 0.6]])
@@ -167,3 +190,49 @@ class TestAlignByProbability:
     def test_rejects_matrix_that_does_not_fit_the_sentence(self) -> None:
         with pytest.raises(ValueError, match="2x4"):
             align_by_probability("Hola mundo", "Hallo du schöne Welt", [[0.9, 0.1]])
+
+
+class TestSourceWordGroups:
+    """Several source words may share target words: 'estación de tren' → 'Bahnhof'."""
+
+    def test_space_separated_source_words_form_one_column(self) -> None:
+        sentence = align_word_pairs(
+            "¿Dónde está la estación de tren?",
+            "Wo ist der Bahnhof?",
+            [("Dónde", "Wo"), ("está", "ist"), ("la", "der"), ("estación de tren", "Bahnhof")],
+        )
+
+        assert _columns(sentence) == [("Dónde", "Wo"), ("está", "ist"), ("la", "der"), ("estación-de-tren", "Bahnhof")]
+        assert sentence.get_word_by_word() == "Wo ist der Bahnhof"
+        assert not sentence.needs_review()
+
+    def test_hyphen_joined_source_words_form_one_column(self) -> None:
+        sentence = align_word_pairs(
+            "I've been waiting for you.",
+            "Ich habe auf dich gewartet.",
+            [("I've", "Ich-habe"), ("been-waiting", "gewartet"), ("for", "auf"), ("you", "dich")],
+        )
+
+        assert _columns(sentence)[1] == ("been-waiting", "gewartet")
+        assert sentence.word_alignments[1].source_indices == [1, 2]
+
+    def test_source_word_with_own_hyphen_stays_one_word(self) -> None:
+        sentence = align_word_pairs("un e-mail", "eine E-Mail", [("un", "eine"), ("e-mail", "E-Mail")])
+
+        assert sentence.word_alignments[1].source_indices == [1]
+
+    def test_words_that_are_not_neighbours_in_the_sentence_are_not_matched(self) -> None:
+        sentence = align_word_pairs("Hola amigo mío", "Hallo mein Freund", [("Hola mío", "Hallo"), ("amigo", "Freund")])
+
+        assert sentence.needs_review()
+        assert [sentence.target_tokens[i] for i in sentence.unassigned_target_indices()] == ["Hallo", "mein"]
+
+    def test_unnamed_source_word_gets_its_own_flagged_column(self) -> None:
+        sentence = align_word_pairs(
+            "¿Dónde está la estación de tren?",
+            "Wo ist der Bahnhof?",
+            [("Dónde", "Wo"), ("está", "ist"), ("la", "der"), ("estación", "Bahnhof")],
+        )
+
+        assert _columns(sentence)[-2:] == [("de", ""), ("tren", "")]
+        assert _statuses(sentence)[-2:] == [AlignmentStatus.FLAGGED, AlignmentStatus.FLAGGED]

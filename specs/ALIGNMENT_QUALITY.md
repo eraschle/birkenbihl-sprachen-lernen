@@ -25,7 +25,8 @@ Zuordnungen werden über **Positionen** gespeichert, nicht über Wort-Texte (`mo
 
 - `Sentence.source_tokens` / `Sentence.target_tokens`: Zerlegung per `tokenize_clean`, aus dem Text abgeleitet
   (nicht gespeichert, damit Text und Zerlegung nie auseinanderlaufen; der Tokenizer gehört damit zum Datenformat)
-- `WordAlignment`: `source_index`, `target_indices` (Anzeige-Reihenfolge), `status`
+- `WordAlignment`: `source_indices` (eine Spalte kann mehrere benachbarte Quellwörter umfassen, z. B.
+  „estación de tren“ → „Bahnhof“), `target_indices` (Anzeige-Reihenfolge), `status`
   (`suggested` | `flagged` | `confirmed`)
 - `models/alignment.py`: `align_word_pairs()` übersetzt KI-Wortpaare in Positionen. Wiederholte Wörter werden der
   Reihe nach zugeordnet. Was nicht passt, wird nicht geraten: Die Spalte wird `flagged`, übrig gebliebene Wörter

@@ -112,7 +112,7 @@ class TestTranslate:
 
         result, _ = _translate("Hello world", "en", _natural(("Hello world", "Hallo Welt")), reordered)
 
-        assert [a.source_index for a in result.sentences[0].word_alignments] == [0, 1]
+        assert [a.source_indices for a in result.sentences[0].word_alignments] == [[0], [1]]
 
 
 @pytest.mark.unit
@@ -174,7 +174,7 @@ class TestRegenerateAlignment:
             "Hola mundo", "Hallo Welt", get_language_by("es"), get_language_by("de")
         )
 
-        assert [(a.source_index, a.target_indices) for a in alignments] == [(0, [0]), (1, [1])]
+        assert [(a.source_indices, a.target_indices) for a in alignments] == [([0], [0]), ([1], [1])]
 
     def test_is_self_correcting_too(self) -> None:
         script = ScriptedModel(YO_TE_WRONG, YO_TE_CORRECT)
@@ -185,3 +185,26 @@ class TestRegenerateAlignment:
 
         assert alignments[1].target_indices == [2]
         assert len(script.retry_feedback) == 1
+
+
+@pytest.mark.unit
+class TestSourceWordGroups:
+    STATION = _natural(("¿Dónde está la estación de tren?", "Wo ist der Bahnhof?"))
+
+    def test_model_answer_with_a_source_group_is_accepted(self) -> None:
+        grouped = _alignment(("Dónde", "Wo"), ("está", "ist"), ("la", "der"), ("estación de tren", "Bahnhof"))
+
+        result, script = _translate("¿Dónde está la estación de tren?", "es", self.STATION, grouped)
+
+        assert result.sentences[0].get_word_by_word() == "Wo ist der Bahnhof"
+        assert script.retry_feedback == []
+
+    def test_feedback_tells_the_model_to_join_words_that_share_a_target(self) -> None:
+        ungrouped = _alignment(("Dónde", "Wo"), ("está", "ist"), ("la", "der"), ("estación", "Bahnhof"))
+        grouped = _alignment(("Dónde", "Wo"), ("está", "ist"), ("la", "der"), ("estación de tren", "Bahnhof"))
+
+        result, script = _translate("¿Dónde está la estación de tren?", "es", self.STATION, ungrouped, grouped)
+
+        assert "give them as ONE entry" in script.retry_feedback[0]
+        assert "Quellwörter ohne Zielwort: de, tren" in script.retry_feedback[0]
+        assert not result.sentences[0].needs_review()

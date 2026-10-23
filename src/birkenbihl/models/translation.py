@@ -11,6 +11,7 @@ from birkenbihl.models.languages import Language
 from birkenbihl.utils.text_extractor import tokenize_clean
 
 TARGET_JOINER = "-"
+SOURCE_JOINER = "-"
 
 
 class AlignmentStatus(StrEnum):
@@ -22,14 +23,15 @@ class AlignmentStatus(StrEnum):
 
 
 class WordAlignment(BaseModel):
-    """Word-by-word alignment of one source word (Birkenbihl decoding).
+    """One column of the word-by-word translation (Birkenbihl decoding).
 
-    Words are referenced by their position in the tokenized sentences, not by text, so repeated
-    words ("der Hund und der Mann") stay unambiguous. Tokenization: Sentence.source_tokens and
-    Sentence.target_tokens.
+    A column links one or more source words with one or more target words: "extrañaré" → "vermissen-werde",
+    and also several source words sharing one target word: "estación de tren" → "Bahnhof". Words are
+    referenced by their position in the tokenized sentences, not by text, so repeated words ("der Hund und
+    der Mann") stay unambiguous. Tokenization: Sentence.source_tokens and Sentence.target_tokens.
     """
 
-    source_index: int
+    source_indices: list[int]  # in sentence order, shown joined with "-" (e.g. "estación-de-tren")
     target_indices: list[int]  # in display order, joined with "-" (e.g. "vermissen-werde")
     status: AlignmentStatus = AlignmentStatus.SUGGESTED
 
@@ -39,7 +41,8 @@ class Sentence(BaseModel):
 
     Contains both translation types required by the Birkenbihl method:
     1. Natural translation (natürliche Übersetzung)
-    2. Word-by-word alignment (Wort-für-Wort Dekodierung), one WordAlignment per source token
+    2. Word-by-word alignment (Wort-für-Wort Dekodierung): WordAlignment columns that together contain every
+       source token and every target token exactly once
     """
 
     uuid: UUID = Field(default_factory=uuid4)
@@ -63,7 +66,9 @@ class Sentence(BaseModel):
         return tokenize_clean(self.natural_translation)
 
     def source_word(self, alignment: WordAlignment) -> str:
-        return self.source_tokens[alignment.source_index]
+        """Source words of one column, e.g. "estación-de-tren"."""
+        tokens = self.source_tokens
+        return SOURCE_JOINER.join(tokens[index] for index in alignment.source_indices)
 
     def target_text(self, alignment: WordAlignment) -> str:
         """Target words of one alignment as shown to the learner, e.g. "vermissen-werde"."""
@@ -71,15 +76,19 @@ class Sentence(BaseModel):
         return TARGET_JOINER.join(tokens[index] for index in alignment.target_indices)
 
     def sorted_alignments(self) -> list[WordAlignment]:
-        return sorted(self.word_alignments, key=lambda alignment: alignment.source_index)
+        return sorted(self.word_alignments, key=lambda alignment: min(alignment.source_indices, default=-1))
 
     def unassigned_target_indices(self) -> list[int]:
         used = {index for alignment in self.word_alignments for index in alignment.target_indices}
         return [index for index in range(len(self.target_tokens)) if index not in used]
 
+    def unassigned_source_indices(self) -> list[int]:
+        used = {index for alignment in self.word_alignments for index in alignment.source_indices}
+        return [index for index in range(len(self.source_tokens)) if index not in used]
+
     def needs_review(self) -> bool:
         flagged = any(alignment.status == AlignmentStatus.FLAGGED for alignment in self.word_alignments)
-        return flagged or bool(self.unassigned_target_indices())
+        return flagged or bool(self.unassigned_target_indices()) or bool(self.unassigned_source_indices())
 
     def get_word_by_word(self) -> str:
         """Word-by-word translation in source word order.

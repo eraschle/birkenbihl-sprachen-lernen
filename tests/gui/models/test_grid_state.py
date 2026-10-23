@@ -1,5 +1,7 @@
 """Tests for GridState, the model behind the drag&drop alignment editor."""
 
+import pytest
+
 from birkenbihl.gui.models.grid_state import GridState, build_grid_state
 from birkenbihl.models.alignment import align_word_pairs
 from birkenbihl.models.translation import AlignmentStatus
@@ -126,7 +128,7 @@ class TestValidate:
 
         alignments = grid.to_word_alignments()
 
-        assert [(a.source_index, a.target_indices) for a in alignments] == [(0, [0]), (1, [2, 1]), (2, [3])]
+        assert [(a.source_indices, a.target_indices) for a in alignments] == [([0], [0]), ([1], [2, 1]), ([2], [3])]
         assert [a.status for a in alignments] == [
             AlignmentStatus.SUGGESTED,
             AlignmentStatus.CONFIRMED,
@@ -151,3 +153,57 @@ class TestConfirm:
         grid.confirm(1)
 
         assert grid.columns[1].status == AlignmentStatus.FLAGGED
+
+
+STATION = ("¿Dónde está la estación de tren?", "Wo ist der Bahnhof?")
+STATION_AI = [("Dónde", "Wo"), ("está", "ist"), ("la", "der"), ("estación", "Bahnhof")]
+
+
+class TestJoinAndSplit:
+    def test_source_words_without_target_get_columns(self) -> None:
+        grid = _grid(STATION_AI, *STATION)
+
+        assert [c.source_word for c in grid.columns] == ["Dónde", "está", "la", "estación", "de", "tren"]
+        assert grid.columns[4].is_empty()
+        assert grid.columns[5].is_empty()
+
+    def test_joining_empty_columns_into_their_left_neighbour_makes_the_sentence_valid(self) -> None:
+        grid = _grid(STATION_AI, *STATION)
+
+        grid.join(4, 3)  # "de" into "estación"
+        grid.join(4, 3)  # "tren" into "estación-de"
+
+        assert [c.source_word for c in grid.columns] == ["Dónde", "está", "la", "estación-de-tren"]
+        assert _words(grid)[3] == ["Bahnhof"]
+        assert grid.columns[3].status == AlignmentStatus.CONFIRMED
+        assert grid.validate() == (True, None)
+        assert grid.to_word_alignments()[3].source_indices == [3, 4, 5]
+
+    def test_join_with_right_neighbour(self) -> None:
+        grid = _grid(STATION_AI, *STATION)
+
+        grid.join(4, 5)
+
+        assert grid.columns[4].source_word == "de-tren"
+        assert grid.columns[4].is_joined()
+
+    def test_only_neighbours_can_be_joined(self) -> None:
+        grid = _grid(STATION_AI, *STATION)
+
+        with pytest.raises(ValueError, match="not neighbours"):
+            grid.join(0, 2)
+
+    def test_split_gives_every_word_its_own_column_and_keeps_targets_on_the_first(self) -> None:
+        grid = _grid(STATION_AI, *STATION)
+        grid.join(4, 3)
+
+        grid.split(3)
+
+        assert [c.source_word for c in grid.columns] == ["Dónde", "está", "la", "estación", "de", "tren"]
+        assert _words(grid)[3:] == [["Bahnhof"], [], []]
+
+    def test_loading_a_saved_group_keeps_it(self) -> None:
+        grid = _grid(STATION_AI[:3] + [("estación de tren", "Bahnhof")], *STATION)
+
+        assert grid.columns[-1].source_word == "estación-de-tren"
+        assert grid.columns[-1].source_indices == [3, 4, 5]

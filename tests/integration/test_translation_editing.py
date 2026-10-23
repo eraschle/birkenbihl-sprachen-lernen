@@ -87,7 +87,7 @@ class TestFullWorkflowEditNaturalTranslation:
         reloaded = translation_service_with_storage.get_translation(translation.uuid)
         assert reloaded is not None
         assert reloaded.sentences[0].natural_translation == NEW_NATURAL
-        assert [a.source_index for a in preview] == [0, 1, 2]
+        assert [a.source_indices for a in preview] == [[0], [1], [2]]
         is_valid, error = validate_alignment_complete(reloaded.sentences[0])
         assert is_valid or reloaded.sentences[0].needs_review(), f"Invalid alignment not flagged: {error}"
 
@@ -127,9 +127,9 @@ class TestFullWorkflowEditAlignmentManually:
         assert target_count >= 2, f"Expected at least two words in {natural_translation!r}"
         new_alignments = [
             WordAlignment(
-                source_index=0, target_indices=list(range(target_count - 1)), status=AlignmentStatus.CONFIRMED
+                source_indices=[0], target_indices=list(range(target_count - 1)), status=AlignmentStatus.CONFIRMED
             ),
-            WordAlignment(source_index=1, target_indices=[target_count - 1], status=AlignmentStatus.CONFIRMED),
+            WordAlignment(source_indices=[1], target_indices=[target_count - 1], status=AlignmentStatus.CONFIRMED),
         ]
 
         # Step 3: Validate alignments

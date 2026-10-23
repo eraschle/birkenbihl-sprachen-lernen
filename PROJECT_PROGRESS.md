@@ -860,6 +860,9 @@ Before moving to Phase 4, verify:
 - Audio: Piper (local) with ElevenLabs fallback/preference; play, loop and save sentence or whole text in the
   translation tab; audio settings in the settings tab. gTTS removed.
 - Speech speed (very slow 0.7× / slow 0.85× / normal) in the audio bar, saved in settings.yaml.
+- Source word groups: several source words can share target words ("estación de tren" → "Bahnhof"), so every
+  sentence can be decoded. AI prompts and retry feedback ask for groups, Jev joins words without a target into
+  the neighbouring column (flagged), the editor can join and split columns.
 **Phase 3**: AudioService done, but NOT yet wired into the GUI
 **Phase 4**: Deferred (optional feature)
 
@@ -880,11 +883,7 @@ See `specs/ALIGNMENT_QUALITY.md` for the alignment quality design (rules, self-c
 3. Add GUI tests (target 80%)
 4. Settings database storage (`SettingsStorageProvider`) is only used by tests; the app always uses YAML.
    Delete it or use it; it does not store audio settings
-5. Decide (found in UI smoke test 2026-10-23): sentences with more source words than the natural translation can
-   cover cannot satisfy the rules ("¿Dónde está la estación de tren?" → "Wo ist der Bahnhof?": de, tren get no
-   word; "I've been waiting for you." → "Ich habe auf dich gewartet.": been). They stay invalid and cannot be
-   saved. Options: allow a source word without target word, or ask the AI for a more literal natural translation
-6. Create mode runs the AI translation in the UI thread: the window freezes until the model answers
+5. Create mode runs the AI translation in the UI thread: the window freezes until the model answers
    (regenerating in the editor already runs in the background)
 
 ---

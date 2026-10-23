@@ -231,7 +231,7 @@ class SqliteStorageProvider:
         return [
             WordAlignmentDAO(
                 sentence_id=sentence.uuid,
-                source_index=wa.source_index,
+                source_indices=wa.source_indices,
                 target_indices=wa.target_indices,
                 status=wa.status.value,
             )
@@ -298,11 +298,11 @@ class SqliteStorageProvider:
         """
         return [
             WordAlignment(
-                source_index=wa_dao.source_index,
+                source_indices=list(wa_dao.source_indices),
                 target_indices=list(wa_dao.target_indices),
                 status=AlignmentStatus(wa_dao.status),
             )
-            for wa_dao in sorted(sentence_dao.word_alignments, key=lambda x: x.source_index)
+            for wa_dao in sorted(sentence_dao.word_alignments, key=lambda x: min(x.source_indices, default=-1))
         ]
 
     def __enter__(self):

@@ -93,6 +93,19 @@ class InterleavedGridEditable(QWidget):
         self._grid_state.confirm(column_index)
         self._apply_change()
 
+    def _on_join(self, column_index: int, neighbour_index: int) -> None:
+        """Several source words share one target word: join the column with its neighbour."""
+        if not self._grid_state:
+            return
+        self._grid_state.join(column_index, neighbour_index)
+        self._apply_change()
+
+    def _on_split(self, column_index: int) -> None:
+        if not self._grid_state:
+            return
+        self._grid_state.split(column_index)
+        self._apply_change()
+
     def _render(self) -> None:
         """Rebuild columns and pool from the current state."""
         self._clear()
@@ -102,6 +115,8 @@ class InterleavedGridEditable(QWidget):
             column = GridColumn(column_state.source_word)
             column.word_dropped.connect(lambda target_index, col=column_index: self._on_drop(target_index, col))
             column.confirm_requested.connect(lambda col=column_index: self._on_confirm(col))
+            column.join_requested.connect(lambda direction, col=column_index: self._on_join(col, col + direction))
+            column.split_requested.connect(lambda col=column_index: self._on_split(col))
             for target_index in column_state.target_indices:
                 column.add_tag(self._create_tag(target_index))
             self._columns.append(column)
@@ -140,8 +155,11 @@ class InterleavedGridEditable(QWidget):
             return True
 
         is_valid, message = self._grid_state.validate()
-        for column, column_state in zip(self._columns, self._grid_state.columns, strict=True):
+        last = len(self._columns) - 1
+        for index, (column, column_state) in enumerate(zip(self._columns, self._grid_state.columns, strict=True)):
             column.set_state(error=column_state.is_empty(), flagged=column_state.is_flagged())
+            empty = column_state.is_empty()
+            column.set_join_controls(empty and index > 0, empty and index < last, column_state.is_joined())
 
         text = "" if is_valid else f"⚠️ {message}"
         self._error_label.setText(text)

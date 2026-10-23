@@ -57,7 +57,8 @@ Your task is to provide TWO types of translations:
 - Every word from the natural translation MUST appear in the word-by-word alignments
 - Every source word MUST have at least one non-empty target word
 - Word alignments should follow the source language word order
-- For compound translations (multiple source words → single target word), use hyphens
+- Several consecutive source words may share target words: give them in ONE entry, separated by
+  spaces, e.g. "estación de tren" → "Bahnhof", "been waiting" → "gewartet"
 - Maintain consistent position numbering starting from 0
 
 **Special Rules for Word-by-Word Alignment:**
@@ -67,7 +68,8 @@ Your task is to provide TWO types of translations:
 - Compound words should be avoided where linguistically acceptable:
   ✓ CORRECT: "no es" → "ist nicht"
   ✗ WRONG: "no es" → "ist-nicht" (only if grammatically required)
-- Every source word must map to at least one target word (no empty mappings)
+- Every source word must map to at least one target word (no empty mappings); when the natural translation has
+  fewer words, join the source words that share a target word into one entry instead of leaving one empty
 
 **Example 1 (English to German - Simple sentence):**
 Source: "Yesterday I met some new people."
@@ -240,6 +242,8 @@ Map each source word to one or more target words, creating a word-by-word alignm
 
 **Critical rules:**
 ✓ Every source word MUST have at least one target word (no empty mappings)
+✓ Several consecutive source words may share target words: ONE entry, separated by spaces,
+  e.g. "estación de tren" → "Bahnhof", "been waiting" → "gewartet"
 ✓ Every target word MUST appear in exactly one alignment
 ✓ Negations stay separate: "no importante" → "nicht" + "wichtig" (NOT "unwichtig")
 ✓ Use hyphens only when target words form inseparable unit: "It's" → "Es-ist"
@@ -276,6 +280,16 @@ Alignments:
 - Position 2: "importante" → "wichtig"
 - Position 3: "verte" → "dich-zu-sehen" (reflexive verb split: positions 4+6+7 in target)
 - Position 4: "aquí" → "hier"
+
+**Example 4 (several source words share one target word):**
+Source (Spanish): ["Dónde", "está", "la", "estación", "de", "tren"]
+Target (German): ["Wo", "ist", "der", "Bahnhof"]
+
+Alignments:
+- Position 0: "Dónde" → "Wo"
+- Position 1: "está" → "ist"
+- Position 2: "la" → "der"
+- Position 3: "estación de tren" → "Bahnhof" (three source words, one target word)
 
 Note: In complex examples, target words may appear in different order than in natural translation.
 The alignment follows SOURCE order, but uses target words from wherever they appear.

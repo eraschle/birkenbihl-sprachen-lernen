@@ -72,7 +72,8 @@ def _alignment_problems(sentence: Sentence) -> str | None:
     """Feedback for the model if its alignment breaks the rules, None if it is acceptable."""
     is_valid, error = validate_alignment_complete(sentence)
     if not is_valid:
-        return f"The word-by-word alignment breaks the Birkenbihl rules: {error}"
+        join = "If several source words share one target word, give them as ONE entry (e.g. 'estación de tren')."
+        return f"The word-by-word alignment breaks the Birkenbihl rules: {error} {join}"
     flagged = [sentence.source_word(a) for a in sentence.word_alignments if a.status == AlignmentStatus.FLAGGED]
     if flagged:
         words = ", ".join(flagged)

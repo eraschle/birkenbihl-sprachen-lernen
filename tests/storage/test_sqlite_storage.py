@@ -114,6 +114,26 @@ class TestSqliteStorageProviderSave:
         assert first_sentence.word_alignments == sample_translation.sentences[0].word_alignments
         assert first_sentence.get_word_by_word() == "Ich dich vermissen-werde"
 
+    def test_save_preserves_source_word_groups(self, storage_provider: SqliteStorageProvider) -> None:
+        sentence = align_word_pairs(
+            "¿Dónde está la estación de tren?",
+            "Wo ist der Bahnhof?",
+            [("Dónde", "Wo"), ("está", "ist"), ("la", "der"), ("estación de tren", "Bahnhof")],
+        )
+        translation = Translation(
+            title="Gruppe",
+            source_language=get_language_by("es"),
+            target_language=get_language_by("de"),
+            sentences=[sentence],
+        )
+        storage_provider.save(translation)
+
+        retrieved = storage_provider.get(translation.uuid)
+
+        assert retrieved is not None
+        assert retrieved.sentences[0].word_alignments[-1].source_indices == [3, 4, 5]
+        assert retrieved.sentences[0].get_word_by_word() == "Wo ist der Bahnhof"
+
     def test_save_preserves_alignment_status(
         self, storage_provider: SqliteStorageProvider, sample_translation: Translation
     ) -> None:
@@ -184,7 +204,7 @@ class TestSqliteStorageProviderGet:
 
         assert retrieved is not None
         first_sentence = retrieved.sentences[0]
-        assert [wa.source_index for wa in first_sentence.word_alignments] == [0, 1, 2]
+        assert [wa.source_indices for wa in first_sentence.word_alignments] == [[0], [1], [2]]
 
 
 @pytest.mark.unit

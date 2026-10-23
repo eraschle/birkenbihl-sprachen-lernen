@@ -99,3 +99,52 @@ class TestInterleavedGridEditable:
         assert blocker.args[0][2].status == AlignmentStatus.CONFIRMED
         assert editor._columns[2].styleSheet() == ""
         assert editor._columns[2]._confirm_button.isHidden()
+
+
+def _station_editor(qtbot: QtBot) -> InterleavedGridEditable:
+    editor = InterleavedGridEditable()
+    qtbot.addWidget(editor)
+    pairs = [("Dónde", "Wo"), ("está", "ist"), ("la", "der"), ("estación", "Bahnhof")]
+    editor.build_grid(align_word_pairs("¿Dónde está la estación de tren?", "Wo ist der Bahnhof?", pairs))
+    return editor
+
+
+def _headers(editor: InterleavedGridEditable) -> list[str]:
+    return [column._source_word for column in editor._columns]
+
+
+class TestJoinSourceWords:
+    def test_join_buttons_only_on_empty_columns(self, qtbot: QtBot) -> None:
+        editor = _station_editor(qtbot)
+
+        left = [not column._join_left_button.isHidden() for column in editor._columns]
+        right = [not column._join_right_button.isHidden() for column in editor._columns]
+
+        assert left == [False, False, False, False, True, True]
+        assert right == [False, False, False, False, True, False]  # last column has no right neighbour
+
+    def test_joining_makes_the_sentence_valid(self, qtbot: QtBot) -> None:
+        editor = _station_editor(qtbot)
+
+        editor._columns[4]._join_left_button.click()  # "de" joins "estación"
+        editor._columns[4]._join_left_button.click()  # "tren" joins "estación-de"
+
+        assert _headers(editor) == ["Dónde", "está", "la", "estación-de-tren"]
+        assert editor._error_label.text() == ""
+        assert not editor._columns[3]._split_button.isHidden()
+
+    def test_join_emits_alignments_with_the_source_group(self, qtbot: QtBot) -> None:
+        editor = _station_editor(qtbot)
+
+        with qtbot.waitSignal(editor.alignments_changed, timeout=1000) as blocker:
+            editor._columns[5]._join_left_button.click()  # "tren" joins "de"
+
+        assert [a.source_indices for a in blocker.args[0]][-1] == [4, 5]
+
+    def test_split_undoes_a_join(self, qtbot: QtBot) -> None:
+        editor = _station_editor(qtbot)
+        editor._columns[4]._join_left_button.click()
+
+        editor._columns[3]._split_button.click()
+
+        assert _headers(editor) == ["Dónde", "está", "la", "estación", "de", "tren"]

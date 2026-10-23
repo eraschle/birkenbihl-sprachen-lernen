@@ -9,7 +9,7 @@ def _sentence(source: str, natural: str, alignments: list[tuple[int, list[int]]]
     return Sentence(
         source_text=source,
         natural_translation=natural,
-        word_alignments=[WordAlignment(source_index=s, target_indices=t) for s, t in alignments],
+        word_alignments=[WordAlignment(source_indices=[s], target_indices=t) for s, t in alignments],
     )
 
 
@@ -106,3 +106,44 @@ class TestValidateAlignmentComplete:
         assert "Quellwörter ohne Zielwort: te" in error
         assert "Mehrfach verwendete Wörter: vermissen" in error
         assert "Fehlende Wörter: werde, dich" in error
+
+
+class TestSourceWordGroups:
+    def test_several_source_words_sharing_one_target_word_is_valid(self) -> None:
+        sentence = _sentence(
+            "¿Dónde está la estación de tren?", "Wo ist der Bahnhof?", [(0, [0]), (1, [1]), (2, [2]), (3, [3])]
+        )
+        sentence.word_alignments[3].source_indices = [3, 4, 5]
+
+        assert validate_alignment_complete(sentence) == (True, None)
+
+    def test_source_word_without_target_explains_how_to_join(self) -> None:
+        sentence = _sentence(
+            "¿Dónde está la estación de tren?",
+            "Wo ist der Bahnhof?",
+            [(0, [0]), (1, [1]), (2, [2]), (3, [3]), (4, []), (5, [])],
+        )
+
+        _, error = validate_alignment_complete(sentence)
+
+        assert error is not None
+        assert "Quellwörter ohne Zielwort: de, tren" in error
+        assert "verbinde sie" in error
+
+    def test_source_word_in_two_columns_is_invalid(self) -> None:
+        sentence = _sentence("Yo te", "Ich dich", [(0, [0]), (1, [1])])
+        sentence.word_alignments[0].source_indices = [0, 1]
+
+        _, error = validate_alignment_complete(sentence)
+
+        assert error is not None
+        assert "Quellwörter mehrfach zugeordnet: te" in error
+
+    def test_column_without_source_word_is_invalid(self) -> None:
+        sentence = _sentence("Yo", "Ich du", [(0, [0])])
+        sentence.word_alignments.append(WordAlignment(source_indices=[], target_indices=[1]))
+
+        _, error = validate_alignment_complete(sentence)
+
+        assert error is not None
+        assert "Spalten ohne Quellwort" in error

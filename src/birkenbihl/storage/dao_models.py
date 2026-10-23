@@ -57,7 +57,7 @@ class WordAlignmentDAO(SQLModel, table=True):
 
     id: int | None = Field(default=None, primary_key=True)
     sentence_id: UUID = Field(foreign_key="sentences.id", index=True)
-    source_index: int
+    source_indices: list[int] = Field(sa_column=Column(JSON, nullable=False))
     target_indices: list[int] = Field(sa_column=Column(JSON, nullable=False))
     status: str
 

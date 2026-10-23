@@ -155,7 +155,9 @@ class TestPydanticAITranslatorBirkenbilhCompliance:
         assert len(sentence.natural_translation.strip()) > 0
         assert len(sentence.word_alignments) > 0
 
-        assert [a.source_index for a in sentence.word_alignments] == list(range(len(sentence.source_tokens)))
+        assert sorted(i for a in sentence.word_alignments for i in a.source_indices) == list(
+            range(len(sentence.source_tokens))
+        )
 
     def test_one_alignment_per_source_word(self, anthropic_provider_config: ProviderConfig) -> None:
         """Test that every source word gets exactly one alignment, in source order."""
@@ -167,7 +169,9 @@ class TestPydanticAITranslatorBirkenbilhCompliance:
 
         # Assert
         sentence = result.sentences[0]
-        assert [a.source_index for a in sentence.word_alignments] == list(range(len(sentence.source_tokens)))
+        assert sorted(i for a in sentence.word_alignments for i in a.source_indices) == list(
+            range(len(sentence.source_tokens))
+        )
 
     def test_metadata_present_in_translation(self, openai_provider_config: ProviderConfig) -> None:
         """Test that translation includes all required metadata."""
@@ -211,7 +215,7 @@ class TestPydanticAITranslatorEditingFeatures:
         assert len(alignments) > 0
 
         # One alignment per source word ("Hello", "world"), in source order
-        assert [a.source_index for a in alignments] == [0, 1]
+        assert [a.source_indices for a in alignments] == [[0], [1]]
 
     def test_regenerate_alignment_preserves_all_words(self, anthropic_provider_config: ProviderConfig) -> None:
         """Test that regenerate_alignment includes all words from natural translation."""

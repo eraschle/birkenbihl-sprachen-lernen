@@ -32,6 +32,12 @@ class NaturalTranslationResponse(BaseModel):
     )
 
 
+SOURCE_WORD_DESCRIPTION = (
+    'Original word from source language; several consecutive words separated by spaces when they share the target'
+    ' words (e.g. "estación de tren" for "Bahnhof")'
+)
+
+
 class WordAlignmentResponse(BaseModel):
     """Word-by-word alignment from AI response.
 
@@ -39,7 +45,7 @@ class WordAlignmentResponse(BaseModel):
     as the AI will generate them sequentially.
     """
 
-    source_word: str = Field(description="Original word from source language")
+    source_word: str = Field(description=SOURCE_WORD_DESCRIPTION)
     target_word: str = Field(description="Translated word in target language")
     position: int = Field(description="Sequential position in sentence (0-indexed)")
 

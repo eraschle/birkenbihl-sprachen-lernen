@@ -2,7 +2,7 @@
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QDragEnterEvent, QDragLeaveEvent, QDropEvent
-from PySide6.QtWidgets import QFrame, QLabel, QPushButton, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
 from birkenbihl.gui.styles import theme
 from birkenbihl.gui.widgets.word_tag import WordTag
@@ -14,6 +14,8 @@ class GridColumn(QFrame):
     Visual layout:
         [Source Word]  ← Header (bold, fixed)
         [✓ Stimmt]     ← Only for flagged columns with a word: confirm without changing
+        [◀ verbinden ▶] ← Only for empty columns: share the neighbour's target words
+        [✂ trennen]    ← Only for joined columns (several source words)
         ┌─────────┐
         │DropZone │    ← Invisible until drag starts
         └─────────┘
@@ -23,6 +25,8 @@ class GridColumn(QFrame):
 
     word_dropped = Signal(int)  # target index of the dropped word
     confirm_requested = Signal()
+    join_requested = Signal(int)  # -1: join with the column on the left, +1: on the right
+    split_requested = Signal()
 
     def __init__(self, source_word: str, parent: QWidget | None = None):
         """Initialize grid column.
@@ -36,6 +40,12 @@ class GridColumn(QFrame):
         self._tags: list[WordTag] = []
         self._drop_zone: QLabel | None = None
         self._confirm_button = self._create_confirm_button()
+        self._join_left_button = self._small_button("◀ verbinden", "Mit dem linken Wort verbinden", -1)
+        self._join_right_button = self._small_button("verbinden ▶", "Mit dem rechten Wort verbinden", +1)
+        self._split_button = QPushButton("✂ trennen")
+        self._split_button.setToolTip("Jedes Wort wieder in eine eigene Spalte")
+        self._split_button.clicked.connect(self.split_requested.emit)
+        self._split_button.hide()
         self._init_ui()
 
     def _init_ui(self) -> None:
@@ -47,6 +57,12 @@ class GridColumn(QFrame):
         layout.setSpacing(2)
         layout.addWidget(self._create_header())
         layout.addWidget(self._confirm_button)
+        join_row = QHBoxLayout()
+        join_row.setSpacing(2)
+        join_row.addWidget(self._join_left_button)
+        join_row.addWidget(self._join_right_button)
+        layout.addLayout(join_row)
+        layout.addWidget(self._split_button)
         self._drop_zone = self._create_drop_zone()
         layout.addWidget(self._drop_zone)
         self._drop_zone.hide()
@@ -64,6 +80,13 @@ class GridColumn(QFrame):
         font.setBold(True)
         label.setFont(font)
         return label
+
+    def _small_button(self, text: str, tooltip: str, direction: int) -> QPushButton:
+        button = QPushButton(text)
+        button.setToolTip(f"{tooltip} (mehrere Wörter teilen sich die Übersetzung, z. B. estación de tren → Bahnhof)")
+        button.clicked.connect(lambda: self.join_requested.emit(direction))
+        button.hide()
+        return button
 
     def _create_confirm_button(self) -> QPushButton:
         """Create the button that confirms a flagged alignment as correct.
@@ -161,6 +184,12 @@ class GridColumn(QFrame):
         needs_review = flagged and not error
         self.setToolTip("Bitte prüfen: KI-Vorschlag war unsicher" if needs_review else "")
         self._confirm_button.setVisible(needs_review)
+
+    def set_join_controls(self, join_left: bool, join_right: bool, split: bool) -> None:
+        """Show the join buttons (for a column that has no target word) and the split button (joined column)."""
+        self._join_left_button.setVisible(join_left)
+        self._join_right_button.setVisible(join_right)
+        self._split_button.setVisible(split)
 
     def dragEnterEvent(self, event: QDragEnterEvent) -> None:
         """Handle drag entering column.

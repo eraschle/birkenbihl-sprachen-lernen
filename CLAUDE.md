@@ -113,7 +113,10 @@ Natural:      "Ich werde dich vermissen"
 Word-by-Word: "Ich dich vermissen-werde"
 ```
 It is important that all word of the `natural` translation are used in the `word-by-word`, each exactly once
-(checked on token positions by `models/validation.py`). See `specs/ALIGNMENT_QUALITY.md` for how wrong AI
+(checked on token positions by `models/validation.py`). Every sentence must be translatable: when the natural
+translation has fewer words, several source words share one column ("estación de tren" → "Bahnhof", "been
+waiting" → "gewartet"); one source word can also get several target words ("extrañaré" → "vermissen-werde").
+This many-to-one and one-to-many linking is the point of the decoding: it ties the new language to the mother tongue. See `specs/ALIGNMENT_QUALITY.md` for how wrong AI
 alignments are handled.
 
 ### Data Models
@@ -122,12 +125,14 @@ alignments are handled.
 - Uses Pydantic models for validation and serialization
 - **UUIDs for Identity:** All entities use UUIDs for cross-storage compatibility (JSON, DB, Excel)
 - Domain models (not tied to specific storage implementation):
-  - `WordAlignment`: Maps one source token (`source_index`) to target tokens (`target_indices`) by position,
-    with a `status` (`suggested` from AI, `flagged` for review, `confirmed` by the user). Tokens come from
+  - `WordAlignment`: one column, mapping source tokens (`source_indices`, one or more neighbours) to target
+    tokens (`target_indices`) by position, with a `status` (`suggested` from AI, `flagged` for review, `confirmed` by the user). Tokens come from
     `Sentence.source_tokens` / `Sentence.target_tokens` (`tokenize_clean`), so the tokenizer is part of the
     stored data format. Never align by word text: repeated words ("der ... der") must stay distinct.
-  - `models/alignment.py`: `align_word_pairs()` turns AI text pairs ("extrañaré" → "vermissen-werde") into
-    positions; anything it cannot match is FLAGGED, never guessed
+  - `models/alignment.py`: `align_word_pairs()` turns AI text pairs ("extrañaré" → "vermissen-werde",
+    "estación de tren" → "Bahnhof") into positions; anything it cannot match is FLAGGED, never guessed.
+    `align_by_probability()` (Jev) joins source words without a target word into the neighbouring column, FLAGGED
+  - Editor (`gui/models/grid_state.py`): move target words; join an empty column with a neighbour, split a joined one
   - `Sentence`: Single sentence with source_text, natural_translation, word_alignments[]
     - Each sentence has unique UUID for referencing in UI/storage
   - `Translation`: Root aggregate containing multiple sentences

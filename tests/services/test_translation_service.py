@@ -126,7 +126,7 @@ class TestAICalls:
         translator_factory: MagicMock,
         provider_config: ProviderConfig,
     ) -> None:
-        expected = [WordAlignment(source_index=0, target_indices=[0])]
+        expected = [WordAlignment(source_indices=[0], target_indices=[0])]
         translator_factory.return_value.regenerate_alignment.return_value = expected
         request = AlignmentRequest("Hola", "Hallo", get_language_by("es"), get_language_by("de"), provider_config)
 
@@ -155,9 +155,9 @@ class TestUpdateSentenceAlignment:
         # Arrange
         sentence_uuid = sample_translation.sentences[0].uuid
         new_alignments = [
-            WordAlignment(source_index=0, target_indices=[0]),  # Yo → Ich
-            WordAlignment(source_index=1, target_indices=[2]),  # te → dich
-            WordAlignment(source_index=2, target_indices=[1, 3]),  # extrañaré → werde-vermissen
+            WordAlignment(source_indices=[0], target_indices=[0]),  # Yo → Ich
+            WordAlignment(source_indices=[1], target_indices=[2]),  # te → dich
+            WordAlignment(source_indices=[2], target_indices=[1, 3]),  # extrañaré → werde-vermissen
         ]
 
         mock_storage.get.return_value = sample_translation  # type: ignore[reportAttributeAccessIssue]
@@ -184,8 +184,8 @@ class TestUpdateSentenceAlignment:
         sentence_uuid = sample_translation.sentences[0].uuid
         # "te" has no target and "dich" is unused
         invalid_alignments = [
-            WordAlignment(source_index=0, target_indices=[0]),
-            WordAlignment(source_index=2, target_indices=[1, 3]),
+            WordAlignment(source_indices=[0], target_indices=[0]),
+            WordAlignment(source_indices=[2], target_indices=[1, 3]),
         ]
 
         mock_storage.get.return_value = sample_translation  # type: ignore[reportAttributeAccessIssue]
@@ -208,9 +208,9 @@ class TestUpdateSentenceAlignment:
         sentence_uuid = sample_translation.sentences[0].uuid
         # Missing "vermissen" from natural translation
         incomplete_alignments = [
-            WordAlignment(source_index=0, target_indices=[0]),
-            WordAlignment(source_index=1, target_indices=[2]),
-            WordAlignment(source_index=2, target_indices=[1]),
+            WordAlignment(source_indices=[0], target_indices=[0]),
+            WordAlignment(source_indices=[1], target_indices=[2]),
+            WordAlignment(source_indices=[2], target_indices=[1]),
         ]
 
         mock_storage.get.return_value = sample_translation  # type: ignore[reportAttributeAccessIssue]
